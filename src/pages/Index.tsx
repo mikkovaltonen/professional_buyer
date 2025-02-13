@@ -34,20 +34,23 @@ const Index = () => {
         </Link>
         <div className="flex items-center gap-4">
           <Button 
-            variant="ghost" 
-            className="text-[#8E9196] hover:text-[#1A1F2C] hover:bg-transparent"
+            variant="outline" 
+            className="bg-white hover:bg-gray-50"
             asChild
           >
             <Link to="/about">{t("nav.about")}</Link>
           </Button>
           <Button 
-            variant="ghost" 
-            className="text-[#8E9196] hover:text-[#1A1F2C] hover:bg-transparent"
+            variant="outline" 
+            className="bg-white hover:bg-gray-50"
             asChild
           >
             <Link to="/products">{t("nav.products")}</Link>
           </Button>
-          <Button variant="ghost" className="hover:bg-gray-100">
+          <Button 
+            variant="outline" 
+            className="bg-white hover:bg-gray-50"
+          >
             Login
           </Button>
           <RegisterForm />

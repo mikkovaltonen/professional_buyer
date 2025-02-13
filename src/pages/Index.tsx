@@ -2,12 +2,23 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Shield, FileSearch, PiggyBank, Brain, ArrowRight, Mail } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useEffect } from "react";
 import LanguageSelector from "@/components/LanguageSelector";
 
 const Index = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const location = useLocation();
+
+  useEffect(() => {
+    // Set language based on current path
+    const path = location.pathname;
+    const lang = path === '/' ? 'en' : path.slice(1);
+    if (lang && i18n.languages.includes(lang)) {
+      i18n.changeLanguage(lang);
+    }
+  }, [location.pathname, i18n]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">

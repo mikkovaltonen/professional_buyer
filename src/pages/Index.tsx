@@ -1,7 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Shield, FileSearch, PiggyBank, Brain, ArrowRight } from "lucide-react";
+import { Shield, FileSearch, PiggyBank, Brain, ArrowRight, Mail } from "lucide-react";
 
 const Index = () => {
   return (
@@ -88,6 +88,34 @@ const Index = () => {
           </Button>
         </div>
       </section>
+
+      {/* Footer with Contact Info */}
+      <footer className="container mx-auto px-4 py-12 border-t border-gray-200">
+        <div className="max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div>
+              <h3 className="text-xl font-semibold mb-4">About Us</h3>
+              <p className="text-gray-600 mb-4">
+                PriceRobot Limited is dedicated to revolutionizing insurance management through AI-powered solutions. Our platform helps individuals and businesses optimize their insurance coverage while ensuring maximum protection.
+              </p>
+            </div>
+            <div className="md:text-right">
+              <h3 className="text-xl font-semibold mb-4">Contact Us</h3>
+              <div className="flex items-center justify-start md:justify-end text-gray-600">
+                <Mail className="h-5 w-5 mr-2" />
+                <a href="mailto:info@pricerobot.ai" className="hover:text-primary transition-colors">
+                  info@pricerobot.ai
+                </a>
+              </div>
+            </div>
+          </div>
+          <div className="text-center mt-8 pt-8 border-t border-gray-200">
+            <p className="text-gray-600">
+              © {new Date().getFullYear()} PriceRobot Limited. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };

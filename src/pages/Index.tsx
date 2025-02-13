@@ -2,6 +2,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Shield, FileSearch, PiggyBank, Brain, ArrowRight, Mail } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const Index = () => {
   return (
@@ -23,56 +24,64 @@ const Index = () => {
       <section className="container mx-auto px-4 py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8">
           {/* Feature 1 */}
-          <Card className="p-6 hover:shadow-lg transition-shadow duration-300 animate-fade-in">
-            <CardContent className="space-y-4">
-              <div className="h-12 w-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <FileSearch className="h-6 w-6 text-purple-600" />
-              </div>
-              <h3 className="text-xl font-semibold">Secure Document Storage</h3>
-              <p className="text-gray-600">
-                Safely store and access all your insurance documents in one secure location
-              </p>
-            </CardContent>
-          </Card>
+          <Link to="/secure-storage">
+            <Card className="p-6 hover:shadow-lg transition-shadow duration-300 animate-fade-in">
+              <CardContent className="space-y-4">
+                <div className="h-12 w-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <FileSearch className="h-6 w-6 text-purple-600" />
+                </div>
+                <h3 className="text-xl font-semibold">Secure Document Storage</h3>
+                <p className="text-gray-600">
+                  Safely store and access all your insurance documents in one secure location
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
 
           {/* Feature 2 */}
-          <Card className="p-6 hover:shadow-lg transition-shadow duration-300 animate-fade-in">
-            <CardContent className="space-y-4">
-              <div className="h-12 w-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <Brain className="h-6 w-6 text-purple-600" />
-              </div>
-              <h3 className="text-xl font-semibold">AI-Powered Optimization</h3>
-              <p className="text-gray-600">
-                Our AI analyzes your needs to find the best protection plans for you
-              </p>
-            </CardContent>
-          </Card>
+          <Link to="/ai-optimization">
+            <Card className="p-6 hover:shadow-lg transition-shadow duration-300 animate-fade-in">
+              <CardContent className="space-y-4">
+                <div className="h-12 w-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <Brain className="h-6 w-6 text-purple-600" />
+                </div>
+                <h3 className="text-xl font-semibold">AI-Powered Optimization</h3>
+                <p className="text-gray-600">
+                  Our AI analyzes your needs to find the best protection plans for you
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
 
           {/* Feature 3 */}
-          <Card className="p-6 hover:shadow-lg transition-shadow duration-300 animate-fade-in">
-            <CardContent className="space-y-4">
-              <div className="h-12 w-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <PiggyBank className="h-6 w-6 text-purple-600" />
-              </div>
-              <h3 className="text-xl font-semibold">Cost Savings</h3>
-              <p className="text-gray-600">
-                Save money by comparing and optimizing your insurance coverage
-              </p>
-            </CardContent>
-          </Card>
+          <Link to="/cost-savings">
+            <Card className="p-6 hover:shadow-lg transition-shadow duration-300 animate-fade-in">
+              <CardContent className="space-y-4">
+                <div className="h-12 w-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <PiggyBank className="h-6 w-6 text-purple-600" />
+                </div>
+                <h3 className="text-xl font-semibold">Cost Savings</h3>
+                <p className="text-gray-600">
+                  Save money by comparing and optimizing your insurance coverage
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
 
           {/* Feature 4 */}
-          <Card className="p-6 hover:shadow-lg transition-shadow duration-300 animate-fade-in">
-            <CardContent className="space-y-4">
-              <div className="h-12 w-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <Shield className="h-6 w-6 text-purple-600" />
-              </div>
-              <h3 className="text-xl font-semibold">Complete Protection</h3>
-              <p className="text-gray-600">
-                Get comprehensive coverage recommendations tailored to your needs
-              </p>
-            </CardContent>
-          </Card>
+          <Link to="/complete-protection">
+            <Card className="p-6 hover:shadow-lg transition-shadow duration-300 animate-fade-in">
+              <CardContent className="space-y-4">
+                <div className="h-12 w-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <Shield className="h-6 w-6 text-purple-600" />
+                </div>
+                <h3 className="text-xl font-semibold">Complete Protection</h3>
+                <p className="text-gray-600">
+                  Get comprehensive coverage recommendations tailored to your needs
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
       </section>
 

@@ -35,12 +35,12 @@ const LanguageSelector = () => {
           <Globe className="h-5 w-5" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="bg-white min-w-[250px] w-[250px] p-2">
+      <DropdownMenuContent align="end" className="bg-white min-w-[280px] w-[280px] p-2">
         {languages.map((lang) => (
           <DropdownMenuItem
             key={lang.code}
             onClick={() => handleLanguageChange(lang.code, lang.path)}
-            className="cursor-pointer hover:bg-gray-100 px-8 py-2 w-full text-left whitespace-nowrap"
+            className="cursor-pointer hover:bg-gray-100 px-10 py-2 w-full text-left whitespace-nowrap"
           >
             {lang.name}
           </DropdownMenuItem>

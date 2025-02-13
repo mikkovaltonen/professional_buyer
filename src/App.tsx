@@ -61,6 +61,90 @@ i18n
             "rights": "All rights reserved."
           }
         }
+      },
+      fi: {
+        translation: {
+          "hero": {
+            "title": "Älykäs vakuutushallinta",
+            "subtitle": "Säilytä, hallitse ja optimoi vakuutusasiakirjasi tekoälyn avulla",
+            "cta": "Aloita nyt"
+          },
+          "features": {
+            "secure": {
+              "title": "Turvallinen asiakirjojen säilytys",
+              "description": "Säilytä ja käytä kaikkia vakuutusasiakirjojasi turvallisesti yhdessä paikassa"
+            },
+            "ai": {
+              "title": "Tekoälypohjainen optimointi",
+              "description": "Tekoälymme analysoi tarpeesi löytääkseen sinulle parhaat vakuutusratkaisut"
+            },
+            "cost": {
+              "title": "Kustannussäästöt",
+              "description": "Säästä rahaa vertaamalla ja optimoimalla vakuutusturvaasi"
+            },
+            "protection": {
+              "title": "Kattava suoja",
+              "description": "Saat tarpeisiisi räätälöidyt kattavat vakuutussuositukset"
+            }
+          },
+          "cta": {
+            "title": "Valmis optimoimaan vakuutuksesi?",
+            "subtitle": "Liity tuhansien käyttäjien joukkoon, jotka jo säästävät aikaa ja rahaa alustamme avulla",
+            "button": "Aloita nyt"
+          },
+          "footer": {
+            "about": {
+              "title": "Tietoa meistä",
+              "description": "PriceRobot Limited on omistautunut uudistamaan vakuutushallintaa tekoälypohjaisilla ratkaisuilla. Alustamme auttaa yksityishenkilöitä ja yrityksiä optimoimaan vakuutusturvansa."
+            },
+            "contact": {
+              "title": "Ota yhteyttä"
+            },
+            "rights": "Kaikki oikeudet pidätetään."
+          }
+        }
+      },
+      et: {
+        translation: {
+          "hero": {
+            "title": "Nutikas kindlustushaldus",
+            "subtitle": "Salvesta, halda ja optimeeri oma kindlustusdokumente tehisintellekti abil",
+            "cta": "Alusta"
+          },
+          "features": {
+            "secure": {
+              "title": "Turvaline dokumentide hoiustamine",
+              "description": "Salvesta ja kasuta kõiki oma kindlustusdokumente turvaliselt ühes kohas"
+            },
+            "ai": {
+              "title": "Tehisintellektil põhinev optimeerimine",
+              "description": "Meie tehisintellekt analüüsib sinu vajadusi, et leida parimad kindlustusplaanid"
+            },
+            "cost": {
+              "title": "Kulude kokkuhoid",
+              "description": "Säästa raha võrreldes ja optimeerides oma kindlustuskaitset"
+            },
+            "protection": {
+              "title": "Täielik kaitse",
+              "description": "Saa põhjalikud kindlustussoovitused, mis on kohandatud sinu vajadustele"
+            }
+          },
+          "cta": {
+            "title": "Valmis oma kindlustust optimeerima?",
+            "subtitle": "Liitu tuhandete kasutajatega, kes juba säästavad aega ja raha meie platvormi abil",
+            "button": "Alusta kohe"
+          },
+          "footer": {
+            "about": {
+              "title": "Meist",
+              "description": "PriceRobot Limited on pühendunud kindlustushalduse uuendamisele tehisintellekti lahendustega. Meie platvorm aitab üksikisikutel ja ettevõtetel optimeerida oma kindlustuskaitset."
+            },
+            "contact": {
+              "title": "Võta ühendust"
+            },
+            "rights": "Kõik õigused kaitstud."
+          }
+        }
       }
     },
     fallbackLng: "en",
@@ -79,6 +163,8 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/fi" element={<Index />} />
+          <Route path="/et" element={<Index />} />
           <Route path="/secure-storage" element={<SecureStorage />} />
           <Route path="/ai-optimization" element={<AiOptimization />} />
           <Route path="/cost-savings" element={<CostSavings />} />

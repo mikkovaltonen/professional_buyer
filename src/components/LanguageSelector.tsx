@@ -8,20 +8,27 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useTranslation } from "react-i18next";
 import { Globe } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const languages = [
-  { code: "en", name: "English" },
-  { code: "da", name: "Dansk" },
-  { code: "fi", name: "Suomi" },
-  { code: "no", name: "Norsk" },
-  { code: "sv", name: "Svenska" },
-  { code: "et", name: "Eesti" },
-  { code: "lv", name: "Latviešu" },
-  { code: "lt", name: "Lietuvių" },
+  { code: "en", name: "English", path: "/" },
+  { code: "da", name: "Dansk", path: "/da" },
+  { code: "fi", name: "Suomi", path: "/fi" },
+  { code: "no", name: "Norsk", path: "/no" },
+  { code: "sv", name: "Svenska", path: "/sv" },
+  { code: "et", name: "Eesti", path: "/et" },
+  { code: "lv", name: "Latviešu", path: "/lv" },
+  { code: "lt", name: "Lietuvių", path: "/lt" },
 ];
 
 const LanguageSelector = () => {
   const { i18n } = useTranslation();
+  const navigate = useNavigate();
+
+  const handleLanguageChange = (langCode: string, path: string) => {
+    i18n.changeLanguage(langCode);
+    navigate(path);
+  };
 
   return (
     <DropdownMenu>
@@ -34,7 +41,7 @@ const LanguageSelector = () => {
         {languages.map((lang) => (
           <DropdownMenuItem
             key={lang.code}
-            onClick={() => i18n.changeLanguage(lang.code)}
+            onClick={() => handleLanguageChange(lang.code, lang.path)}
             className="cursor-pointer"
           >
             {lang.name}

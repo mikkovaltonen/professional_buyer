@@ -14,9 +14,9 @@ const languages = [
   { code: "en", name: "English", path: "/" },
   { code: "da", name: "Dansk", path: "/da" },
   { code: "fi", name: "Suomi", path: "/fi" },
-  { code: "no", name: "Norsk", path: "/no" },
   { code: "sv", name: "Svenska", path: "/sv" },
   { code: "et", name: "Eesti", path: "/et" },
+  { code: "no", name: "Norsk", path: "/no" }
 ];
 
 const LanguageSelector = () => {
@@ -40,7 +40,7 @@ const LanguageSelector = () => {
           <DropdownMenuItem
             key={lang.code}
             onClick={() => handleLanguageChange(lang.code, lang.path)}
-            className="cursor-pointer"
+            className="cursor-pointer hover:bg-gray-100"
           >
             {lang.name}
           </DropdownMenuItem>

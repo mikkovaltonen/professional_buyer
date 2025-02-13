@@ -25,24 +25,6 @@ const RegisterForm = () => {
     confirmPassword: "",
   });
 
-  const handleRegisterClick = async () => {
-    try {
-      console.log('Testing Supabase connection...');
-      const { data, error } = await supabase.auth.getSession();
-      console.log('Connection test response:', { data, error });
-      
-      if (error) {
-        console.error('Connection test error:', error);
-        toast.error("Connection test failed: " + error.message);
-        return;
-      }
-      setIsOpen(true);
-    } catch (error) {
-      console.error('Connection test error:', error);
-      toast.error("Failed to test connection");
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -53,33 +35,24 @@ const RegisterForm = () => {
 
     try {
       setIsLoading(true);
-      console.log('Starting registration process...');
-      
-      // Log the full redirect URL for verification
-      const redirectUrl = `${window.location.origin}/auth/callback`;
-      console.log('Redirect URL:', redirectUrl);
       
       const { data, error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
-        options: {
-          emailRedirectTo: redirectUrl
-        }
       });
 
       if (error) {
-        console.error('Registration error:', error);
         toast.error(error.message);
         return;
       }
 
-      console.log('Registration response:', data);
-      toast.success("Check your email to confirm your account!");
-      setIsOpen(false);
-      setFormData({ email: "", password: "", confirmPassword: "" });
+      if (data?.user) {
+        toast.success("Check your email to confirm your account!");
+        setIsOpen(false);
+        setFormData({ email: "", password: "", confirmPassword: "" });
+      }
       
     } catch (error: any) {
-      console.error('Registration error:', error);
       toast.error(error?.message || "Something went wrong during registration");
     } finally {
       setIsLoading(false);
@@ -92,7 +65,7 @@ const RegisterForm = () => {
         <Button 
           variant="outline" 
           className="bg-white hover:bg-gray-50"
-          onClick={handleRegisterClick}
+          onClick={() => setIsOpen(true)}
         >
           Register
         </Button>

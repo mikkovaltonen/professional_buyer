@@ -27,10 +27,13 @@ const RegisterForm = () => {
 
   const handleRegisterClick = async () => {
     try {
+      console.log('Testing Supabase connection...');
       const { data, error } = await supabase.auth.getSession();
+      console.log('Connection test response:', { data, error });
+      
       if (error) {
-        console.error('Connection test error details:', error);
-        toast.error("Connection failed: " + error.message);
+        console.error('Connection test error:', error);
+        toast.error("Connection test failed: " + error.message);
         return;
       }
       setIsOpen(true);
@@ -52,30 +55,28 @@ const RegisterForm = () => {
       setIsLoading(true);
       console.log('Starting registration process...');
       
-      const signUpData = {
+      const { data: { session }, error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
-          emailRedirectTo: window.location.origin
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          data: {
+            timestamp: new Date().toISOString()
+          }
         }
-      };
-      
-      console.log('Sending registration request with:', { email: signUpData.email });
-      
-      const { data, error } = await supabase.auth.signUp(signUpData);
+      });
 
       if (error) {
-        console.error('Registration error details:', error);
+        console.error('Registration error:', error);
         toast.error(error.message);
         return;
       }
 
-      if (data.user) {
-        console.log('Registration successful:', data.user);
-        toast.success("Check your email to confirm your account!");
-        setIsOpen(false);
-        setFormData({ email: "", password: "", confirmPassword: "" });
-      }
+      console.log('Registration response:', { session });
+      toast.success("Check your email to confirm your account!");
+      setIsOpen(false);
+      setFormData({ email: "", password: "", confirmPassword: "" });
+      
     } catch (error: any) {
       console.error('Registration error:', error);
       toast.error(error?.message || "Something went wrong during registration");

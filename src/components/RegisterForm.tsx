@@ -35,6 +35,7 @@ const RegisterForm = () => {
         return;
       }
       toast.success("Supabase connection successful!");
+      setIsOpen(true); // Open the dialog after successful connection test
     } catch (error) {
       console.error('Connection test error:', error);
       toast.error("Failed to test connection");
@@ -59,7 +60,7 @@ const RegisterForm = () => {
         email: formData.email,
         password: formData.password,
         options: {
-          emailRedirectTo: window.location.origin
+          emailRedirectTo: `${window.location.origin}/auth/callback`
         }
       });
 
@@ -85,7 +86,7 @@ const RegisterForm = () => {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="bg-white hover:bg-gray-50" onClick={testConnection}>
+        <Button variant="outline" className="bg-white hover:bg-gray-50">
           Register
         </Button>
       </DialogTrigger>

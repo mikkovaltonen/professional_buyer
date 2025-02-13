@@ -1,7 +1,6 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Shield, FileSearch, PiggyBank, Brain, ArrowRight, Mail } from "lucide-react";
+import { Shield, FileSearch, PiggyBank, Brain, ArrowRight, Mail, Car, Home, Plane, Heart, Dog, Boat } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useEffect } from "react";
@@ -41,7 +40,6 @@ const Index = () => {
         </div>
       </div>
 
-      {/* Hero Section with enhanced branding */}
       <section className="container mx-auto px-4 pt-20 pb-16 text-center relative">
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d')] bg-cover bg-center opacity-5 z-0"></div>
         <div className="relative z-10">
@@ -57,7 +55,99 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Features Section with enhanced visual hierarchy */}
+      <section className="container mx-auto px-4 py-16 bg-white">
+        <div className="max-w-4xl mx-auto text-center">
+          <h2 className="text-3xl font-bold mb-8 text-[#1A1F2C]">{t("vision.title")}</h2>
+          <p className="text-xl text-[#8E9196] mb-12">{t("vision.description")}</p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="p-6 bg-gradient-to-r from-[#E5DEFF] to-[#D3E4FD] rounded-lg">
+              <h3 className="text-2xl font-semibold mb-4 text-[#1A1F2C]">{t("mission.title")}</h3>
+              <p className="text-[#8E9196]">{t("mission.description")}</p>
+            </div>
+            <div className="p-6 bg-gradient-to-r from-[#E5DEFF] to-[#D3E4FD] rounded-lg">
+              <h3 className="text-2xl font-semibold mb-4 text-[#1A1F2C]">{t("values.title")}</h3>
+              <p className="text-[#8E9196]">{t("values.description")}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="container mx-auto px-4 py-16">
+        <h2 className="text-3xl font-bold text-center mb-12 text-[#1A1F2C]">{t("insurance.types.title")}</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          <Link to="/car-insurance" className="group">
+            <Card className="hover:shadow-lg transition-shadow duration-300">
+              <CardContent className="p-6 text-center">
+                <Car className="h-12 w-12 mx-auto mb-4 text-[#7E69AB] group-hover:text-[#9b87f5] transition-colors" />
+                <h3 className="text-xl font-semibold mb-2">{t("insurance.car.title")}</h3>
+                <p className="text-[#8E9196]">{t("insurance.car.short")}</p>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link to="/home-insurance" className="group">
+            <Card className="hover:shadow-lg transition-shadow duration-300">
+              <CardContent className="p-6 text-center">
+                <Home className="h-12 w-12 mx-auto mb-4 text-[#7E69AB] group-hover:text-[#9b87f5] transition-colors" />
+                <h3 className="text-xl font-semibold mb-2">{t("insurance.home.title")}</h3>
+                <p className="text-[#8E9196]">{t("insurance.home.short")}</p>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link to="/travel-insurance" className="group">
+            <Card className="hover:shadow-lg transition-shadow duration-300">
+              <CardContent className="p-6 text-center">
+                <Plane className="h-12 w-12 mx-auto mb-4 text-[#7E69AB] group-hover:text-[#9b87f5] transition-colors" />
+                <h3 className="text-xl font-semibold mb-2">{t("insurance.travel.title")}</h3>
+                <p className="text-[#8E9196]">{t("insurance.travel.short")}</p>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link to="/health-insurance" className="group">
+            <Card className="hover:shadow-lg transition-shadow duration-300">
+              <CardContent className="p-6 text-center">
+                <Heart className="h-12 w-12 mx-auto mb-4 text-[#7E69AB] group-hover:text-[#9b87f5] transition-colors" />
+                <h3 className="text-xl font-semibold mb-2">{t("insurance.health.title")}</h3>
+                <p className="text-[#8E9196]">{t("insurance.health.short")}</p>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link to="/life-insurance" className="group">
+            <Card className="hover:shadow-lg transition-shadow duration-300">
+              <CardContent className="p-6 text-center">
+                <Shield className="h-12 w-12 mx-auto mb-4 text-[#7E69AB] group-hover:text-[#9b87f5] transition-colors" />
+                <h3 className="text-xl font-semibold mb-2">{t("insurance.life.title")}</h3>
+                <p className="text-[#8E9196]">{t("insurance.life.short")}</p>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link to="/pet-insurance" className="group">
+            <Card className="hover:shadow-lg transition-shadow duration-300">
+              <CardContent className="p-6 text-center">
+                <Dog className="h-12 w-12 mx-auto mb-4 text-[#7E69AB] group-hover:text-[#9b87f5] transition-colors" />
+                <h3 className="text-xl font-semibold mb-2">{t("insurance.pet.title")}</h3>
+                <p className="text-[#8E9196]">{t("insurance.pet.short")}</p>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link to="/boat-insurance" className="group">
+            <Card className="hover:shadow-lg transition-shadow duration-300">
+              <CardContent className="p-6 text-center">
+                <Boat className="h-12 w-12 mx-auto mb-4 text-[#7E69AB] group-hover:text-[#9b87f5] transition-colors" />
+                <h3 className="text-xl font-semibold mb-2">{t("insurance.boat.title")}</h3>
+                <p className="text-[#8E9196]">{t("insurance.boat.short")}</p>
+              </CardContent>
+            </Card>
+          </Link>
+        </div>
+      </section>
+
       <section className="container mx-auto px-4 py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8">
           <Link to="/secure-storage">
@@ -110,7 +200,6 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Enhanced CTA Section */}
       <section className="container mx-auto px-4 py-16 text-center">
         <div className="bg-gradient-to-r from-[#E5DEFF] to-[#D3E4FD] rounded-2xl p-12 border border-[#9b87f5]/20">
           <h2 className="text-3xl font-bold mb-6 text-[#1A1F2C]">{t("cta.title")}</h2>
@@ -123,7 +212,6 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Enhanced Footer */}
       <footer className="container mx-auto px-4 py-12 border-t border-[#E5DEFF]">
         <div className="max-w-6xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

@@ -12,8 +12,14 @@ import AiOptimization from "./pages/AiOptimization";
 import CostSavings from "./pages/CostSavings";
 import CompleteProtection from "./pages/CompleteProtection";
 import NotFound from "./pages/NotFound";
+import CarInsurance from "./pages/insurance/CarInsurance";
+import HomeInsurance from "./pages/insurance/HomeInsurance";
+import TravelInsurance from "./pages/insurance/TravelInsurance";
+import HealthInsurance from "./pages/insurance/HealthInsurance";
+import LifeInsurance from "./pages/insurance/LifeInsurance";
+import PetInsurance from "./pages/insurance/PetInsurance";
+import BoatInsurance from "./pages/insurance/BoatInsurance";
 
-// Initialize i18n
 i18n
   .use(LanguageDetector)
   .use(initReactI18next)
@@ -58,6 +64,51 @@ i18n
               "title": "Contact Us"
             },
             "rights": "All rights reserved."
+          },
+          "vision": {
+            "title": "Our Vision for the Future",
+            "description": "We envision a world where managing insurance is effortless, transparent, and personalized. Through innovative technology and AI, we're making this vision a reality for everyone."
+          },
+          "mission": {
+            "title": "Our Mission",
+            "description": "To revolutionize insurance management by providing smart, accessible, and secure solutions that empower individuals and businesses to make informed decisions about their protection."
+          },
+          "values": {
+            "title": "Our Values",
+            "description": "Innovation, transparency, security, and customer-centricity guide everything we do. We believe in making insurance simple, understandable, and accessible to all."
+          },
+          "insurance": {
+            "types": {
+              "title": "Insurance Solutions"
+            },
+            "car": {
+              "title": "Car Insurance",
+              "short": "Comprehensive coverage for your vehicle"
+            },
+            "home": {
+              "title": "Home Insurance",
+              "short": "Protect your home and belongings"
+            },
+            "travel": {
+              "title": "Travel Insurance",
+              "short": "Worry-free worldwide coverage"
+            },
+            "health": {
+              "title": "Health Insurance",
+              "short": "Quality healthcare coverage"
+            },
+            "life": {
+              "title": "Life Insurance",
+              "short": "Secure your family's future"
+            },
+            "pet": {
+              "title": "Pet Insurance",
+              "short": "Care for your furry friends"
+            },
+            "boat": {
+              "title": "Boat Insurance",
+              "short": "Maritime protection solutions"
+            }
           }
         }
       },
@@ -100,6 +151,51 @@ i18n
               "title": "Ota yhteyttä"
             },
             "rights": "Kaikki oikeudet pidätetään."
+          },
+          "vision": {
+            "title": "Meidän tavoitteemme tulevaisuudessa",
+            "description": "Olemme tarkastelevat, että vakuutushallinta on helppompi, yleistä ja yksityiskohtainen. Tekoäly ja innovaatiot ovat tehtyä tämän tavoitteen realistiselle."
+          },
+          "mission": {
+            "title": "Meidän tavoitteemme",
+            "description": "Olemme tarkastelevat, että vakuutushallinta on uudistettava innovaatiolla ja tekoälyllä, jotta voimme auttaa yksityishenkilöitä ja yrityksiä tekemään päätöksensä vakuutusturvasta."
+          },
+          "values": {
+            "title": "Meidän arvot",
+            "description": "Innovatiivisuus, yleistys ja turvallisuus ovat kaikkiin tehtäviin liittyvät. Olemme tarkastelevat, että vakuutus on helppompi, yleistä ja yksityiskohtainen kaikille."
+          },
+          "insurance": {
+            "types": {
+              "title": "Vakuutusratkaisut"
+            },
+            "car": {
+              "title": "Vakuutusauto",
+              "short": "Kokoelma vakuutusten yleistä"
+            },
+            "home": {
+              "title": "Koti vakuutus",
+              "short": "Säilytä ja turvaa kotiin ja asioihin"
+            },
+            "travel": {
+              "title": "Vakuutusmatkustelu",
+              "short": "Vakuutusmatkustelu kaikille maalle"
+            },
+            "health": {
+              "title": "Terveydenhuolto vakuutus",
+              "short": "Kokonaisvakiintunut terveydenhuolto"
+            },
+            "life": {
+              "title": "Eläkelu vakuutus",
+              "short": "Turvaa eläkeluun"
+            },
+            "pet": {
+              "title": "Koiravakuutus",
+              "short": "Vakuutuskoiraan"
+            },
+            "boat": {
+              "title": "Lautavakuutus",
+              "short": "Lautavakuutusratkaisut"
+            }
           }
         }
       },
@@ -142,6 +238,51 @@ i18n
               "title": "Võta ühendust"
             },
             "rights": "Kõik õigused kaitstud."
+          },
+          "vision": {
+            "title": "Meidän tavoitteemme tulevaisuudessa",
+            "description": "Olemme tarkastelevat, että vakuutushallinta on helppompi, yleistä ja yksityiskohtainen. Tekoäly ja innovaatiot ovat tehtyä tämän tavoitteen realistiselle."
+          },
+          "mission": {
+            "title": "Meidän tavoitteemme",
+            "description": "Olemme tarkastelevat, että vakuutushallinta on uudistettava innovaatiolla ja tekoälyllä, jotta voimme auttaa yksityishenkilöitä ja yrityksiä tekemään päätöksensä vakuutusturvasta."
+          },
+          "values": {
+            "title": "Meidän arvot",
+            "description": "Innovatiivisuus, yleistys ja turvallisuus ovat kaikkiin tehtäviin liittyvät. Olemme tarkastelevat, että vakuutus on helppompi, yleistä ja yksityiskohtainen kaikille."
+          },
+          "insurance": {
+            "types": {
+              "title": "Kindlustusratkaisut"
+            },
+            "car": {
+              "title": "Kindlustusauto",
+              "short": "Kokoelma kindlustusten yleistä"
+            },
+            "home": {
+              "title": "Koti kindlustus",
+              "short": "Säilytä ja turvaa kotiin ja asioihin"
+            },
+            "travel": {
+              "title": "Kindlustusmatkustelu",
+              "short": "Kindlustusmatkustelu kaikille maalle"
+            },
+            "health": {
+              "title": "Terveydenhuolto kindlustus",
+              "short": "Kokonaisvakiintunut terveydenhuolto"
+            },
+            "life": {
+              "title": "Eläkelu kindlustus",
+              "short": "Turvaa eläkeluun"
+            },
+            "pet": {
+              "title": "Koirakindlustus",
+              "short": "Kindlustuskoiraan"
+            },
+            "boat": {
+              "title": "Lautakindlustus",
+              "short": "Lautakindlustusratkaisut"
+            }
           }
         }
       },
@@ -184,6 +325,51 @@ i18n
               "title": "Kontakt os"
             },
             "rights": "Alle rettigheder forbeholdes."
+          },
+          "vision": {
+            "title": "Meidans tænkte",
+            "description": "Vi tænker på en verden, hvor forsikringsstyring er nemt, åben og personlig. Med innovative teknologi og AI, gør vi dette tænket verden for alle."
+          },
+          "mission": {
+            "title": "Meidans mål",
+            "description": "At revolutionere forsikringsstyring ved at tilbyde smarte, tilgængelige og sikre løsninger, der hjælper individuer og virksomheder med at gøre informerede beslutninger om deres beskyttelse."
+          },
+          "values": {
+            "title": "Meidans værdier",
+            "description": "Innovativitet, åbenhed, sikkerhed og kundekentlig orientering guide alle vores handlinger. Vi tror på at gøre forsikringen nemt, forståelig og tilgængelig til alle."
+          },
+          "insurance": {
+            "types": {
+              "title": "Forsikringsløsninger"
+            },
+            "car": {
+              "title": "Forsikringsauto",
+              "short": "Kompakt forsikring for din bil"
+            },
+            "home": {
+              "title": "Hjem forsikring",
+              "short": "Beskyt ditt hjem og ting"
+            },
+            "travel": {
+              "title": "Forsikringsmatkustel",
+              "short": "Forsikringsmatkustel for hele verden"
+            },
+            "health": {
+              "title": "Helse forsikring",
+              "short": "Kvalitativ helsebeskyttelse"
+            },
+            "life": {
+              "title": "Liv forsikring",
+              "short": "Sikre din familjens fremtid"
+            },
+            "pet": {
+              "title": "Hund forsikring",
+              "short": "Beskyt dine hunde"
+            },
+            "boat": {
+              "title": "Bådforsikring",
+              "short": "Maritim beskyttelse"
+            }
           }
         }
       },
@@ -220,12 +406,57 @@ i18n
           "footer": {
             "about": {
               "title": "Om oss",
-              "description": "PriceRobot Limited är dedikerat till att revolutionera försäkringshantering genom AI-drivna lösningar. Vår plattform hjälper individer och företag att optimera sitt försäkringsskydd."
+              "description": "PriceRobot Limited är dedikerat till att revolutionera försäkringshantering genom AI-drivne lösninger. Vår plattform hjälper individer och företag att optimera sitt försäkringsskydd."
             },
             "contact": {
               "title": "Kontakta oss"
             },
             "rights": "Alla rättigheter förbehållna."
+          },
+          "vision": {
+            "title": "Meidans tænkte",
+            "description": "Vi tænker på en verden, hvor försäkringshantering er nemt, åben og personlig. Med innovative teknologi og AI, gør vi dette tænket verden for alle."
+          },
+          "mission": {
+            "title": "Meidans mål",
+            "description": "At revolutionere försäkringshantering ved at tilbyde smarte, tilgængelige og sikre løsninger, der hjælper individuer og virksomheder med at gøre informerede beslutninger om deres beskyttelse."
+          },
+          "values": {
+            "title": "Meidans værdier",
+            "description": "Innovativitet, åbenhed, sikkerhed og kundekentlig orientering guide alle vores handlinger. Vi tror på at gøre forsikringen nemt, forståelig og tilgængelig til alle."
+          },
+          "insurance": {
+            "types": {
+              "title": "Försäkringsløsninger"
+            },
+            "car": {
+              "title": "Försäkringsauto",
+              "short": "Kompakt forsikring for din bil"
+            },
+            "home": {
+              "title": "Hjem forsikring",
+              "short": "Beskyt ditt hjem og ting"
+            },
+            "travel": {
+              "title": "Forsikringsmatkustel",
+              "short": "Forsikringsmatkustel for hele verden"
+            },
+            "health": {
+              "title": "Helse forsikring",
+              "short": "Kvalitativ helsebeskyttelse"
+            },
+            "life": {
+              "title": "Liv forsikring",
+              "short": "Sikre din familjens fremtid"
+            },
+            "pet": {
+              "title": "Hund forsikring",
+              "short": "Beskyt dine hunde"
+            },
+            "boat": {
+              "title": "Bådforsikring",
+              "short": "Maritim beskyttelse"
+            }
           }
         }
       },
@@ -268,6 +499,51 @@ i18n
               "title": "Kontakt oss"
             },
             "rights": "Alle rettigheter forbeholdt."
+          },
+          "vision": {
+            "title": "Meidans tænkte",
+            "description": "Vi tænker på en verden, hvor forsikringsstyring er nemt, åben og personlig. Med innovative teknologi og AI, gør vi dette tænket verden for alle."
+          },
+          "mission": {
+            "title": "Meidans mål",
+            "description": "At revolutionere forsikringsstyring ved at tilbyde smarte, tilgængelige og sikre løsninger, der hjælper individuer og virksomheder med at gøre informerede beslutninger om deres beskyttelse."
+          },
+          "values": {
+            "title": "Meidans værdier",
+            "description": "Innovativitet, åbenhed, sikkerhed og kundekentlig orientering guide alle vores handlinger. Vi tror på at gøre forsikringen nemt, forståelig og tilgængelig til alle."
+          },
+          "insurance": {
+            "types": {
+              "title": "Forsikringsløsninger"
+            },
+            "car": {
+              "title": "Forsikringsauto",
+              "short": "Kompakt forsikring for din bil"
+            },
+            "home": {
+              "title": "Hjem forsikring",
+              "short": "Beskyt ditt hjem og ting"
+            },
+            "travel": {
+              "title": "Forsikringsmatkustel",
+              "short": "Forsikringsmatkustel for hele verden"
+            },
+            "health": {
+              "title": "Helse forsikring",
+              "short": "Kvalitativ helsebeskyttelse"
+            },
+            "life": {
+              "title": "Liv forsikring",
+              "short": "Sikre din familjens fremtid"
+            },
+            "pet": {
+              "title": "Hund forsikring",
+              "short": "Beskyt dine hunde"
+            },
+            "boat": {
+              "title": "Bådforsikring",
+              "short": "Maritim beskyttelse"
+            }
           }
         }
       }
@@ -297,7 +573,13 @@ const App = () => (
           <Route path="/ai-optimization" element={<AiOptimization />} />
           <Route path="/cost-savings" element={<CostSavings />} />
           <Route path="/complete-protection" element={<CompleteProtection />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          <Route path="/car-insurance" element={<CarInsurance />} />
+          <Route path="/home-insurance" element={<HomeInsurance />} />
+          <Route path="/travel-insurance" element={<TravelInsurance />} />
+          <Route path="/health-insurance" element={<HealthInsurance />} />
+          <Route path="/life-insurance" element={<LifeInsurance />} />
+          <Route path="/pet-insurance" element={<PetInsurance />} />
+          <Route path="/boat-insurance" element={<BoatInsurance />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

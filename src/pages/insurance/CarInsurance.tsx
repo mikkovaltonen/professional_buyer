@@ -11,9 +11,9 @@ const CarInsurance = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-50 to-white">
       <div className="container mx-auto px-4 py-12">
-        <Link to="/" className="inline-flex items-center text-gray-600 hover:text-primary mb-8">
+        <Link to="/" className="inline-flex items-center text-[#8E9196] hover:text-[#1A1F2C] mb-8 transition-colors">
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Home
+          {t("nav.backToHome")}
         </Link>
 
         <div className="max-w-4xl mx-auto">
@@ -49,7 +49,7 @@ const CarInsurance = () => {
           </div>
 
           <div className="text-center">
-            <Button size="lg" className="px-8 bg-[#9b87f5] hover:bg-[#7E69AB]">
+            <Button className="px-8 py-6 text-lg bg-[#9b87f5] hover:bg-[#7E69AB] text-white transition-colors">
               Get a Quote
             </Button>
           </div>

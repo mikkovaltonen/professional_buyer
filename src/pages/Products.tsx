@@ -11,7 +11,7 @@ const Products = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-50 to-white">
       <div className="container mx-auto px-4 py-12">
-        <Link to="/" className="inline-flex items-center text-gray-600 hover:text-primary mb-8">
+        <Link to="/" className="inline-flex items-center text-[#8E9196] hover:text-[#1A1F2C] mb-8 transition-colors">
           <ArrowLeft className="mr-2 h-4 w-4" />
           {t("nav.backToHome")}
         </Link>

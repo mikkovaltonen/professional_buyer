@@ -25,6 +25,23 @@ const RegisterForm = () => {
     confirmPassword: "",
   });
 
+  const testConnection = async () => {
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase.auth.getSession();
+      if (error) {
+        toast.error("Connection failed: " + error.message);
+        return;
+      }
+      toast.success("Supabase connection successful!");
+    } catch (error) {
+      console.error('Connection test error:', error);
+      toast.error("Failed to test connection");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -59,7 +76,7 @@ const RegisterForm = () => {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="bg-white hover:bg-gray-50">
+        <Button variant="outline" className="bg-white hover:bg-gray-50" onClick={testConnection}>
           Register
         </Button>
       </DialogTrigger>

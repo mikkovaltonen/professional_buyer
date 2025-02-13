@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Shield, FileSearch, PiggyBank, Brain, ArrowRight, Mail, Car, Home, Plane, Heart, Dog, Boat } from "lucide-react";
+import { Shield, FileSearch, PiggyBank, Brain, ArrowRight, Mail, Car, Home, Plane, Heart, Dog, Ship } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useEffect } from "react";
@@ -139,7 +139,7 @@ const Index = () => {
           <Link to="/boat-insurance" className="group">
             <Card className="hover:shadow-lg transition-shadow duration-300">
               <CardContent className="p-6 text-center">
-                <Boat className="h-12 w-12 mx-auto mb-4 text-[#7E69AB] group-hover:text-[#9b87f5] transition-colors" />
+                <Ship className="h-12 w-12 mx-auto mb-4 text-[#7E69AB] group-hover:text-[#9b87f5] transition-colors" />
                 <h3 className="text-xl font-semibold mb-2">{t("insurance.boat.title")}</h3>
                 <p className="text-[#8E9196]">{t("insurance.boat.short")}</p>
               </CardContent>

@@ -38,14 +38,14 @@ const Index = () => {
             className="bg-white hover:bg-gray-50"
             asChild
           >
-            <Link to="/about">{t("nav.about")}</Link>
+            <Link to="/about">About</Link>
           </Button>
           <Button 
             variant="outline" 
             className="bg-white hover:bg-gray-50"
             asChild
           >
-            <Link to="/products">{t("nav.products")}</Link>
+            <Link to="/products">Products</Link>
           </Button>
           <Button 
             variant="outline" 

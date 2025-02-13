@@ -25,22 +25,18 @@ const RegisterForm = () => {
     confirmPassword: "",
   });
 
-  const testConnection = async () => {
+  const handleRegisterClick = async () => {
     try {
-      setIsLoading(true);
       const { data, error } = await supabase.auth.getSession();
       if (error) {
         console.error('Connection test error details:', error);
         toast.error("Connection failed: " + error.message);
         return;
       }
-      toast.success("Supabase connection successful!");
-      setIsOpen(true); // Open the dialog after successful connection test
+      setIsOpen(true);
     } catch (error) {
       console.error('Connection test error:', error);
       toast.error("Failed to test connection");
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -54,17 +50,19 @@ const RegisterForm = () => {
 
     try {
       setIsLoading(true);
-      console.log('Attempting to sign up with:', { email: formData.email });
+      console.log('Starting registration process...');
       
-      const { data, error } = await supabase.auth.signUp({
+      const signUpData = {
         email: formData.email,
         password: formData.password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`
+          emailRedirectTo: window.location.origin
         }
-      });
-
-      console.log('Sign up response:', { data, error });
+      };
+      
+      console.log('Sending registration request with:', { email: signUpData.email });
+      
+      const { data, error } = await supabase.auth.signUp(signUpData);
 
       if (error) {
         console.error('Registration error details:', error);
@@ -72,9 +70,12 @@ const RegisterForm = () => {
         return;
       }
 
-      toast.success("Check your email to confirm your account!");
-      setIsOpen(false);
-      setFormData({ email: "", password: "", confirmPassword: "" });
+      if (data.user) {
+        console.log('Registration successful:', data.user);
+        toast.success("Check your email to confirm your account!");
+        setIsOpen(false);
+        setFormData({ email: "", password: "", confirmPassword: "" });
+      }
     } catch (error: any) {
       console.error('Registration error:', error);
       toast.error(error?.message || "Something went wrong during registration");
@@ -86,7 +87,11 @@ const RegisterForm = () => {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="bg-white hover:bg-gray-50">
+        <Button 
+          variant="outline" 
+          className="bg-white hover:bg-gray-50"
+          onClick={handleRegisterClick}
+        >
           Register
         </Button>
       </DialogTrigger>
@@ -120,6 +125,7 @@ const RegisterForm = () => {
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               required
               disabled={isLoading}
+              minLength={6}
             />
           </div>
           <div className="space-y-2">
@@ -132,6 +138,7 @@ const RegisterForm = () => {
               onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
               required
               disabled={isLoading}
+              minLength={6}
             />
           </div>
           <Button 

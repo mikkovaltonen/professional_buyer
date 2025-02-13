@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Shield, FileSearch, PiggyBank, Brain, ArrowRight, Mail } from "lucide-react";
@@ -80,7 +79,7 @@ const Index = () => {
 
       <section className="container mx-auto px-4 py-16">
         <div className="max-w-5xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-12 text-[#1A1F2C]">{t("benefits.title")}</h2>
+          <h2 className="text-3xl font-bold text-center mb-12 text-[#1A1F2C]">Our Benefits</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8">
             <Link to="/secure-storage">
               <Card className="p-6 hover:shadow-lg transition-shadow duration-300 animate-fade-in border-[#E5DEFF] hover:border-[#9b87f5]">

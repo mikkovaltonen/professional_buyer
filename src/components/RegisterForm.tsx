@@ -55,14 +55,15 @@ const RegisterForm = () => {
       setIsLoading(true);
       console.log('Starting registration process...');
       
-      const { data: { session }, error } = await supabase.auth.signUp({
+      // Log the full redirect URL for verification
+      const redirectUrl = `${window.location.origin}/auth/callback`;
+      console.log('Redirect URL:', redirectUrl);
+      
+      const { data, error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-          data: {
-            timestamp: new Date().toISOString()
-          }
+          emailRedirectTo: redirectUrl
         }
       });
 
@@ -72,7 +73,7 @@ const RegisterForm = () => {
         return;
       }
 
-      console.log('Registration response:', { session });
+      console.log('Registration response:', data);
       toast.success("Check your email to confirm your account!");
       setIsOpen(false);
       setFormData({ email: "", password: "", confirmPassword: "" });

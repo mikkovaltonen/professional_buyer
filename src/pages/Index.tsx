@@ -21,7 +21,16 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-50 to-white">
-      <div className="absolute top-4 right-4 z-50">
+      <div className="flex justify-between items-center p-4 relative z-50">
+        <Link to="/" className="flex items-center gap-2">
+          <div className="bg-gradient-to-r from-[#9b87f5] to-[#7E69AB] p-2 rounded-lg">
+            <Shield className="h-6 w-6 text-white" />
+          </div>
+          <div className="flex flex-col items-start">
+            <span className="font-bold text-xl text-[#1A1F2C]">Insurance Vault</span>
+            <span className="text-xs text-[#8E9196]">Secure. Smart. Simple.</span>
+          </div>
+        </Link>
         <LanguageSelector />
       </div>
 
@@ -112,7 +121,12 @@ const Index = () => {
         <div className="max-w-6xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div>
-              <h3 className="text-xl font-semibold mb-4 text-[#1A1F2C]">{t("footer.about.title")}</h3>
+              <Link to="/" className="flex items-center gap-2 mb-6">
+                <div className="bg-gradient-to-r from-[#9b87f5] to-[#7E69AB] p-2 rounded-lg">
+                  <Shield className="h-6 w-6 text-white" />
+                </div>
+                <span className="font-bold text-xl text-[#1A1F2C]">Insurance Vault</span>
+              </Link>
               <p className="text-[#8E9196] mb-4">
                 {t("footer.about.description")}
               </p>
@@ -129,7 +143,7 @@ const Index = () => {
           </div>
           <div className="text-center mt-8 pt-8 border-t border-[#E5DEFF]">
             <p className="text-[#8E9196]">
-              © {new Date().getFullYear()} PriceRobot Limited. {t("footer.rights")}
+              © {new Date().getFullYear()} Insurance Vault. {t("footer.rights")}
             </p>
           </div>
         </div>

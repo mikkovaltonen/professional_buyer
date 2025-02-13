@@ -6,6 +6,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useEffect } from "react";
 import LanguageSelector from "@/components/LanguageSelector";
+import RegisterForm from "@/components/RegisterForm";
 
 const Index = () => {
   const { t, i18n } = useTranslation();
@@ -31,7 +32,13 @@ const Index = () => {
             <span className="text-xs text-[#8E9196]">Secure. Smart. Simple.</span>
           </div>
         </Link>
-        <LanguageSelector />
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" className="hover:bg-gray-100">
+            Login
+          </Button>
+          <RegisterForm />
+          <LanguageSelector />
+        </div>
       </div>
 
       {/* Hero Section with enhanced branding */}

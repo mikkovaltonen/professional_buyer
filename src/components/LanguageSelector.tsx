@@ -14,6 +14,7 @@ const languages = [
   { code: "en", name: "English", path: "/" },
   { code: "da", name: "Dansk", path: "/da" },
   { code: "fi", name: "Suomi", path: "/fi" },
+  { code: "no", name: "Norsk", path: "/no" },
   { code: "sv", name: "Svenska", path: "/sv" },
   { code: "et", name: "Eesti", path: "/et" },
 ];

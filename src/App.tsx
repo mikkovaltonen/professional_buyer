@@ -228,6 +228,48 @@ i18n
             "rights": "Alla rättigheter förbehållna."
           }
         }
+      },
+      no: {
+        translation: {
+          "hero": {
+            "title": "Smart forsikringsstyring",
+            "subtitle": "Lagre, administrer og optimer forsikringsdokumentene dine med AI-drevet innsikt",
+            "cta": "Kom i gang"
+          },
+          "features": {
+            "secure": {
+              "title": "Sikker dokumentlagring",
+              "description": "Lagre og få tilgang til alle forsikringsdokumentene dine trygt på ett sted"
+            },
+            "ai": {
+              "title": "AI-drevet optimalisering",
+              "description": "Vår AI analyserer dine behov for å finne de beste forsikringsplanene for deg"
+            },
+            "cost": {
+              "title": "Kostnadsbesparelser",
+              "description": "Spar penger ved å sammenligne og optimalisere forsikringsdekningen din"
+            },
+            "protection": {
+              "title": "Komplett beskyttelse",
+              "description": "Få omfattende deknningsanbefalinger skreddersydd for dine behov"
+            }
+          },
+          "cta": {
+            "title": "Klar til å optimalisere forsikringen din?",
+            "subtitle": "Bli med tusenvis av brukere som allerede sparer tid og penger med vår plattform",
+            "button": "Start nå"
+          },
+          "footer": {
+            "about": {
+              "title": "Om oss",
+              "description": "PriceRobot Limited er dedikert til å revolusjonere forsikringsstyring gjennom AI-drevne løsninger. Vår plattform hjelper enkeltpersoner og bedrifter med å optimalisere forsikringsdekningen sin."
+            },
+            "contact": {
+              "title": "Kontakt oss"
+            },
+            "rights": "Alle rettigheter forbeholdt."
+          }
+        }
       }
     },
     fallbackLng: "en",
@@ -250,6 +292,7 @@ const App = () => (
           <Route path="/et" element={<Index />} />
           <Route path="/da" element={<Index />} />
           <Route path="/sv" element={<Index />} />
+          <Route path="/no" element={<Index />} />
           <Route path="/secure-storage" element={<SecureStorage />} />
           <Route path="/ai-optimization" element={<AiOptimization />} />
           <Route path="/cost-savings" element={<CostSavings />} />

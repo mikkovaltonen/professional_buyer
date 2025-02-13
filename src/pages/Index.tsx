@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Shield, FileSearch, PiggyBank, Brain, ArrowRight, Mail } from "lucide-react";
@@ -71,7 +72,7 @@ const Index = () => {
               {t("hero.cta")} <ArrowRight className="ml-2" />
             </Button>
             <Button variant="outline" className="text-lg px-8 py-6 border-[#9b87f5] text-[#9b87f5] hover:bg-[#9b87f5] hover:text-white transition-colors animate-fade-in">
-              {t("hero.demo")}
+              Demo
             </Button>
           </div>
         </div>

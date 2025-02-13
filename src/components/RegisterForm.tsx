@@ -30,6 +30,7 @@ const RegisterForm = () => {
       setIsLoading(true);
       const { data, error } = await supabase.auth.getSession();
       if (error) {
+        console.error('Connection test error details:', error);
         toast.error("Connection failed: " + error.message);
         return;
       }
@@ -52,12 +53,20 @@ const RegisterForm = () => {
 
     try {
       setIsLoading(true);
+      console.log('Attempting to sign up with:', { email: formData.email });
+      
       const { data, error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
+        options: {
+          emailRedirectTo: window.location.origin
+        }
       });
 
+      console.log('Sign up response:', { data, error });
+
       if (error) {
+        console.error('Registration error details:', error);
         toast.error(error.message);
         return;
       }
@@ -65,9 +74,9 @@ const RegisterForm = () => {
       toast.success("Check your email to confirm your account!");
       setIsOpen(false);
       setFormData({ email: "", password: "", confirmPassword: "" });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Registration error:', error);
-      toast.error("Something went wrong during registration");
+      toast.error(error?.message || "Something went wrong during registration");
     } finally {
       setIsLoading(false);
     }

@@ -33,12 +33,20 @@ const Index = () => {
           </div>
         </Link>
         <div className="flex items-center gap-4">
-          <Link to="/about" className="text-[#8E9196] hover:text-[#1A1F2C]">
-            {t("nav.about")}
-          </Link>
-          <Link to="/products" className="text-[#8E9196] hover:text-[#1A1F2C]">
-            {t("nav.products")}
-          </Link>
+          <Button 
+            variant="ghost" 
+            className="text-[#8E9196] hover:text-[#1A1F2C] hover:bg-transparent"
+            asChild
+          >
+            <Link to="/about">{t("nav.about")}</Link>
+          </Button>
+          <Button 
+            variant="ghost" 
+            className="text-[#8E9196] hover:text-[#1A1F2C] hover:bg-transparent"
+            asChild
+          >
+            <Link to="/products">{t("nav.products")}</Link>
+          </Button>
           <Button variant="ghost" className="hover:bg-gray-100">
             Login
           </Button>

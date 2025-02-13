@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -89,7 +88,7 @@ i18n
           },
           "cta": {
             "title": "Valmis optimoimaan vakuutuksesi?",
-            "subtitle": "Liity tuhansien käyttäjien joukkoon, jotka jo säästävät aikaa ja rahaa alustamme avulla",
+            "subtitle": "Liity tuhansien käyttäjatega, jotka jo säästavad aikaa ja rahaa alustamme avulla",
             "button": "Aloita nyt"
           },
           "footer": {
@@ -126,7 +125,7 @@ i18n
             },
             "protection": {
               "title": "Täielik kaitse",
-              "description": "Saa põhjalikud kindlustussoovitused, mis on kohandatud sinu vajadustele"
+              "description": "Saat põhjalikud kindlustussoovitused, mis on kohandatud sinu vajadustele"
             }
           },
           "cta": {
@@ -143,6 +142,90 @@ i18n
               "title": "Võta ühendust"
             },
             "rights": "Kõik õigused kaitstud."
+          }
+        }
+      },
+      da: {
+        translation: {
+          "hero": {
+            "title": "Smart forsikringsstyring",
+            "subtitle": "Opbevar, administrer og optimer dine forsikringsdokumenter med AI-drevet indsigt",
+            "cta": "Kom i gang"
+          },
+          "features": {
+            "secure": {
+              "title": "Sikker dokumentopbevaring",
+              "description": "Opbevar og få adgang til alle dine forsikringsdokumenter sikkert ét sted"
+            },
+            "ai": {
+              "title": "AI-drevet optimering",
+              "description": "Vores AI analyserer dine behov for at finde de bedste forsikringsplaner til dig"
+            },
+            "cost": {
+              "title": "Omkostningsbesparelser",
+              "description": "Spar penge ved at sammenligne og optimere din forsikringsdækning"
+            },
+            "protection": {
+              "title": "Komplet beskyttelse",
+              "description": "Få omfattende dækningsanbefalinger skræddersyet til dine behov"
+            }
+          },
+          "cta": {
+            "title": "Klar til at optimere din forsikring?",
+            "subtitle": "Tilslut dig tusindvis af brugere, der allerede sparer tid og penge med vores platform",
+            "button": "Start nu"
+          },
+          "footer": {
+            "about": {
+              "title": "Om os",
+              "description": "PriceRobot Limited er dedikeret til at revolutionere forsikringsstyring gennem AI-drevne løsninger. Vores platform hjælper enkeltpersoner og virksomheder med at optimere deres forsikringsdækning."
+            },
+            "contact": {
+              "title": "Kontakt os"
+            },
+            "rights": "Alle rettigheder forbeholdes."
+          }
+        }
+      },
+      sv: {
+        translation: {
+          "hero": {
+            "title": "Smart försäkringshantering",
+            "subtitle": "Lagra, hantera och optimera dina försäkringsdokument med AI-driven insikt",
+            "cta": "Kom igång"
+          },
+          "features": {
+            "secure": {
+              "title": "Säker dokumentförvaring",
+              "description": "Lagra och få åtkomst till alla dina försäkringsdokument säkert på ett ställe"
+            },
+            "ai": {
+              "title": "AI-driven optimering",
+              "description": "Vår AI analyserar dina behov för att hitta de bästa försäkringsplanerna för dig"
+            },
+            "cost": {
+              "title": "Kostnadsbesparingar",
+              "description": "Spara pengar genom att jämföra och optimera ditt försäkringsskydd"
+            },
+            "protection": {
+              "title": "Komplett skydd",
+              "description": "Få omfattande skyddsrekommendationer skräddarsydda för dina behov"
+            }
+          },
+          "cta": {
+            "title": "Redo att optimera din försäkring?",
+            "subtitle": "Gå med tusentals användare som redan sparar tid och pengar med vår plattform",
+            "button": "Börja nu"
+          },
+          "footer": {
+            "about": {
+              "title": "Om oss",
+              "description": "PriceRobot Limited är dedikerat till att revolutionera försäkringshantering genom AI-drivna lösningar. Vår plattform hjälper individer och företag att optimera sitt försäkringsskydd."
+            },
+            "contact": {
+              "title": "Kontakta oss"
+            },
+            "rights": "Alla rättigheter förbehållna."
           }
         }
       }
@@ -165,6 +248,8 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/fi" element={<Index />} />
           <Route path="/et" element={<Index />} />
+          <Route path="/da" element={<Index />} />
+          <Route path="/sv" element={<Index />} />
           <Route path="/secure-storage" element={<SecureStorage />} />
           <Route path="/ai-optimization" element={<AiOptimization />} />
           <Route path="/cost-savings" element={<CostSavings />} />

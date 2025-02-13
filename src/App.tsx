@@ -19,6 +19,10 @@ import HealthInsurance from "./pages/insurance/HealthInsurance";
 import LifeInsurance from "./pages/insurance/LifeInsurance";
 import PetInsurance from "./pages/insurance/PetInsurance";
 import BoatInsurance from "./pages/insurance/BoatInsurance";
+import Workbench from "./pages/Workbench";
+import { checkEnvVariables } from '@/lib/env';
+
+checkEnvVariables();
 
 i18n
   .use(LanguageDetector)
@@ -585,6 +589,7 @@ const App = () => (
           <Route path="/life-insurance" element={<LifeInsurance />} />
           <Route path="/pet-insurance" element={<PetInsurance />} />
           <Route path="/boat-insurance" element={<BoatInsurance />} />
+          <Route path="/workbench" element={<Workbench />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

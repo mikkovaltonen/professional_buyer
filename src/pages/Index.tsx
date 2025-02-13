@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Shield, FileSearch, PiggyBank, Brain, ArrowRight, Mail } from "lucide-react";
@@ -7,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { useEffect } from "react";
 import LanguageSelector from "@/components/LanguageSelector";
 import RegisterForm from "@/components/RegisterForm";
+import { LoginButton } from "@/components/LoginButton";
 
 const Index = () => {
   const { t, i18n } = useTranslation();
@@ -47,12 +47,7 @@ const Index = () => {
           >
             <Link to="/products">Products</Link>
           </Button>
-          <Button 
-            variant="outline" 
-            className="bg-white hover:bg-gray-50"
-          >
-            Login
-          </Button>
+          <LoginButton />
           <RegisterForm />
           <LanguageSelector />
         </div>

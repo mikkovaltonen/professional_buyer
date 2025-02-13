@@ -506,7 +506,7 @@ i18n
           },
           "mission": {
             "title": "Meidans mål",
-            "description": "At revolutionere forsikringsstyring ved at tilbyde smarte, tilgængelige og sikre løsninger, der hjælper individuer og virksomheder med at gøre informerede beslutninger om deres beskyttelse."
+            "description": "At revolutionere forsikringsstyring ved at tilbyde smarte, tilgængelige og sikre løsninger, der hjælper individuer og virksomheder med at gjøre informerede beslutninger om deres beskyttelse."
           },
           "values": {
             "title": "Meidans værdier",
@@ -556,6 +556,9 @@ i18n
 
 const queryClient = new QueryClient();
 
+import About from "./pages/About";
+import Products from "./pages/Products";
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -569,6 +572,8 @@ const App = () => (
           <Route path="/da" element={<Index />} />
           <Route path="/sv" element={<Index />} />
           <Route path="/no" element={<Index />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/products" element={<Products />} />
           <Route path="/secure-storage" element={<SecureStorage />} />
           <Route path="/ai-optimization" element={<AiOptimization />} />
           <Route path="/cost-savings" element={<CostSavings />} />

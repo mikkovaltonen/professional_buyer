@@ -13,60 +13,77 @@ import { SurveyHistory } from "@/components/SurveyHistory";
 import { collection, query, orderBy, getDocs, deleteDoc } from "firebase/firestore";
 import { Trash2 } from "lucide-react";
 import { RiskAnalysisChat } from "@/components/RiskAnalysisChat";
+import { Car, Home, User, Ship, Plane, Dog, Trees, Diamond, Wallet, TrendingUp, PiggyBank, Coins, CreditCard } from "lucide-react";
 
-const riskQuestions = [
+const financialQuestions = [
   {
     id: 1,
-    question: "Do you have enough savings to cover accidentally damaged property?",
-    description: "Financial preparedness for unexpected property damage"
+    icon: <Wallet className="h-5 w-5" />,
+    question: "I prefer guaranteed returns over potential higher gains with risks.",
+    description: "Investment preference assessment"
   },
   {
     id: 2,
-    question: "I'm comfortable with basic coverage to save money rather than comprehensive protection.",
-    description: "Trade-off: Cost savings vs. Full protection"
+    icon: <TrendingUp className="h-5 w-5" />,
+    question: "I have savings and I can liquidate my savings to survive unexpected hardship.",
+    description: "Financial resilience assessment"
   },
   {
     id: 3,
-    question: "I prefer to self-insure for minor risks and only get coverage for major incidents.",
-    description: "Trade-off: Self-insurance vs. Full coverage"
-  },
-  {
-    id: 4,
-    question: "I would bundle multiple insurance policies for discounts even if specialized coverage might be better.",
-    description: "Trade-off: Cost savings vs. Specialized protection"
-  },
-  {
-    id: 5,
-    question: "I'm willing to share personal data with insurers for lower rates.",
-    description: "Trade-off: Privacy vs. Cost savings"
+    icon: <Coins className="h-5 w-5" />,
+    question: "I'm willing to pay more for better coverage and peace of mind.",
+    description: "Premium vs coverage preference"
   }
 ];
 
 const accidentQuestions = [
   {
     id: 6,
-    question: "I regularly participate in extreme sports or high-risk activities.",
-    description: "Activity risk: High-risk recreational activities"
+    icon: <Car className="h-5 w-5" />,
+    question: "I drive a car and feel my driving has increased accident risk compared to other drivers with similar history.",
+    description: "Vehicle risk assessment"
   },
   {
     id: 7,
-    question: "I frequently travel to remote or potentially dangerous locations.",
-    description: "Travel risk: Adventure travel"
+    icon: <Home className="h-5 w-5" />,
+    question: "I own a home and feel my property has increased damage risk compared to similar properties in the area.",
+    description: "Property risk assessment"
   },
   {
     id: 8,
-    question: "I prefer motorcycles/sports cars and enjoy pushing vehicle limits.",
-    description: "Transport risk: High-risk vehicle preference"
+    icon: <User className="h-5 w-5" />,
+    question: "I feel my lifestyle or activities carry increased personal injury risk compared to average.",
+    description: "Personal injury risk assessment"
   },
   {
     id: 9,
-    question: "I work or plan to work in physically dangerous occupations.",
-    description: "Occupational risk: High-risk professions"
+    icon: <Ship className="h-5 w-5" />,
+    question: "I own a boat and feel it has increased accident risk compared to similar vessels.",
+    description: "Marine risk assessment"
   },
   {
     id: 10,
-    question: "I often choose excitement over safety in my activities.",
-    description: "Behavioral risk: Risk-taking tendency"
+    icon: <Plane className="h-5 w-5" />,
+    question: "I travel frequently and feel my trips have increased risk compared to typical business/leisure travel.",
+    description: "Travel risk assessment"
+  },
+  {
+    id: 11,
+    icon: <Dog className="h-5 w-5" />,
+    question: "I have pets and feel they have increased accident/liability risk compared to similar pets.",
+    description: "Pet risk assessment"
+  },
+  {
+    id: 12,
+    icon: <Trees className="h-5 w-5" />,
+    question: "I own forest and feel my forest has increased damage risk compared to similar forest properties.",
+    description: "Forest risk assessment"
+  },
+  {
+    id: 13,
+    icon: <Diamond className="h-5 w-5" />,
+    question: "I own valuable items and feel they have increased risk compared to similar valuables.",
+    description: "Valuables risk assessment"
   }
 ];
 
@@ -93,6 +110,7 @@ const RiskAssessmentForm = () => {
   const [loading, setLoading] = useState(false);
   const [surveyData, setSurveyData] = useState<SurveyData | null>(null);
   const [surveyHistory, setSurveyHistory] = useState<SurveyData[]>([]);
+  const [latestSurvey, setLatestSurvey] = useState<SurveyData | null>(null);
 
   useEffect(() => {
     // Load existing answers if available
@@ -166,12 +184,12 @@ const RiskAssessmentForm = () => {
 
       // Päivitetään paikallinen tila välittömästi
       setSurveyData(newSurveyData);
-      setSurveyHistory(prev => [newSurveyData, ...prev]);
+      setLatestSurvey(newSurveyData);
 
-      toast.success("Riskiarvio tallennettu onnistuneesti");
+      toast.success("Risk assessment saved successfully");
     } catch (error) {
       console.error('Error saving assessment:', error);
-      toast.error("Riskiarvion tallennus epäonnistui");
+      toast.error("Failed to save risk assessment");
     } finally {
       setLoading(false);
     }
@@ -231,7 +249,7 @@ const RiskAssessmentForm = () => {
             <div>
               <h3 className="text-lg font-semibold mb-4">Financial Risk Preferences</h3>
               <QuestionSection 
-                questions={riskQuestions} 
+                questions={financialQuestions} 
                 answers={financialAnswers}
                 setAnswers={setFinancialAnswers}
               />
@@ -265,7 +283,10 @@ const RiskAssessmentForm = () => {
       </Button>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <SurveyHistory onDelete={handleDeleteSurvey} />
+        <SurveyHistory 
+          onDelete={handleDeleteSurvey} 
+          latestSurvey={latestSurvey}
+        />
         <RiskAnalysisChat />
       </div>
     </div>
@@ -273,21 +294,18 @@ const RiskAssessmentForm = () => {
 };
 
 // Helper component for question sections
-const QuestionSection = ({ 
-  questions, 
-  answers, 
-  setAnswers 
-}: { 
-  questions: typeof riskQuestions,
-  answers: Record<number, string>,
-  setAnswers: (answers: Record<number, string>) => void
-}) => (
+const QuestionSection = ({ questions, answers, setAnswers }) => (
   <div className="space-y-8">
     {questions.map((q) => (
       <div key={q.id} className="space-y-4">
-        <div>
-          <h3 className="font-medium">{q.question}</h3>
-          <div className="text-sm text-gray-500">{q.description}</div>
+        <div className="flex items-start gap-3">
+          <div className="mt-1 text-gray-500">
+            {q.icon}
+          </div>
+          <div>
+            <h3 className="font-medium">{q.question}</h3>
+            <div className="text-sm text-gray-500">{q.description}</div>
+          </div>
         </div>
         
         <div className="w-full">
@@ -296,7 +314,13 @@ const QuestionSection = ({
             onValueChange={(value) => setAnswers({ ...answers, [q.id]: value })}
             className="grid grid-cols-5 gap-4 w-full"
           >
-            {['strongly-disagree', 'disagree', 'neutral', 'agree', 'strongly-agree'].map((value) => (
+            {[
+              'strongly-disagree',
+              'disagree',
+              'neutral',
+              'agree',
+              'strongly-agree'
+            ].map((value) => (
               <div key={value} className="flex flex-col items-center text-center">
                 <RadioGroupItem 
                   value={value} 
@@ -307,9 +331,11 @@ const QuestionSection = ({
                   htmlFor={`${q.id}-${value}`} 
                   className="text-xs text-gray-600 whitespace-nowrap"
                 >
-                  {value.split('-').map(word => 
-                    word.charAt(0).toUpperCase() + word.slice(1)
-                  ).join(' ')}
+                  {value === 'neutral' 
+                    ? 'Neutral/Not Relevant'
+                    : value.split('-').map(word => 
+                        word.charAt(0).toUpperCase() + word.slice(1)
+                      ).join(' ')}
                 </Label>
               </div>
             ))}

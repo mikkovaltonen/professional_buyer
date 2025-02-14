@@ -23,6 +23,7 @@ const Workbench = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("risk-assessment");
 
   useEffect(() => {
     const loadUserPreferences = async () => {
@@ -114,10 +115,10 @@ const Workbench = () => {
           </div>
         </div>
         
-        <Tabs defaultValue="preferences" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid grid-cols-4 gap-4 bg-transparent h-auto p-0">
             <TabsTrigger 
-              value="preferences"
+              value="risk-assessment"
               className="data-[state=active]:bg-white data-[state=active]:shadow-md flex items-center gap-2 py-3"
             >
               <Shield className="h-5 w-5" />
@@ -149,7 +150,7 @@ const Workbench = () => {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="preferences" className="p-6 bg-white rounded-lg shadow-lg">
+          <TabsContent value="risk-assessment" className="p-6 bg-white rounded-lg shadow-lg">
             <h2 className="text-2xl font-semibold mb-4">My Safety Benefit/Cost Preferences</h2>
             <RiskAssessmentForm />
           </TabsContent>

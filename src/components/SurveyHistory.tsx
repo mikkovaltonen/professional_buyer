@@ -16,9 +16,10 @@ interface SurveyRecord {
 
 interface Props {
   onDelete: (surveyId: string) => Promise<void>;
+  latestSurvey?: SurveyRecord | null;
 }
 
-export const SurveyHistory = ({ onDelete }: Props) => {
+export const SurveyHistory = ({ onDelete, latestSurvey }: Props) => {
   const { user } = useAuth();
   const [surveyHistory, setSurveyHistory] = useState<SurveyRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,6 +49,12 @@ export const SurveyHistory = ({ onDelete }: Props) => {
     loadHistory();
   }, [user]);
 
+  useEffect(() => {
+    if (latestSurvey) {
+      setSurveyHistory(prev => [latestSurvey, ...prev]);
+    }
+  }, [latestSurvey]);
+
   const handleDelete = async (surveyId: string) => {
     await onDelete(surveyId);
     // Päivitetään lista poiston jälkeen
@@ -55,30 +62,30 @@ export const SurveyHistory = ({ onDelete }: Props) => {
   };
 
   const getRiskDescription = (survey: SurveyRecord) => {
-    // Riskihalukkuuden kuvaus finanssipisteiden perusteella
+    // Risk attitude description based on financial scores
     const getFinancialRiskAttitude = (score: number) => {
-      if (score < 2) return "Erittäin varovainen";
-      if (score < 3) return "Varovainen";
-      if (score < 4) return "Maltillinen";
-      if (score < 4.5) return "Riskiä sietävä";
-      return "Riskihakuinen";
+      if (score < 2) return "Very Conservative";
+      if (score < 3) return "Conservative";
+      if (score < 4) return "Moderate";
+      if (score < 4.5) return "Risk Tolerant";
+      return "Risk Seeking";
     };
 
-    // Vahinkoriskin kuvaus aktiviteettipisteiden perusteella
+    // Accident risk description based on activity scores
     const getAccidentRiskLevel = (score: number) => {
-      if (score < 2) return "Matala";
-      if (score < 3) return "Kohtuullinen";
-      if (score < 4) return "Kohtalainen";
-      if (score < 4.5) return "Korkea";
-      return "Erittäin korkea";
+      if (score < 2) return "Low";
+      if (score < 3) return "Moderate";
+      if (score < 4) return "Medium";
+      if (score < 4.5) return "High";
+      return "Very High";
     };
 
     const financialAttitude = getFinancialRiskAttitude(survey.overallScore);
     const accidentRisk = getAccidentRiskLevel(survey.overallScore);
 
     return {
-      financialDescription: `Riskihalukkuus: ${financialAttitude}`,
-      accidentDescription: `Vahinkoriskin taso: ${accidentRisk}`
+      financialDescription: `Risk Attitude: ${financialAttitude}`,
+      accidentDescription: `Risk Level: ${accidentRisk}`
     };
   };
 
@@ -89,7 +96,7 @@ export const SurveyHistory = ({ onDelete }: Props) => {
   return (
     <Card className="mt-8">
       <CardHeader>
-        <CardTitle>Riskiarviointien Historia</CardTitle>
+        <CardTitle>Risk Assessment History</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
@@ -102,7 +109,7 @@ export const SurveyHistory = ({ onDelete }: Props) => {
               >
                 <div className="space-y-2">
                   <div className="font-medium">
-                    {new Date(survey.createdAt).toLocaleDateString('fi-FI', {
+                    {new Date(survey.createdAt).toLocaleDateString('en-US', {
                       day: 'numeric',
                       month: 'long',
                       year: 'numeric'

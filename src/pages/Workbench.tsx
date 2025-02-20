@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTranslation } from "react-i18next";
 import { auth } from "@/lib/firebase";
 import { useNavigate } from "react-router-dom";
-import { Shield, Scale, FileText, TrendingDown, LogOut, User } from "lucide-react";
+import { Shield, Scale, FileText, TrendingDown, LogOut, User, Upload, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import RiskAssessmentForm from "@/pages/RiskAssessmentForm";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const Workbench = () => {
   const { t, i18n } = useTranslation();
@@ -157,15 +158,133 @@ const Workbench = () => {
 
           <TabsContent value="comparison" className="p-6 bg-white rounded-lg shadow-lg">
             <h2 className="text-2xl font-semibold mb-4">Insurance Proposal Comparison</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Add comparison tools */}
+            
+            <Alert className="mb-6">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Upload your insurance documents here to compare different proposals and find the best coverage for your needs.
+              </AlertDescription>
+            </Alert>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Current Insurance
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="border-2 border-dashed rounded-lg p-6 text-center hover:border-blue-500 transition-colors cursor-pointer">
+                    <Upload className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                    <p className="text-sm text-gray-600 mb-1">
+                      Upload your current insurance policy
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      We'll analyze your current coverage and costs
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Scale className="h-5 w-5" />
+                    New Proposals
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="border-2 border-dashed rounded-lg p-6 text-center hover:border-blue-500 transition-colors cursor-pointer">
+                    <Upload className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                    <p className="text-sm text-gray-600 mb-1">
+                      Upload new insurance proposals
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Compare multiple proposals side by side
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <div className="col-span-1 md:col-span-2">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Comparison Results</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-center text-gray-500 py-8">
+                      Upload documents to see detailed comparison
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           </TabsContent>
 
           <TabsContent value="documents" className="p-6 bg-white rounded-lg shadow-lg">
             <h2 className="text-2xl font-semibold mb-4">Insurance Document Storage</h2>
-            <div className="grid grid-cols-1 gap-6">
-              {/* Add document management interface */}
+            
+            <Alert className="mb-6">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Upload your current insurance contracts and new proposals here for comparison and analysis.
+              </AlertDescription>
+            </Alert>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Current Contracts
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="border-2 border-dashed rounded-lg p-6 text-center hover:border-blue-500 transition-colors cursor-pointer">
+                    <Upload className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                    <p className="text-sm text-gray-600 mb-1">
+                      Drop your current insurance contracts here
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Supports PDF, JPG, PNG (max 10MB)
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    New Proposals
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="border-2 border-dashed rounded-lg p-6 text-center hover:border-blue-500 transition-colors cursor-pointer">
+                    <Upload className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                    <p className="text-sm text-gray-600 mb-1">
+                      Drop new insurance proposals here
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Supports PDF, JPG, PNG (max 10MB)
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <div className="col-span-1 md:col-span-2">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Uploaded Documents</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-center text-gray-500 py-8">
+                      No documents uploaded yet
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           </TabsContent>
 

@@ -5,6 +5,9 @@
 ## Live Demo
 The application is available at: https://insurance-vault.vercel.app/
 
+## Cost Savings
+💰 Typical users save 10% or €200 annually on family insurance premiums by using our Request for Proposal (RfP) service to compare and optimize their coverage.
+
 ## Description
 Insurance Vault is a modern web application that helps users manage their insurance portfolio, analyze risk profiles, and compare insurance proposals. Built with React, TypeScript, and Firebase.
 
@@ -14,6 +17,7 @@ Insurance Vault is a modern web application that helps users manage their insura
 - 💬 AI-powered risk analysis chat
 - 📄 Document management
 - 🔄 Insurance proposal comparison
+- 💰 RfP service for better insurance deals
 - 🌍 Multi-language support (EN, FI, SV, ET, DA, NO)
 
 ## Tech Stack

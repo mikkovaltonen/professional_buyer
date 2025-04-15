@@ -1,39 +1,39 @@
 import { useState, useEffect } from 'react';
-import { auth } from '@/lib/firebase';
-import { User, signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { useNavigate } from 'react-router-dom';
+
+interface User {
+  email: string;
+  isAuthenticated: boolean;
+}
 
 export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      setUser(user);
-      setLoading(false);
-    });
-
-    return unsubscribe;
+    // Check if user is already logged in
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+    setLoading(false);
   }, []);
 
   const login = async (email: string, password: string) => {
-    try {
-      const result = await signInWithEmailAndPassword(auth, email, password);
-      navigate('/workbench');
-      return result;
-    } catch (error: any) {
-      throw new Error(error.message);
+    if (email === 'forecasting@kemppi.com' && password === 'laatu') {
+      const userData = {
+        email: 'forecasting@kemppi.com',
+        isAuthenticated: true
+      };
+      localStorage.setItem('user', JSON.stringify(userData));
+      setUser(userData);
+      return true;
     }
+    return false;
   };
 
-  const logout = async () => {
-    try {
-      await signOut(auth);
-      navigate('/');
-    } catch (error: any) {
-      throw new Error(error.message);
-    }
+  const logout = () => {
+    localStorage.removeItem('user');
+    setUser(null);
   };
 
   return {

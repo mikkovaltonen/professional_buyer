@@ -13,7 +13,7 @@ const Index = () => {
         </Link>
         <div className="flex gap-4">
           <Button variant="ghost" asChild>
-            <Link to="/login">Kirjaudu sisään</Link>
+            <Link to="/workbench">Kirjaudu sisään</Link>
           </Button>
         </div>
       </nav>
@@ -28,7 +28,10 @@ const Index = () => {
         <p className="text-xl mb-8">
           Tehosta ostoprosessiasi ja paranna varastonhallintaa älykkään kysynnän ennusteen avulla.
         </p>
-        <Button className="bg-[#4ADE80] hover:bg-[#22C55E] text-white px-8 py-6 rounded-lg text-lg">
+        <Button 
+          className="bg-[#4ADE80] hover:bg-[#22C55E] text-white px-8 py-6 rounded-lg text-lg"
+          onClick={() => window.open('https://wisestein.fi/yhteystiedot', '_blank', 'noopener,noreferrer')}
+        >
           Varaa esittely
         </Button>
 
@@ -78,11 +81,18 @@ const Index = () => {
             Ota käyttöön <span className="text-[#4ADE80]">tekoälyavusteinen ennustaminen</span>
           </h2>
           <div className="flex justify-center gap-4">
-            <Button className="bg-[#4ADE80] hover:bg-[#22C55E] text-white px-8 py-6 rounded-lg text-lg">
+            <Button 
+              className="bg-[#4ADE80] hover:bg-[#22C55E] text-white px-8 py-6 rounded-lg text-lg"
+              onClick={() => window.open('https://wisestein.fi/yhteystiedot', '_blank', 'noopener,noreferrer')}
+            >
               Varaa esittely
             </Button>
-            <Button variant="outline" className="px-8 py-6 rounded-lg text-lg">
-              Kirjaudu sisään →
+            <Button 
+              variant="outline" 
+              className="px-8 py-6 rounded-lg text-lg"
+              asChild
+            >
+              <Link to="/workbench">Kirjaudu sisään →</Link>
             </Button>
           </div>
         </section>

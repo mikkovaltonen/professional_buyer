@@ -1,44 +1,30 @@
 import { OpenAI } from 'openai';
 
-const VALID_EMAIL = 'forecasting@kempki.com';
-const VALID_PASSWORD = 'laatu';
-
-let isAuthenticated = false;
-
-export const authenticate = (email: string, password: string): boolean => {
-  isAuthenticated = email === VALID_EMAIL && password === VALID_PASSWORD;
-  return isAuthenticated;
-};
-
 const client = new OpenAI({
   apiKey: import.meta.env.VITE_OPENAI_API_KEY,
 });
 
 export const createChatCompletion = async (message: string) => {
-  if (!isAuthenticated) {
-    throw new Error('Authentication required');
-  }
-
   try {
-    const response = await fetch('https://api.wisestein.com/chat', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        message,
-        model: import.meta.env.VITE_OPENAI_MODEL || "gpt-4",
-      }),
+    const response = await client.chat.completions.create({
+      model: import.meta.env.VITE_OPENAI_MODEL || "gpt-4",
+      messages: [
+        {
+          role: "system",
+          content: "Olet avulias tekoälyassistentti, joka auttaa käyttäjää ymmärtämään ja analysoimaan kysyntäennusteita. Vastaa ytimekkäästi ja selkeästi suomeksi."
+        },
+        {
+          role: "user",
+          content: message
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 500
     });
 
-    if (!response.ok) {
-      throw new Error('Failed to get response from chat API');
-    }
-
-    const data = await response.json();
-    return data.response;
+    return response.choices[0].message.content;
   } catch (error) {
-    console.error('Chat API error:', error);
+    console.error('Error calling OpenAI:', error);
     throw error;
   }
 }; 

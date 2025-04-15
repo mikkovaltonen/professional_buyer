@@ -1,50 +1,72 @@
-# AI Kysynnänennusteavustaja
+# AI Kysynnänennustus Assistentti
 
-AI-pohjainen työkalu kysynnän ennustamiseen ja varastonhallinnan optimointiin.
-
-## Kuvaus
-AI Kysynnänennusteavustaja on moderni web-sovellus, joka auttaa yrityksiä ennustamaan tuotteiden kysyntää erityisesti tilanteissa, joissa tilastollista dataa on vähän. Sovellus hyödyntää edistynyttä tekoälyä ja koneoppimista tarjotakseen tarkkoja ennusteita ja parantaakseen varastonhallintaa.
+Tekoälyavusteinen työkalu kysynnän ennustamiseen ja analysointiin.
 
 ## Ominaisuudet
-- 🤖 Tekoälyavusteinen ennustaminen
-- 📊 Kysynnän analysointi ja visualisointi
-- 📝 Päätösongelmien dokumentointi ja oppiminen
-- 🔍 Automaattinen markkinasignaalien seuranta
-- 📈 Varastonhallinnan optimointi
-- 🔄 Integroitavissa olemassa oleviin järjestelmiin
 
-## Teknologiat
-- React
-- TypeScript
-- Vite
-- Tailwind CSS
-- shadcn/ui
-- OpenAI API
+- Interaktiivinen chat-käyttöliittymä kysynnän analysointiin
+- GPT-4.1 tekoälymallin hyödyntäminen
+- Responsiivinen ja moderni käyttöliittymä
+- Yksinkertainen kirjautuminen
 
-## Käyttöönotto
+## OpenAI API Integraatio
 
-### Vaatimukset
-- Node.js
-- npm/yarn/pnpm
-- OpenAI API -avain
+```ascii
+┌──────────────┐     ┌─────────┐     ┌──────────┐
+│ Käyttäjä     │     │ Chat    │     │ OpenAI   │
+│ Syöte        │────>│ API     │────>│ GPT-4.1  │
+└──────────────┘     └─────────┘     └──────────┘
+       ▲                  │                │
+       │                  │                │
+       └──────────────────┴────────────────┘
+          Vastaus käyttöliittymään
 
-### Asennus
-1. Kloonaa repositorio
-```bash
-git clone [repositorion-url]
 ```
 
-2. Asenna riippuvuudet
+## Asennus ja Käyttöönotto
+
+1. Kloonaa repositorio:
+```bash
+git clone https://github.com/wisestein/demand-forecast.git
+```
+
+2. Asenna riippuvuudet:
 ```bash
 npm install
 ```
 
-3. Luo `.env` tiedosto projektin juureen ja lisää seuraavat muuttujat
-```env
-VITE_OPENAI_API_KEY=xxx
+3. Luo .env tiedosto ja lisää OpenAI API avain:
+```
+VITE_OPENAI_API_KEY=your-api-key-here
 ```
 
-4. Käynnistä kehityspalvelin
+4. Käynnistä kehityspalvelin:
 ```bash
 npm run dev
 ```
+
+Sovellus käynnistyy osoitteeseen http://localhost:8081
+
+## Kirjautuminen
+
+- Käyttäjätunnus: forecasting@kemppi.com
+- Salasana: laatu
+
+## Projektin Rakenne
+
+Katso tarkempi dokumentaatio projektin rakenteesta [PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md)
+
+## Testaus
+
+OpenAI API:n testaus:
+```bash
+npm run test:openai
+```
+
+## Teknologiat
+
+- React + TypeScript
+- Vite
+- Tailwind CSS
+- OpenAI API
+- Shadcn/ui

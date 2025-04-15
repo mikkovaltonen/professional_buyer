@@ -13,7 +13,7 @@ const Index = () => {
         </Link>
         <div className="flex gap-4">
           <Button variant="ghost" asChild>
-            <Link to="/workbench">Kirjaudu sisään</Link>
+            <Link to="/login">Kirjaudu sisään</Link>
           </Button>
         </div>
       </nav>
@@ -92,7 +92,7 @@ const Index = () => {
               className="px-8 py-6 rounded-lg text-lg"
               asChild
             >
-              <Link to="/workbench">Kirjaudu sisään →</Link>
+              <Link to="/login">Kirjaudu sisään →</Link>
             </Button>
           </div>
         </section>

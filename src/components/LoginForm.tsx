@@ -19,15 +19,11 @@ const LoginForm = () => {
     e.preventDefault();
     setError('');
 
-    try {
-      const success = await login(formData.email, formData.password);
-      if (success) {
-        navigate('/workbench');
-      } else {
-        setError('Virheellinen sähköposti tai salasana');
-      }
-    } catch (err) {
-      setError('Kirjautumisessa tapahtui virhe. Yritä uudelleen.');
+    const success = await login(formData.email, formData.password);
+    if (success) {
+      navigate('/workbench');
+    } else {
+      setError('Virheellinen sähköposti tai salasana');
     }
   };
 

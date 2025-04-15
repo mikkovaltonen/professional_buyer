@@ -1,0 +1,9 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# Clean up, simplifcation and resructuring rules
+
+- Delete chaanges ARE SUPER DANGEWROUS but important. Whe you do them do only one small step at time and perform unit test and collect test evidence before doing next small deltion

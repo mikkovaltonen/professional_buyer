@@ -2,76 +2,71 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
-import { LogOut, Upload, Loader2, BarChart, Bot, X } from "lucide-react";
+import { LogOut, Loader2, BarChart, Bot, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import ChatInterface from "@/components/ChatInterface";
 import { fileService } from "@/lib/fileService";
 import { toast } from "sonner";
 
+const demoProducts = [
+  {
+    id: "minarctig",
+    name: "MINARCTIG EVO 200MLP POWER SOURCE",
+    image: "/demo_data/MINARCTIG EVO 200MLP POWER SOURCE.png"
+  },
+  {
+    id: "x3p",
+    name: "X3P POWER SOURCE PULSE 450 W",
+    image: "/demo_data/X3P POWER SOURCE PULSE 450 W.png"
+  },
+  {
+    id: "x5",
+    name: "X5 POWER SOURCE 400 PULSE WP",
+    image: "/demo_data/X5 POWER SOURCE 400 PULSE WP.png"
+  }
+];
+
 const Workbench = () => {
   const navigate = useNavigate();
   const { logout } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
-  const [currentFileId, setCurrentFileId] = useState<string | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
 
   const handleLogout = () => {
-    if (currentFileId) {
-      fileService.removeFile(currentFileId);
-    }
     if (imageUrl) {
       URL.revokeObjectURL(imageUrl);
     }
-    fileService.clearFiles();
     logout();
     navigate('/');
   };
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    // Tarkista tiedostotyyppi
-    if (file.type !== 'image/png') {
-      toast.error('Vain PNG-tiedostot ovat tuettuja');
-      return;
-    }
-
+  const handleProductSelect = (productId: string) => {
     setIsLoading(true);
     try {
-      // Poista vanha tiedosto ja URL jos sellainen on
-      if (currentFileId) {
-        fileService.removeFile(currentFileId);
-      }
       if (imageUrl) {
         URL.revokeObjectURL(imageUrl);
       }
-
-      // Tallenna uusi tiedosto
-      const fileId = fileService.storeFile(file);
-      setCurrentFileId(fileId);
       
-      // Luo URL kuvalle
-      const url = URL.createObjectURL(file);
-      setImageUrl(url);
-      
-      toast.success('Tiedosto ladattu onnistuneesti');
+      const product = demoProducts.find(p => p.id === productId);
+      if (product) {
+        setSelectedProduct(productId);
+        setImageUrl(product.image);
+        toast.success('Tuote valittu onnistuneesti');
+      }
     } catch (error) {
-      console.error('Tiedoston lataus epäonnistui:', error);
-      toast.error('Tiedoston lataus epäonnistui');
+      console.error('Tuotteen valinta epäonnistui:', error);
+      toast.error('Tuotteen valinta epäonnistui');
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleRemoveFile = () => {
-    if (currentFileId) {
-      fileService.removeFile(currentFileId);
-      setCurrentFileId(null);
-    }
     if (imageUrl) {
       URL.revokeObjectURL(imageUrl);
       setImageUrl(null);
+      setSelectedProduct(null);
     }
   };
 
@@ -99,31 +94,30 @@ const Workbench = () => {
           <CardHeader>
             <CardTitle className="flex items-center">
               <BarChart className="h-5 w-5 text-[#4ADE80] mr-2" />
-              Ennuste visualisoinnin lataus
+              Valitse ennustettava tuote
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex items-center space-x-4">
-                <Button
-                  variant="outline"
-                  className="relative"
-                  disabled={isLoading}
-                >
-                  <input
-                    type="file"
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                    onChange={handleFileUpload}
-                    accept=".png"
-                  />
-                  <Upload className="mr-2 h-4 w-4" />
-                  {isLoading ? "Ladataan..." : "Valitse tiedosto"}
-                </Button>
-                {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+              <div className="space-y-2">
+                {demoProducts.map((product) => (
+                  <div key={product.id} className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id={product.id}
+                      name="product"
+                      value={product.id}
+                      checked={selectedProduct === product.id}
+                      onChange={() => handleProductSelect(product.id)}
+                      className="h-4 w-4 text-[#4ADE80] focus:ring-[#4ADE80]"
+                    />
+                    <label htmlFor={product.id} className="text-sm">
+                      {product.name}
+                    </label>
+                  </div>
+                ))}
               </div>
-              <p className="text-sm text-gray-500">
-                Tuetut tiedostomuodot: PNG
-              </p>
+              {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
               {imageUrl && (
                 <div className="relative">
                   <Button
@@ -136,7 +130,7 @@ const Workbench = () => {
                   </Button>
                   <img
                     src={imageUrl}
-                    alt="Ladattu ennuste"
+                    alt="Valittu tuote"
                     className="max-w-full h-auto rounded-lg border border-gray-200"
                   />
                 </div>

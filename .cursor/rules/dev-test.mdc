@@ -10,3 +10,4 @@ alwaysApply: true
 - Collec all test scripts and test screenshots into "test" - folder. 
 - Newer do anything in conflict woth read me or other specs. Always ask permission to chante specs first. 
 - Keep detailed functinal specs in Readme
+- When you clean up obsolete code or files alays do only one deletion at time and perform regression testing and document the testing results into "tests" - folder

@@ -1,45 +1,46 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
-interface User {
+export interface User {
   email: string;
-  isAuthenticated: boolean;
 }
 
-export const useAuth = () => {
+interface AuthContextType {
+  user: User | null;
+  loading: boolean;
+  isAuthenticated: boolean;
+  login: (email: string, password: string) => Promise<boolean>;
+  logout: () => void;
+}
+
+const VALID_EMAIL = 'forecasting@kempki.com';
+const VALID_PASSWORD = 'laatu';
+
+export const useAuth = (): AuthContextType => {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    // Check if user is already logged in
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
+  const login = async (email: string, password: string): Promise<boolean> => {
+    setLoading(true);
+    try {
+      if (email === VALID_EMAIL && password === VALID_PASSWORD) {
+        setUser({ email });
+        return true;
+      }
+      return false;
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  }, []);
-
-  const login = async (email: string, password: string) => {
-    if (email === 'forecasting@kemppi.com' && password === 'laatu') {
-      const userData = {
-        email: 'forecasting@kemppi.com',
-        isAuthenticated: true
-      };
-      localStorage.setItem('user', JSON.stringify(userData));
-      setUser(userData);
-      return true;
-    }
-    return false;
   };
 
   const logout = () => {
-    localStorage.removeItem('user');
     setUser(null);
   };
 
   return {
     user,
     loading,
+    isAuthenticated: !!user,
     login,
-    logout
+    logout,
   };
 }; 

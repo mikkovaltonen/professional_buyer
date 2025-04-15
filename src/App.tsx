@@ -8,17 +8,17 @@ const App = () => {
   const { user } = useAuth();
 
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Index />} />
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Index />} />
         <Route path="/login" element={<LoginForm />} />
         <Route 
           path="/workbench" 
           element={user ? <Workbench /> : <Index />} 
         />
-      </Routes>
-    </BrowserRouter>
-  );
+        </Routes>
+      </BrowserRouter>
+);
 };
 
 export default App;

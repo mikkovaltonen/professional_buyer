@@ -35,7 +35,7 @@ const Index = () => {
           Varaa esittely
         </Button>
 
-        <section className="mt-24">
+        <section className="mt-24 mb-16">
           <h2 className="text-3xl font-bold mb-12">Älykkäämpi tapa ennustaa kysyntää</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <Card className="p-6">
@@ -98,9 +98,9 @@ const Index = () => {
         </section>
       </main>
 
-      <footer className="bg-gray-50 py-16 mt-16">
+      <footer className="bg-gray-50 py-16">
         <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div>
               <h3 className="font-semibold text-lg mb-4">Palvelut</h3>
               <ul className="space-y-2">

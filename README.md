@@ -20,7 +20,14 @@ Tekoälyavusteinen työkalu kysynnän ennustamiseen ja analysointiin.
        │                  │                │
        └──────────────────┴────────────────┘
           Vastaus käyttöliittymään
+```
 
+Projekti käyttää OpenAI:n uutta responses API:a:
+```javascript
+const response = await client.responses.create({
+    model: "gpt-4.1",
+    input: "Käyttäjän syöte"
+});
 ```
 
 ## Asennus ja Käyttöönotto
@@ -68,5 +75,5 @@ npm run test:openai
 - React + TypeScript
 - Vite
 - Tailwind CSS
-- OpenAI API
+- OpenAI API (responses API)
 - Shadcn/ui

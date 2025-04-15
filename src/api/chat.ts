@@ -5,19 +5,18 @@ const client = new OpenAI({
   dangerouslyAllowBrowser: true
 });
 
-export const createChatCompletion = async (message: string) => {
+export const createResponse = async (message: string, imageUrl?: string) => {
   try {
-    const response = await client.chat.completions.create({
+    const input = imageUrl 
+      ? `Olet kysynnän ennustamisen asiantuntija. Analysoi tämän tuotteen kysyntäennustetta (${imageUrl}): ${message}`
+      : `Olet kysynnän ennustamisen asiantuntija. ${message}`;
+
+    const response = await client.responses.create({
       model: "gpt-4.1",
-      messages: [
-        {
-          role: "user",
-          content: message
-        }
-      ]
+      input: input
     });
 
-    return response.choices[0].message.content;
+    return response.output_text;
   } catch (error) {
     console.error('Error calling OpenAI:', error);
     throw error;

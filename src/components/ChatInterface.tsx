@@ -3,13 +3,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Send, Bot } from "lucide-react";
+import { createResponse } from "@/api/chat";
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
 }
 
-const ChatInterface = () => {
+interface ChatInterfaceProps {
+  selectedImageUrl?: string;
+}
+
+const ChatInterface = ({ selectedImageUrl }: ChatInterfaceProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -24,16 +29,8 @@ const ChatInterface = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ message: input }),
-      });
-
-      const data = await response.json();
-      const assistantMessage = { role: 'assistant' as const, content: data.response };
+      const response = await createResponse(input, selectedImageUrl);
+      const assistantMessage = { role: 'assistant' as const, content: response };
       setMessages(prev => [...prev, assistantMessage]);
     } catch (error) {
       console.error('Error:', error);

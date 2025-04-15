@@ -36,7 +36,7 @@ const Workbench = () => {
   const handleLogout = () => {
     if (imageUrl) {
       URL.revokeObjectURL(imageUrl);
-    }
+          }
     logout();
     navigate('/');
   };
@@ -75,8 +75,8 @@ const Workbench = () => {
     return () => {
       if (imageUrl) {
         URL.revokeObjectURL(imageUrl);
-      }
-    };
+    }
+  };
   }, []);
 
   return (
@@ -86,17 +86,17 @@ const Workbench = () => {
         <Button variant="outline" onClick={handleLogout}>
           <LogOut className="mr-2 h-4 w-4" />
           Kirjaudu ulos
-        </Button>
-      </div>
-
+            </Button>
+        </div>
+        
       <div className="space-y-6">
-        <Card>
-          <CardHeader>
+              <Card>
+                <CardHeader>
             <CardTitle className="flex items-center">
               <BarChart className="h-5 w-5 text-[#4ADE80] mr-2" />
               Valitse ennustettava tuote
-            </CardTitle>
-          </CardHeader>
+                  </CardTitle>
+                </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <div className="space-y-2">
@@ -113,43 +113,43 @@ const Workbench = () => {
                     />
                     <label htmlFor={product.id} className="text-sm">
                       {product.name}
-                    </label>
-                  </div>
-                ))}
-              </div>
+                  </label>
+                          </div>
+                        ))}
+                    </div>
               {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
               {imageUrl && (
                 <div className="relative">
-                  <Button
+                <Button 
                     variant="outline"
                     size="icon"
                     className="absolute top-2 right-2 bg-white hover:bg-gray-100"
                     onClick={handleRemoveFile}
-                  >
+                >
                     <X className="h-4 w-4" />
-                  </Button>
+                </Button>
                   <img
                     src={imageUrl}
                     alt="Valittu tuote"
                     className="max-w-full h-auto rounded-lg border border-gray-200"
                   />
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+              </div>
+            )}
+                  </div>
+                </CardContent>
+              </Card>
 
-        <Card>
-          <CardHeader>
+              <Card>
+                <CardHeader>
             <CardTitle className="flex items-center">
               <Bot className="h-5 w-5 text-[#4ADE80] mr-2" />
               Ennusteavustaja
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ChatInterface />
-          </CardContent>
-        </Card>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+            <ChatInterface selectedImageUrl={imageUrl} />
+                  </CardContent>
+                </Card>
       </div>
     </div>
   );

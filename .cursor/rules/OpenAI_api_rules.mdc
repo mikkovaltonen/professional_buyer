@@ -1,0 +1,12 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# API development rules  
+
+- Always scan lates OpenAI API documentation from https://platform.openai.com/docs/guides/text?api-mode=responses
+- Always use GPT-4.1 as default model
+- Newer use max token parameter 
+- Newer use old chat completions API ( const response = await client.chat.completions.create({ ), alway use new resposes API const response = await client.responses.create()

@@ -17,18 +17,13 @@ async function testOpenAI() {
 
         console.log("Testing OpenAI API connection...");
 
-        const response = await client.chat.completions.create({
+        const response = await client.responses.create({
             model: "gpt-4.1",
-            messages: [
-                {
-                    role: "user",
-                    content: "Write a one-sentence bedtime story about a unicorn."
-                }
-            ]
+            input: "Write a one-sentence bedtime story about a unicorn."
         });
 
         console.log("\n=== Simple Prompt Test ===");
-        console.log(response.choices[0].message.content);
+        console.log(response.output_text);
         console.log("\nModel used:", response.model);
 
         console.log("\nAPI test completed successfully! ✅");

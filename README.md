@@ -14,12 +14,12 @@ AI Kysynnänennusteavustaja on moderni web-sovellus, joka auttaa yrityksiä ennu
 - 🔄 Integroitavissa olemassa oleviin järjestelmiin
 
 ## Teknologiat
-- React + TypeScript
+- React
+- TypeScript
 - Vite
 - Tailwind CSS
-- Shadcn/ui
+- shadcn/ui
 - OpenAI API
-- Firebase
 
 ## Käyttöönotto
 
@@ -27,7 +27,6 @@ AI Kysynnänennusteavustaja on moderni web-sovellus, joka auttaa yrityksiä ennu
 - Node.js
 - npm/yarn/pnpm
 - OpenAI API -avain
-- Firebase-projekti
 
 ### Asennus
 1. Kloonaa repositorio
@@ -40,43 +39,12 @@ git clone [repositorion-url]
 npm install
 ```
 
-3. Luo .env.local-tiedosto ja lisää tarvittavat ympäristömuuttujat
+3. Luo `.env` tiedosto projektin juureen ja lisää seuraavat muuttujat
 ```env
 VITE_OPENAI_API_KEY=xxx
-VITE_FIREBASE_API_KEY=xxx
-VITE_FIREBASE_AUTH_DOMAIN=xxx
-VITE_FIREBASE_PROJECT_ID=xxx
-VITE_FIREBASE_STORAGE_BUCKET=xxx
-VITE_FIREBASE_MESSAGING_SENDER_ID=xxx
-VITE_FIREBASE_APP_ID=xxx
 ```
 
 4. Käynnistä kehityspalvelin
 ```bash
 npm run dev
 ```
-
-## Projektin rakenne
-```
-ai-kysyntaennuste/
-├── public/              # Staattiset tiedostot
-│   └── logo.png        # Wisestein logo
-├── src/                # Lähdekoodi
-│   ├── components/     # React-komponentit
-│   │   └── ui/        # UI-komponenttikirjasto
-│   ├── pages/         # Sivukomponentit
-│   ├── lib/           # Apukirjastot ja työkalut
-│   └── App.tsx        # Pääsovelluskomponentti
-└── README.md          # Projektin dokumentaatio
-```
-
-## Kehitys ja testaus
-- Noudata yhtenäistä koodaustyyliä
-- Testaa muutokset huolellisesti ennen tuotantoon vientiä
-- Dokumentoi merkittävät muutokset
-
-## Lisenssi
-MIT
-
-## Yhteystiedot
-Lisätietoja ja tukea saat osoitteesta [https://wisestein.fi/yhteystiedot](https://wisestein.fi/yhteystiedot)

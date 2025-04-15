@@ -1,39 +1,89 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Send, Bot } from "lucide-react";
+import { Send, Bot, File, Search, Code } from "lucide-react";
 import { createResponse } from "@/api/chat";
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
+  attachments?: {
+    type: 'file' | 'web' | 'code';
+    content: string;
+  }[];
 }
 
 interface ChatInterfaceProps {
   selectedImageUrl?: string;
 }
 
-const ChatInterface = ({ selectedImageUrl }: ChatInterfaceProps) => {
+export const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedImageUrl }) => {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim()) return;
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
-    const userMessage = { role: 'user' as const, content: input };
-    setMessages(prev => [...prev, userMessage]);
-    setInput('');
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!input.trim() && !selectedFile) return;
+
+    const attachments: Message['attachments'] = [];
+    
+    if (selectedFile) {
+      const fileContent = await selectedFile.text();
+      attachments.push({
+        type: 'file',
+        content: fileContent
+      });
+    }
+
+    const userMessage: Message = {
+      role: "user",
+      content: input,
+      attachments
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    setInput("");
+    setSelectedFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
     setIsLoading(true);
 
     try {
-      const response = await createResponse(input, selectedImageUrl);
-      const assistantMessage = { role: 'assistant' as const, content: response };
-      setMessages(prev => [...prev, assistantMessage]);
+      const response = await createResponse(input, selectedFile ? await selectedFile.text() : undefined);
+      
+      const assistantMessage: Message = {
+        role: "assistant",
+        content: response,
+      };
+
+      setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
-      console.error('Error:', error);
+      console.error("Error sending message:", error);
+      const errorMessage: Message = {
+        role: "assistant",
+        content: "Sorry, there was an error processing your message. Please try again.",
+      };
+      setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
     }
@@ -60,6 +110,14 @@ const ChatInterface = ({ selectedImageUrl }: ChatInterfaceProps) => {
                 <Bot className="h-4 w-4 mb-1 inline-block mr-2" />
               )}
               {message.content}
+              {message.attachments?.map((attachment, idx) => (
+                <div key={idx} className="mt-2 text-sm">
+                  {attachment.type === 'file' && <File className="h-4 w-4 inline-block mr-1" />}
+                  {attachment.type === 'web' && <Search className="h-4 w-4 inline-block mr-1" />}
+                  {attachment.type === 'code' && <Code className="h-4 w-4 inline-block mr-1" />}
+                  {attachment.content.substring(0, 50)}...
+                </div>
+              ))}
             </div>
           </div>
         ))}
@@ -70,9 +128,25 @@ const ChatInterface = ({ selectedImageUrl }: ChatInterfaceProps) => {
             </div>
           </div>
         )}
+        <div ref={messagesEndRef} />
       </div>
-      <form onSubmit={handleSubmit} className="p-4 border-t">
+      <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }} className="p-4 border-t">
         <div className="flex space-x-2">
+          <Input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileSelect}
+            className="hidden"
+            accept=".txt,.csv,.json,.xlsx,.xls"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => fileInputRef.current?.click()}
+            className="bg-white hover:bg-gray-100"
+          >
+            <File className="h-4 w-4" />
+          </Button>
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -87,6 +161,11 @@ const ChatInterface = ({ selectedImageUrl }: ChatInterfaceProps) => {
             <Send className="h-4 w-4" />
           </Button>
         </div>
+        {selectedFile && (
+          <div className="mt-2 text-sm text-gray-600">
+            Valittu tiedosto: {selectedFile.name}
+          </div>
+        )}
       </form>
     </div>
   );

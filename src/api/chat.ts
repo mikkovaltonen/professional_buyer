@@ -5,11 +5,13 @@ const client = new OpenAI({
   dangerouslyAllowBrowser: true
 });
 
-export const createResponse = async (message: string, imageUrl?: string) => {
+export const createResponse = async (message: string, fileContent?: string) => {
   try {
-    const input = imageUrl 
-      ? `Olet kysynnän ennustamisen asiantuntija. Analysoi tämän tuotteen kysyntäennustetta (${imageUrl}): ${message}`
-      : `Olet kysynnän ennustamisen asiantuntija. ${message}`;
+    let input = message;
+    
+    if (fileContent) {
+      input = `Analysoi seuraavaa dataa ja vastaa kysymykseen:\n\nData:\n${fileContent}\n\nKysymys: ${message}`;
+    }
 
     const response = await client.responses.create({
       model: "gpt-4.1",

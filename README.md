@@ -1,72 +1,82 @@
-# Insurance Vault
+# AI Kysynnänennusteavustaja
 
-![Landing Page](public/landing-page.png)
+AI-pohjainen työkalu kysynnän ennustamiseen ja varastonhallinnan optimointiin.
 
-## Live Demo
-The application is available at: https://insurance-vault.vercel.app/
+## Kuvaus
+AI Kysynnänennusteavustaja on moderni web-sovellus, joka auttaa yrityksiä ennustamaan tuotteiden kysyntää erityisesti tilanteissa, joissa tilastollista dataa on vähän. Sovellus hyödyntää edistynyttä tekoälyä ja koneoppimista tarjotakseen tarkkoja ennusteita ja parantaakseen varastonhallintaa.
 
-## Cost Savings
-💰 Typical users save 10% or €200 annually on family insurance premiums by using our Request for Proposal (RfP) service to compare and optimize their coverage.
+## Ominaisuudet
+- 🤖 Tekoälyavusteinen ennustaminen
+- 📊 Kysynnän analysointi ja visualisointi
+- 📝 Päätösongelmien dokumentointi ja oppiminen
+- 🔍 Automaattinen markkinasignaalien seuranta
+- 📈 Varastonhallinnan optimointi
+- 🔄 Integroitavissa olemassa oleviin järjestelmiin
 
-## Description
-Insurance Vault is a modern web application that helps users manage their insurance portfolio, analyze risk profiles, and compare insurance proposals. Built with React, TypeScript, and Firebase.
-
-## Features
-- 🔒 Secure authentication
-- 📊 Risk assessment tools
-- 💬 AI-powered risk analysis chat
-- 📄 Document management
-- 🔄 Insurance proposal comparison
-- 💰 RfP service for better insurance deals
-- 🌍 Multi-language support (EN, FI, SV, ET, DA, NO)
-
-## Tech Stack
+## Teknologiat
 - React + TypeScript
 - Vite
-- Firebase (Auth, Firestore)
-- TailwindCSS
+- Tailwind CSS
 - Shadcn/ui
 - OpenAI API
-- i18next
+- Firebase
 
-## Getting Started
+## Käyttöönotto
 
-### Prerequisites
+### Vaatimukset
 - Node.js
 - npm/yarn/pnpm
-- Firebase account
-- OpenAI API key
+- OpenAI API -avain
+- Firebase-projekti
 
-### Installation
-1. Clone the repository
+### Asennus
+1. Kloonaa repositorio
 ```bash
-git clone https://github.com/yourusername/insurance-vault.git
+git clone [repositorion-url]
 ```
 
-2. Install dependencies
+2. Asenna riippuvuudet
 ```bash
 npm install
 ```
 
-3. Create a .env.local file with your credentials
+3. Luo .env.local-tiedosto ja lisää tarvittavat ympäristömuuttujat
 ```env
+VITE_OPENAI_API_KEY=xxx
 VITE_FIREBASE_API_KEY=xxx
 VITE_FIREBASE_AUTH_DOMAIN=xxx
 VITE_FIREBASE_PROJECT_ID=xxx
 VITE_FIREBASE_STORAGE_BUCKET=xxx
 VITE_FIREBASE_MESSAGING_SENDER_ID=xxx
 VITE_FIREBASE_APP_ID=xxx
-VITE_FIREBASE_MEASUREMENT_ID=xxx
-VITE_OPENAI_API_KEY=xxx
 ```
 
-4. Start the development server
+4. Käynnistä kehityspalvelin
 ```bash
 npm run dev
 ```
 
-## Contributing
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
+## Projektin rakenne
+```
+ai-kysyntaennuste/
+├── public/              # Staattiset tiedostot
+│   └── logo.png        # Wisestein logo
+├── src/                # Lähdekoodi
+│   ├── components/     # React-komponentit
+│   │   └── ui/        # UI-komponenttikirjasto
+│   ├── pages/         # Sivukomponentit
+│   ├── lib/           # Apukirjastot ja työkalut
+│   └── App.tsx        # Pääsovelluskomponentti
+└── README.md          # Projektin dokumentaatio
+```
 
-## License
+## Kehitys ja testaus
+- Noudata yhtenäistä koodaustyyliä
+- Testaa muutokset huolellisesti ennen tuotantoon vientiä
+- Dokumentoi merkittävät muutokset
+
+## Lisenssi
 MIT
+
+## Yhteystiedot
+Lisätietoja ja tukea saat osoitteesta [https://wisestein.fi/yhteystiedot](https://wisestein.fi/yhteystiedot)

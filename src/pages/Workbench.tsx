@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTranslation } from "react-i18next";
 import { auth } from "@/lib/firebase";
 import { useNavigate } from "react-router-dom";
-import { Shield, Scale, FileText, TrendingDown, LogOut, User, Upload, AlertCircle } from "lucide-react";
+import { Shield, Scale, FileText, TrendingDown, LogOut, User, Upload, AlertCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -18,6 +18,8 @@ import {
 } from "@/components/ui/select";
 import RiskAssessmentForm from "@/pages/RiskAssessmentForm";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { documentService } from '@/lib/documentService';
+import { InsuranceDocument } from '@/types/documents';
 
 const Workbench = () => {
   const { t, i18n } = useTranslation();
@@ -25,6 +27,8 @@ const Workbench = () => {
   const { user, logout } = useAuth();
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("risk-assessment");
+  const [documents, setDocuments] = useState<InsuranceDocument[]>([]);
+  const [loadingDocuments, setLoadingDocuments] = useState(false);
 
   useEffect(() => {
     const loadUserPreferences = async () => {
@@ -44,6 +48,25 @@ const Workbench = () => {
 
     loadUserPreferences();
   }, [user, i18n]);
+
+  useEffect(() => {
+    const loadDocuments = async () => {
+      if (!user?.uid) return;
+      
+      try {
+        setLoadingDocuments(true);
+        const userDocs = await documentService.getUserDocuments(user.uid);
+        setDocuments(userDocs);
+      } catch (error) {
+        console.error('Error loading documents:', error);
+        toast.error('Failed to load documents');
+      } finally {
+        setLoadingDocuments(false);
+      }
+    };
+
+    loadDocuments();
+  }, [user]);
 
   const handleLanguageChange = async (language: string) => {
     if (user?.uid) {
@@ -74,6 +97,33 @@ const Workbench = () => {
       toast.success("Logged out successfully");
     } catch (error) {
       toast.error("Failed to log out");
+    }
+  };
+
+  const handleFileUpload = async (file: File, type: 'current' | 'proposal') => {
+    if (!user?.uid) return;
+
+    try {
+      // For now, just store document metadata
+      const newDoc: Omit<InsuranceDocument, 'id'> = {
+        userId: user.uid,
+        fileName: file.name,
+        fileUrl: '', // We'll handle file storage in the next step
+        fileType: type,
+        uploadedAt: new Date().toISOString(),
+        fileSize: file.size,
+        mimeType: file.type
+      };
+
+      await documentService.addDocument(newDoc);
+      toast.success('Document uploaded successfully');
+      
+      // Reload documents
+      const userDocs = await documentService.getUserDocuments(user.uid);
+      setDocuments(userDocs);
+    } catch (error) {
+      console.error('Error uploading document:', error);
+      toast.error('Failed to upload document');
     }
   };
 
@@ -174,15 +224,70 @@ const Workbench = () => {
                     Current Insurance
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="border-2 border-dashed rounded-lg p-6 text-center hover:border-blue-500 transition-colors cursor-pointer">
-                    <Upload className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                    <p className="text-sm text-gray-600 mb-1">
-                      Upload your current insurance policy
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      We'll analyze your current coverage and costs
-                    </p>
+                <CardContent className="space-y-4">
+                  <label className="block">
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleFileUpload(file, 'current');
+                      }}
+                    />
+                    <div className="border-2 border-dashed rounded-lg p-6 text-center hover:border-blue-500 transition-colors cursor-pointer">
+                      {loadingDocuments ? (
+                        <Loader2 className="h-8 w-8 mx-auto mb-2 text-gray-400 animate-spin" />
+                      ) : (
+                        <Upload className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                      )}
+                      <p className="text-sm text-gray-600 mb-1">
+                        Upload your current insurance policy
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Supports PDF, JPG, PNG (max 10MB)
+                      </p>
+                    </div>
+                  </label>
+
+                  <div>
+                    <h3 className="text-sm font-medium mb-2">Uploaded Current Contracts</h3>
+                    <div className="space-y-2">
+                      {documents
+                        .filter(doc => doc.fileType === 'current')
+                        .map((doc) => (
+                          <div key={doc.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            <div className="flex items-center gap-2">
+                              <FileText className="h-5 w-5 text-gray-500" />
+                              <div>
+                                <p className="font-medium">{doc.fileName}</p>
+                                <p className="text-sm text-gray-500">
+                                  {new Date(doc.uploadedAt).toLocaleDateString()}
+                                </p>
+                              </div>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={async () => {
+                                try {
+                                  if (doc.id) {
+                                    await documentService.deleteDocument(doc.id);
+                                    const updatedDocs = await documentService.getUserDocuments(user!.uid);
+                                    setDocuments(updatedDocs);
+                                    toast.success('Document deleted successfully');
+                                  }
+                                } catch (error) {
+                                  console.error('Error deleting document:', error);
+                                  toast.error('Failed to delete document');
+                                }
+                              }}
+                            >
+                              Delete
+                            </Button>
+                          </div>
+                        ))}
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -194,32 +299,89 @@ const Workbench = () => {
                     New Proposals
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="border-2 border-dashed rounded-lg p-6 text-center hover:border-blue-500 transition-colors cursor-pointer">
-                    <Upload className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                    <p className="text-sm text-gray-600 mb-1">
-                      Upload new insurance proposals
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      Compare multiple proposals side by side
-                    </p>
+                <CardContent className="space-y-4">
+                  <label className="block">
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleFileUpload(file, 'proposal');
+                      }}
+                    />
+                    <div className="border-2 border-dashed rounded-lg p-6 text-center hover:border-blue-500 transition-colors cursor-pointer">
+                      {loadingDocuments ? (
+                        <Loader2 className="h-8 w-8 mx-auto mb-2 text-gray-400 animate-spin" />
+                      ) : (
+                        <Upload className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                      )}
+                      <p className="text-sm text-gray-600 mb-1">
+                        Upload new insurance proposals
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Supports PDF, JPG, PNG (max 10MB)
+                      </p>
+                    </div>
+                  </label>
+
+                  <div>
+                    <h3 className="text-sm font-medium mb-2">New Insurance Deal Proposals</h3>
+                    <div className="space-y-2">
+                      {documents
+                        .filter(doc => doc.fileType === 'proposal')
+                        .map((doc) => (
+                          <div key={doc.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            <div className="flex items-center gap-2">
+                              <FileText className="h-5 w-5 text-gray-500" />
+                              <div>
+                                <p className="font-medium">{doc.fileName}</p>
+                                <p className="text-sm text-gray-500">
+                                  {new Date(doc.uploadedAt).toLocaleDateString()}
+                                </p>
+                              </div>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={async () => {
+                                try {
+                                  if (doc.id) {
+                                    await documentService.deleteDocument(doc.id);
+                                    const updatedDocs = await documentService.getUserDocuments(user!.uid);
+                                    setDocuments(updatedDocs);
+                                    toast.success('Document deleted successfully');
+                                  }
+                                } catch (error) {
+                                  console.error('Error deleting document:', error);
+                                  toast.error('Failed to delete document');
+                                }
+                              }}
+                            >
+                              Delete
+                            </Button>
+                          </div>
+                        ))}
+                    </div>
                   </div>
                 </CardContent>
               </Card>
-
-              <div className="col-span-1 md:col-span-2">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Comparison Results</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-center text-gray-500 py-8">
-                      Upload documents to see detailed comparison
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
             </div>
+
+            {documents.length > 0 && (
+              <div className="mt-6 flex justify-center">
+                <Button 
+                  className="flex items-center gap-2 px-6 py-3"
+                  onClick={() => {
+                    // We'll implement the comparison logic later
+                    toast.info('Analyzing documents...');
+                  }}
+                >
+                  <Scale className="h-5 w-5" />
+                  Identify protections and make structured comparison of options
+                </Button>
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="documents" className="p-6 bg-white rounded-lg shadow-lg">

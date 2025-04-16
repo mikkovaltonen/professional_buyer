@@ -61,7 +61,14 @@ export const initializeChat = async (selectedProduct: string, imageUrl: string) 
     // Initialize chat with simple message
     const initialMessage = [
       {
-        text: `Olet ystävällinen Kempin tuotteide kysynnänennustus asiantuntija. Analysoi kuvassa esitettyä dataa. ${selectedProduct}`
+        text: `Olet ystävällinen Kempin tuotteideen ${selectedProduct} kysynnänennustus asiantuntija.
+         Analysoi akuluksi kuvassa esitettyä dataa. Kun olet toimittanut analyysin käyttäjälle,
+          kysy häneltä haluaako hän sinun tekevän seuraavaan google syvähaun: 
+            - Haku omista ja kilpailijoiden alennuskampanjoista
+            - Haku omista ja kilpailijoiden substituutti tuotteiden tuotelanseerauksista 
+            - Haku omista ja kilpailijoiden markkinointi kampanjoista ja jakelikoiden ilmoituksista
+            - Haku omista ja kilpoailijoiden lehti artikkeleista 
+            - Haku kysyntään vaikuttavista makrotalousindikaattoreiasta ja niiden muutoksista `
       } as Part,
       {
         inlineData: {

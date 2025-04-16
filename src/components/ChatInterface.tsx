@@ -1,30 +1,23 @@
-import { useState, useRef, useEffect } from "react";
-import { Button } from "@/components/ui/button";
+import React, { useState, useRef, useEffect } from 'react';
 import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
-import { Send, Bot, File, Search, Code, Image } from "lucide-react";
-import { createResponse } from "@/api/chat";
+import { Button } from "@/components/ui/button";
+import { Bot, Send } from 'lucide-react';
+import { createResponse, initializeChat, clearChatSession } from '@/api/chat';
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
-  attachments?: {
-    type: 'file' | 'image' | 'web' | 'code';
-    content: string;
-    url?: string;
-  }[];
 }
 
 interface ChatInterfaceProps {
-  selectedImageUrl?: string;
+  className?: string;
+  selectedProduct?: string;
 }
 
-export const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedImageUrl }) => {
+const ChatInterface: React.FC<ChatInterfaceProps> = ({ className, selectedProduct }) => {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -35,117 +28,73 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedImageUrl }
     scrollToBottom();
   }, [messages]);
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-    }
-  };
-
-  const isImageFile = (file: File) => {
-    return file.type.startsWith('image/');
-  };
-
-  const handleSendMessage = async () => {
-    if (!input.trim() && !selectedFile) return;
-
-    const attachments: Message['attachments'] = [];
+  // Initialize chat when component mounts and selectedProduct changes
+  useEffect(() => {
+    console.log('🔄 Product selection changed:', selectedProduct);
     
-    if (selectedFile) {
-      if (isImageFile(selectedFile)) {
-        const imageUrl = URL.createObjectURL(selectedFile);
-        attachments.push({
-          type: 'image',
-          content: selectedFile.name,
-          url: imageUrl
-        });
-
-        // Convert image to base64 for API
-        const reader = new FileReader();
-        reader.onloadend = async () => {
-          const base64Data = reader.result as string;
-          
-          try {
-            const response = await createResponse(input, base64Data);
-            const assistantMessage: Message = {
-              role: "assistant",
-              content: response,
-            };
-            setMessages((prev) => [...prev, assistantMessage]);
-          } catch (error) {
-            console.error("Error sending message:", error);
-            const errorMessage: Message = {
-              role: "assistant",
-              content: "Pahoittelen, viestin käsittelyssä tapahtui virhe. Yritä uudelleen.",
-            };
-            setMessages((prev) => [...prev, errorMessage]);
-          } finally {
-            setIsLoading(false);
-          }
-        };
-        reader.readAsDataURL(selectedFile);
-        return;
-      } else {
+    const initChat = async () => {
+      if (selectedProduct) {
+        console.log('🚀 Starting chat initialization for product:', selectedProduct);
+        setIsLoading(true);
+        
+        // Clear previous session
+        clearChatSession();
+        
         try {
-          const fileContent = await selectedFile.text();
-          attachments.push({
-            type: 'file',
-            content: fileContent
-          });
+          const response = await initializeChat(selectedProduct);
+          console.log('✅ Chat initialized with response:', response);
+          if (response) {
+            setMessages([{ role: 'assistant', content: response }]);
+          }
         } catch (error) {
-          console.error('Error reading file:', error);
+          console.error('❌ Error initializing chat:', error);
+          setMessages([{ 
+            role: 'assistant', 
+            content: 'Pahoittelen, keskustelun aloituksessa tapahtui virhe. Yritä uudelleen.' 
+          }]);
+        } finally {
+          setIsLoading(false);
         }
+      } else {
+        console.log('⚠️ No product selected, skipping initialization');
       }
-    }
-
-    const userMessage: Message = {
-      role: "user",
-      content: input,
-      attachments
     };
 
-    setMessages((prev) => [...prev, userMessage]);
-    setInput("");
-    setSelectedFile(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+    initChat();
+  }, [selectedProduct]);
+
+  const handleSendMessage = async () => {
+    if (!input.trim()) return;
+
+    console.log('📝 Sending new message:', input.trim());
     setIsLoading(true);
+    const userMessage = input.trim();
+    setInput('');
+
+    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
 
     try {
-      const response = await createResponse(
-        input,
-        selectedFile && !isImageFile(selectedFile) ? await selectedFile.text() : undefined
-      );
-      
-      const assistantMessage: Message = {
-        role: "assistant",
-        content: response,
-      };
-
-      setMessages((prev) => [...prev, assistantMessage]);
+      const response = await createResponse(userMessage);
+      console.log('✅ Received response:', response);
+      if (response) {
+        setMessages(prev => [...prev, { role: 'assistant', content: response }]);
+      }
     } catch (error) {
-      console.error("Error sending message:", error);
-      const errorMessage: Message = {
-        role: "assistant",
-        content: "Pahoittelen, viestin käsittelyssä tapahtui virhe. Yritä uudelleen.",
-      };
-      setMessages((prev) => [...prev, errorMessage]);
+      console.error('❌ Error sending message:', error);
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: 'Pahoittelen, viestin käsittelyssä tapahtui virhe. Yritä uudelleen.' 
+      }]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Cleanup URLs when component unmounts
+  // Component cleanup
   useEffect(() => {
     return () => {
-      messages.forEach(message => {
-        message.attachments?.forEach(attachment => {
-          if (attachment.url) {
-            URL.revokeObjectURL(attachment.url);
-          }
-        });
-      });
+      console.log('🧹 Cleaning up ChatInterface component');
+      clearChatSession();
     };
   }, []);
 
@@ -170,28 +119,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedImageUrl }
                 <Bot className="h-4 w-4 mb-1 inline-block mr-2" />
               )}
               {message.content}
-              {message.attachments?.map((attachment, idx) => (
-                <div key={idx} className="mt-2">
-                  {attachment.type === 'file' && (
-                    <div className="text-sm">
-                      <File className="h-4 w-4 inline-block mr-1" />
-                      {attachment.content.substring(0, 50)}...
-                    </div>
-                  )}
-                  {attachment.type === 'image' && attachment.url && (
-                    <div>
-                      <Image className="h-4 w-4 inline-block mr-1" />
-                      <img 
-                        src={attachment.url} 
-                        alt={attachment.content}
-                        className="max-w-full h-auto mt-2 rounded-lg"
-                      />
-                    </div>
-                  )}
-                  {attachment.type === 'web' && <Search className="h-4 w-4 inline-block mr-1" />}
-                  {attachment.type === 'code' && <Code className="h-4 w-4 inline-block mr-1" />}
-                </div>
-              ))}
             </div>
           </div>
         ))}
@@ -207,21 +134,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedImageUrl }
       <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }} className="p-4 border-t">
         <div className="flex space-x-2">
           <Input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileSelect}
-            className="hidden"
-            accept="image/*,.txt,.csv,.json,.xlsx,.xls"
-          />
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => fileInputRef.current?.click()}
-            className="bg-white hover:bg-gray-100"
-          >
-            <File className="h-4 w-4" />
-          </Button>
-          <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Kysy ennusteesta..."
@@ -235,11 +147,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedImageUrl }
             <Send className="h-4 w-4" />
           </Button>
         </div>
-        {selectedFile && (
-          <div className="mt-2 text-sm text-gray-600">
-            Valittu tiedosto: {selectedFile.name}
-          </div>
-        )}
       </form>
     </div>
   );

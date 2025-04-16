@@ -1,5 +1,4 @@
-import { GoogleGenerativeAI, Part, Tool } from '@google/generative-ai';
-import { Buffer } from 'buffer';
+import { GoogleGenerativeAI, Part } from '@google/generative-ai';
 
 // Initialize the Google AI client
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
@@ -13,13 +12,6 @@ const genAI = new GoogleGenerativeAI(apiKey);
 // Chat session state
 let sessionMessages: any[] = [];
 let hasInitializedChat = false;
-
-// System prompts for different products
-const SYSTEM_PROMPTS: { [key: string]: string } = {
-  'MINARCTIG EVO 200MLP POWER SOURCE': `Olet Kempin hitsauslaitteiden kysynnänennustuksen asiantuntija-assistentti. Tehtäväsi on analysoida MINARCTIG EVO 200MLP POWER SOURCE -tuotteen kysyntäennustetta ja vastata siihen liittyviin kysymyksiin. Käytä analyysissa tuotteen historiallista kysyntädataa, markkinasignaaleja ja toimialatuntemusta.`,
-  'X3P POWER SOURCE PULSE 450 W': `Olet Kempin hitsauslaitteiden kysynnänennustuksen asiantuntija-assistentti. Tehtäväsi on analysoida X3P POWER SOURCE PULSE 450 W -tuotteen kysyntäennustetta ja vastata siihen liittyviin kysymyksiin. Käytä analyysissa tuotteen historiallista kysyntädataa, markkinasignaaleja ja toimialatuntemusta.`,
-  'X5 POWER SOURCE 400 PULSE WP': `Olet Kempin hitsauslaitteiden kysynnänennustuksen asiantuntija-assistentti. Tehtäväsi on analysoida X5 POWER SOURCE 400 PULSE WP -tuotteen kysyntäennustetta ja vastata siihen liittyviin kysymyksiin. Käytä analyysissa tuotteen historiallista kysyntädataa, markkinasignaaleja ja toimialatuntemusta.`
-};
 
 export const clearChatSession = () => {
   console.log('🗑️ Clearing chat session...');
@@ -35,7 +27,6 @@ const loadImageAsBase64 = async (imagePath: string): Promise<string> => {
     const reader = new FileReader();
     reader.onloadend = () => {
       const base64String = reader.result as string;
-      // Remove the data URL prefix (e.g., "data:image/png;base64,")
       const base64Data = base64String.split(',')[1];
       resolve(base64Data);
     };
@@ -44,57 +35,53 @@ const loadImageAsBase64 = async (imagePath: string): Promise<string> => {
   });
 };
 
-export const initializeChat = async (selectedProduct: string) => {
+export const initializeChat = async (selectedProduct: string, imageUrl: string) => {
   console.log('🔄 Initializing chat session...');
   console.log('Current state:', { hasInitializedChat, messagesCount: sessionMessages.length });
   
-  if (hasInitializedChat) {
-    console.log('❌ Chat already initialized, skipping...');
-    return null;
-  }
+  // Clear previous session first
+  clearChatSession();
   
-  if (!SYSTEM_PROMPTS[selectedProduct]) {
-    console.error('❌ Invalid product selected:', selectedProduct);
-    throw new Error('Invalid product selected');
-  }
-
   console.log('✨ Starting new chat session for product:', selectedProduct);
   hasInitializedChat = true;
-  
-  const systemPrompt = SYSTEM_PROMPTS[selectedProduct];
-  console.log('📝 Using system prompt for:', selectedProduct);
 
   try {
     // Get product image as base64
-    const imageUrl = `/demo_data/${selectedProduct}.png`;
     const imageBase64 = await loadImageAsBase64(imageUrl);
+    console.log('🖼️ Image loaded successfully, size:', imageBase64.length);
 
-    // Get the model with search capability
+    // Get the model with Google Search tool
     const model = genAI.getGenerativeModel({ 
       model: 'gemini-2.5-pro-preview-03-25',
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 2048,
-      }
+      tools: [
+        { googleSearch: {} } as any
+      ]
     });
 
-    // Initialize chat with system prompt and image
+    // Initialize chat with simple message
     const initialMessage = [
+      {
+        text: `Analysoi kuvassa esitettyä tuotetta ${selectedProduct}`
+      } as Part,
       {
         inlineData: {
           data: imageBase64,
           mimeType: 'image/png'
         }
-      } as Part,
-      {
-        text: `${systemPrompt}\n\nHaluat että tutkin ja ennustan ${selectedProduct} tuotteen kysyntää? Voin auttaa sinua analysoimaan sen kysyntäennustetta ja markkinanäkymiä. Käytän myös reaaliaikaista markkinatietoa analyysissäni.`
       } as Part
     ];
 
+    console.log('📤 Sending initial message to Gemini API...');
+    
     // Generate initial response
     const result = await model.generateContent(initialMessage);
     const response = await result.response;
     const fullResponse = response.text();
+    console.log('📥 Received response from Gemini API:', fullResponse);
+
+    if (!fullResponse) {
+      throw new Error('Empty response from Gemini API');
+    }
 
     // Store the conversation history
     sessionMessages = [
@@ -110,7 +97,7 @@ export const initializeChat = async (selectedProduct: string) => {
 
     return fullResponse;
   } catch (error) {
-    console.error('Error initializing chat:', error);
+    console.error('❌ Error initializing chat:', error);
     hasInitializedChat = false;
     sessionMessages = [];
     throw error;
@@ -134,13 +121,12 @@ export const createResponse = async (message: string) => {
   console.log('📤 Sending message to Gemini API...');
   
   try {
-    // Get the model with search capability
+    // Get the model with Google Search tool
     const model = genAI.getGenerativeModel({ 
       model: 'gemini-2.5-pro-preview-03-25',
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 2048,
-      }
+      tools: [
+        { googleSearch: {} } as any
+      ]
     });
 
     // Generate response
@@ -150,6 +136,11 @@ export const createResponse = async (message: string) => {
 
     const response = await result.response;
     const fullResponse = response.text();
+    console.log('📥 Received response from Gemini API:', fullResponse);
+
+    if (!fullResponse) {
+      throw new Error('Empty response from Gemini API');
+    }
 
     // Add assistant's response to session
     sessionMessages.push({
@@ -161,7 +152,7 @@ export const createResponse = async (message: string) => {
 
     return fullResponse;
   } catch (error) {
-    console.error('Error generating response:', error);
+    console.error('❌ Error generating response:', error);
     throw error;
   }
 }; 

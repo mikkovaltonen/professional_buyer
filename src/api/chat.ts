@@ -1,45 +1,47 @@
-import OpenAI from "openai";
-import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
+import { GoogleGenerativeAI, Part, Tool } from '@google/generative-ai';
+import { Buffer } from 'buffer';
 
-const client = new OpenAI({
-  apiKey: import.meta.env.VITE_GROK_API_KEY,
-  baseURL: "https://api.x.ai/v1",
-  dangerouslyAllowBrowser: true
-});
+// Initialize the Google AI client
+const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
+if (!apiKey) {
+  console.error('❌ Gemini API key is missing! Please check your .env file.');
+} else {
+  console.log('✅ Gemini API key is present');
+}
+const genAI = new GoogleGenerativeAI(apiKey);
 
-let sessionMessages: ChatCompletionMessageParam[] = [];
+// Chat session state
+let sessionMessages: any[] = [];
 let hasInitializedChat = false;
 
-const SYSTEM_PROMPTS = {
-  'MINARCTIG EVO 200MLP POWER SOURCE': `Olen Kempin tuotteen MINARCTIG EVO 200MLP POWER SOURCE kysyntäennuste asiantuntija. Tehtäväni on auttaa ostajaa tulkitsemaan onko viimeisimmät ennusteet optimistisia vai pessimistisiä. Teen netti syvätutkimus tuotteen kysyntään vaikuttavista signaaleista, kuten omista kannibalisoivista tuotelanseeraukista, kilpailijoiden tuote lanseerauksista, omista ja kilpailijoiden alennuskampanjoista ja omista ja kilpailijoiden markkinointi kampanjoista, makrotalous uutisista ja tuotteeseen liityvistä uutisista.  
+// System prompts for different products
+const SYSTEM_PROMPTS: { [key: string]: string } = {
+  'MINARCTIG EVO 200MLP POWER SOURCE': `Olet Kempin hitsauslaitteiden kysynnänennustuksen asiantuntija-assistentti. Tehtäväsi on analysoida MINARCTIG EVO 200MLP POWER SOURCE -tuotteen kysyntäennustetta ja vastata siihen liittyviin kysymyksiin. Käytä analyysissa tuotteen historiallista kysyntädataa, markkinasignaaleja ja toimialatuntemusta.`,
+  'X3P POWER SOURCE PULSE 450 W': `Olet Kempin hitsauslaitteiden kysynnänennustuksen asiantuntija-assistentti. Tehtäväsi on analysoida X3P POWER SOURCE PULSE 450 W -tuotteen kysyntäennustetta ja vastata siihen liittyviin kysymyksiin. Käytä analyysissa tuotteen historiallista kysyntädataa, markkinasignaaleja ja toimialatuntemusta.`,
+  'X5 POWER SOURCE 400 PULSE WP': `Olet Kempin hitsauslaitteiden kysynnänennustuksen asiantuntija-assistentti. Tehtäväsi on analysoida X5 POWER SOURCE 400 PULSE WP -tuotteen kysyntäennustetta ja vastata siihen liittyviin kysymyksiin. Käytä analyysissa tuotteen historiallista kysyntädataa, markkinasignaaleja ja toimialatuntemusta.`
+};
 
-Alla on kuvaus historiallisesta kysynnästä ja tilastollisesta ennusteesta: MINARCTIG EVO 200MLP POWER SOURCE -nimisen tuotteen kuukausittaisia kysyntämääriä (Demand Quantity) aikavälillä vuodesta 2019 vuoteen 2026.
+export const clearChatSession = () => {
+  console.log('🗑️ Clearing chat session...');
+  sessionMessages = [];
+  hasInitializedChat = false;
+  console.log('Session cleared. New state:', { hasInitializedChat, messagesCount: sessionMessages.length });
+};
 
-Aikajaksot:
-Historialliset toteumat (Actuals): Noin vuodesta 2019 alkupuolelta maaliskuuhun 2025 asti, mustalla viivalla.
-Ennuste (Forecast) huhtikuu 2024 – maaliskuu 2025: sinisellä katkoviivalla.
-Ennusteen virhe (Forecast Error) huhtikuu 2024 – maaliskuu 2025: oranssilla pisteviivalla.
-Ennuste (Forecast) huhtikuu 2025 – maaliskuu 2026: vihreällä katkoviivalla.`,
-
-  'X3P POWER SOURCE PULSE 450 W': `Olen Kempin tuotteen X3P POWER SOURCE PULSE 450 W kysyntäennuste asiantuntija. Tehtäväni on auttaa ostajaa tulkitsemaan onko viimeisimmät ennusteet optimistisia vai pessimistisiä. Teen netti syvätutkimus tuotteen kysyntään vaikuttavista signaaleista, kuten omista kannibalisoivista tuotelanseeraukista, kilpailijoiden tuote lanseerauksista, omista ja kilpailijoiden alennuskampanjoista ja omista ja kilpailijoiden markkinointi kampanjoista, makrotalous uutisista ja tuotteeseen liityvistä uutisista.  
-
-Alla kuvaus tuotteen X3P POWER SOURCE PULSE 450 W (X3P450W) -tuotteen kysyntäennusteita ja niiden validointia korjatulla datalla. Aikaväli kattaa ajanjakson syyskuusta 2024 huhtikuuhun 2026.
-
-Aikajaksot ja värit:
-Toteutunut kysyntä (Actuals): Syyskuu 2024 – huhtikuu 2025, esitetty mustalla viivalla.
-Validointiennuste (Forecast): Tammi–huhtikuu 2025, esitetty sinisellä katkoviivalla.
-Ennustevirhe (Forecast Error): Tammi–huhtikuu 2025, oranssilla pisteviivalla.
-Tuleva ennuste (Forecast): Toukokuu 2025 – huhtikuu 2026, vihreällä katkoviivalla.`,
-
-  'X5 POWER SOURCE 400 PULSE WP': `Olen Kempin tuotteen X5 POWER SOURCE 400 PULSE WP kysyntäennuste asiantuntija. Tehtäväni on auttaa ostajaa tulkitsemaan onko viimeisimmät ennusteet optimistisia vai pessimistisiä. Teen netti syvätutkimus tuotteen kysyntään vaikuttavista signaaleista, kuten omista kannibalisoivista tuotelanseeraukista, kilpailijoiden tuote lanseerauksista, omista ja kilpailijoiden alennuskampanjoista ja omista ja kilpailijoiden markkinointi kampanjoista, makrotalous uutisista ja tuotteeseen liityvistä uutisista.  
-
-Alla kuvaus tuotteen X5 POWER SOURCE 400 PULSE WP (X5130400010) kysyntähistoriasta, ennusteista ja ennustevirheistä aikavälillä heinäkuu 2022 – maaliskuu 2026.
-
-Esitystavat ja värit:
-Toteutunut kysyntä (Actuals): Mustalla viivalla.
-Ennuste huhti 2024 – maalis 2025: Sinisellä katkoviivalla.
-Ennuste huhti 2025 – maalis 2026: Vihreällä katkoviivalla.
-Ennustevirhe (Forecast Error, 2024–2025): Oranssilla pisteviivalla.`
+const loadImageAsBase64 = async (imagePath: string): Promise<string> => {
+  const response = await fetch(imagePath);
+  const blob = await response.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      // Remove the data URL prefix (e.g., "data:image/png;base64,")
+      const base64Data = base64String.split(',')[1];
+      resolve(base64Data);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
 };
 
 export const initializeChat = async (selectedProduct: string) => {
@@ -51,7 +53,7 @@ export const initializeChat = async (selectedProduct: string) => {
     return null;
   }
   
-  if (!SYSTEM_PROMPTS[selectedProduct as keyof typeof SYSTEM_PROMPTS]) {
+  if (!SYSTEM_PROMPTS[selectedProduct]) {
     console.error('❌ Invalid product selected:', selectedProduct);
     throw new Error('Invalid product selected');
   }
@@ -59,87 +61,107 @@ export const initializeChat = async (selectedProduct: string) => {
   console.log('✨ Starting new chat session for product:', selectedProduct);
   hasInitializedChat = true;
   
-  const systemPrompt = SYSTEM_PROMPTS[selectedProduct as keyof typeof SYSTEM_PROMPTS];
+  const systemPrompt = SYSTEM_PROMPTS[selectedProduct];
   console.log('📝 Using system prompt for:', selectedProduct);
 
-  sessionMessages = [
-    {
-      role: "system",
-      content: systemPrompt
-    }
-  ];
-
-  console.log('📤 Sending initial message to Grok API...');
-  const response = await client.chat.completions.create({
-    model: "grok-3-beta",
-    messages: [
-      ...sessionMessages,
-      {
-        role: "assistant",
-        content: `Haluat että tutkin ja ennustan ${selectedProduct} tuotteen kysyntää? Voin auttaa sinua analysoimaan sen kysyntäennustetta ja markkinanäkymiä.`
-      }
-    ],
-    temperature: 0.7,
-    max_tokens: 2048
-  });
-
-  if (response.choices[0].message.content) {
-    const assistantMessage = {
-      role: "assistant",
-      content: response.choices[0].message.content
-    } as ChatCompletionMessageParam;
-    sessionMessages.push(assistantMessage);
-    console.log('✅ Chat initialized successfully');
-    console.log('Current messages:', sessionMessages);
-  }
-
-  return response.choices[0].message.content;
-};
-
-export const createResponse = async (message: string) => {
   try {
-    console.log('📝 Processing new message:', message);
-    console.log('Current session state:', { 
-      hasInitializedChat, 
-      messagesCount: sessionMessages.length,
-      messages: sessionMessages 
+    // Get product image as base64
+    const imageUrl = `/demo_data/${selectedProduct}.png`;
+    const imageBase64 = await loadImageAsBase64(imageUrl);
+
+    // Get the model with search capability
+    const model = genAI.getGenerativeModel({ 
+      model: 'gemini-2.5-pro-preview-03-25',
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 2048,
+      }
     });
 
-    const newMessage: ChatCompletionMessageParam = {
-      role: "user",
-      content: message
-    };
+    // Initialize chat with system prompt and image
+    const initialMessage = [
+      {
+        inlineData: {
+          data: imageBase64,
+          mimeType: 'image/png'
+        }
+      } as Part,
+      {
+        text: `${systemPrompt}\n\nHaluat että tutkin ja ennustan ${selectedProduct} tuotteen kysyntää? Voin auttaa sinua analysoimaan sen kysyntäennustetta ja markkinanäkymiä. Käytän myös reaaliaikaista markkinatietoa analyysissäni.`
+      } as Part
+    ];
 
-    sessionMessages.push(newMessage);
-    console.log('📤 Sending message to Grok API...');
+    // Generate initial response
+    const result = await model.generateContent(initialMessage);
+    const response = await result.response;
+    const fullResponse = response.text();
 
-    const response = await client.chat.completions.create({
-      model: "grok-3-beta",
-      messages: sessionMessages,
-      temperature: 0.7,
-      max_tokens: 2048
-    });
+    // Store the conversation history
+    sessionMessages = [
+      {
+        role: 'user',
+        parts: initialMessage
+      },
+      {
+        role: 'model',
+        parts: [{ text: fullResponse } as Part]
+      }
+    ];
 
-    if (response.choices[0].message.content) {
-      const assistantMessage = {
-        role: "assistant",
-        content: response.choices[0].message.content
-      } as ChatCompletionMessageParam;
-      sessionMessages.push(assistantMessage);
-      console.log('✅ Response received and added to session');
-      console.log('Updated messages:', sessionMessages);
-    }
-
-    return response.choices[0].message.content;
+    return fullResponse;
   } catch (error) {
-    console.error('❌ Error in createResponse:', error);
+    console.error('Error initializing chat:', error);
+    hasInitializedChat = false;
+    sessionMessages = [];
     throw error;
   }
 };
 
-export const clearChatSession = () => {
-  console.log('🗑️ Clearing chat session...');
-  sessionMessages = [];
-  hasInitializedChat = false;
-  console.log('Session cleared. New state:', { hasInitializedChat, messagesCount: sessionMessages.length });
+export const createResponse = async (message: string) => {
+  console.log('📝 Processing new message:', message);
+  console.log('Current session state:', { hasInitializedChat, messagesCount: sessionMessages.length });
+
+  if (!hasInitializedChat) {
+    throw new Error('Chat not initialized');
+  }
+
+  // Add user message to session
+  sessionMessages.push({
+    role: 'user',
+    parts: [{ text: message } as Part]
+  });
+
+  console.log('📤 Sending message to Gemini API...');
+  
+  try {
+    // Get the model with search capability
+    const model = genAI.getGenerativeModel({ 
+      model: 'gemini-2.5-pro-preview-03-25',
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 2048,
+      }
+    });
+
+    // Generate response
+    const result = await model.generateContent(
+      sessionMessages.flatMap(msg => msg.parts)
+    );
+
+    const response = await result.response;
+    const fullResponse = response.text();
+
+    // Add assistant's response to session
+    sessionMessages.push({
+      role: 'model',
+      parts: [{ text: fullResponse } as Part]
+    });
+
+    console.log('✅ Response received and added to session');
+
+    return fullResponse;
+  } catch (error) {
+    console.error('Error generating response:', error);
+    throw error;
+  }
 }; 

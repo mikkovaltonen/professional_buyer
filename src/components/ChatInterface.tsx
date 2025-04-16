@@ -12,9 +12,10 @@ interface Message {
 interface ChatInterfaceProps {
   className?: string;
   selectedProduct?: string;
+  selectedImageUrl?: string;
 }
 
-const ChatInterface: React.FC<ChatInterfaceProps> = ({ className, selectedProduct }) => {
+const ChatInterface: React.FC<ChatInterfaceProps> = ({ className, selectedProduct, selectedImageUrl }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -31,9 +32,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ className, selectedProduc
   // Initialize chat when component mounts and selectedProduct changes
   useEffect(() => {
     console.log('🔄 Product selection changed:', selectedProduct);
+    console.log('🖼️ Selected image URL:', selectedImageUrl);
     
     const initChat = async () => {
-      if (selectedProduct) {
+      if (selectedProduct && selectedImageUrl) {
         console.log('🚀 Starting chat initialization for product:', selectedProduct);
         setIsLoading(true);
         
@@ -41,7 +43,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ className, selectedProduc
         clearChatSession();
         
         try {
-          const response = await initializeChat(selectedProduct);
+          const response = await initializeChat(selectedProduct, selectedImageUrl);
           console.log('✅ Chat initialized with response:', response);
           if (response) {
             setMessages([{ role: 'assistant', content: response }]);
@@ -56,12 +58,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ className, selectedProduc
           setIsLoading(false);
         }
       } else {
-        console.log('⚠️ No product selected, skipping initialization');
+        console.log('⚠️ No product or image selected, skipping initialization');
       }
     };
 
     initChat();
-  }, [selectedProduct]);
+  }, [selectedProduct, selectedImageUrl]);
 
   const handleSendMessage = async () => {
     if (!input.trim()) return;
@@ -118,7 +120,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ className, selectedProduc
               {message.role === 'assistant' && (
                 <Bot className="h-4 w-4 mb-1 inline-block mr-2" />
               )}
-              {message.content}
+              <div className="whitespace-pre-wrap">{message.content}</div>
             </div>
           </div>
         ))}

@@ -61,7 +61,7 @@ export const initializeChat = async (selectedProduct: string, imageUrl: string) 
     // Initialize chat with simple message
     const initialMessage = [
       {
-        text: `Analysoi kuvassa esitettyä tuotetta ${selectedProduct}`
+        text: `Olet ystävällinen Kempin tuotteide kysynnänennustus asiantuntija. Analysoi kuvassa esitettyä dataa. ${selectedProduct}`
       } as Part,
       {
         inlineData: {

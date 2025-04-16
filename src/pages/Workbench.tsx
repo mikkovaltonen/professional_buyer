@@ -158,7 +158,10 @@ const Workbench = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <ChatInterface selectedProduct={demoProducts.find(p => p.id === selectedProduct)?.name} />
+              <ChatInterface 
+                selectedProduct={demoProducts.find(p => p.id === selectedProduct)?.name} 
+                selectedImageUrl={imageUrl}
+              />
             </CardContent>
           </Card>
         )}

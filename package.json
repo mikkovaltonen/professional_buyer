@@ -12,6 +12,7 @@
     "test": "node --experimental-specifier-resolution=node --loader ts-node/esm tests/chatbot_roles_test.js"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.0",
     "@radix-ui/react-alert-dialog": "^1.0.5",
     "@radix-ui/react-dialog": "^1.0.5",
     "@radix-ui/react-dropdown-menu": "^2.0.6",
@@ -23,6 +24,7 @@
     "i18next": "^25.0.0",
     "i18next-browser-languagedetector": "^8.0.4",
     "lucide-react": "^0.330.0",
+    "mime": "^4.0.7",
     "next-themes": "^0.4.6",
     "openai": "^4.94.0",
     "react": "^18.2.0",

@@ -1,79 +1,80 @@
-# AI Kysynnänennustus Assistentti
+# AI Kysynnänennusteavustaja
 
-Tekoälyavusteinen työkalu kysynnän ennustamiseen ja analysointiin.
+AI-pohjainen työkalu kysynnän ennustamiseen ja varastonhallinnan optimointiin.
+
+## Kuvaus
+AI Kysynnänennusteavustaja on moderni web-sovellus, joka auttaa yrityksiä ennustamaan tuotteiden kysyntää erityisesti tilanteissa, joissa tilastollista dataa on vähän. Sovellus hyödyntää edistynyttä tekoälyä ja koneoppimista tarjotakseen tarkkoja ennusteita ja parantaakseen varastonhallintaa.
 
 ## Ominaisuudet
 
-- Interaktiivinen chat-käyttöliittymä kysynnän analysointiin
-- GPT-4.1 tekoälymallin hyödyntäminen
-- Responsiivinen ja moderni käyttöliittymä
-- Yksinkertainen kirjautuminen
+- 📊 Kysynnän analysointi ja visualisointi
+- 📝 Päätösongelmien dokumentointi ja oppiminen
+- 🔍 Automaattinen markkinasignaalien seuranta
+- 🔄 Integroitavissa olemassa oleviin järjestelmiin (tbd)
 
-## OpenAI API Integraatio
+## Teknologiat
+- React + TypeScript
+- Vite
+- Tailwind CSS
+- Shadcn/ui
+- Grok API
 
-```ascii
-┌──────────────┐     ┌─────────┐     ┌──────────┐
-│ Käyttäjä     │     │ Chat    │     │ OpenAI   │
-│ Syöte        │────>│ API     │────>│ GPT-4.1  │
-└──────────────┘     └─────────┘     └──────────┘
-       ▲                  │                │
-       │                  │                │
-       └──────────────────┴────────────────┘
-          Vastaus käyttöliittymään
-```
+## Käyttöönotto
 
-Projekti käyttää OpenAI:n uutta responses API:a:
-```javascript
-const response = await client.responses.create({
-    model: "gpt-4.1",
-    input: "Käyttäjän syöte"
-});
-```
+### Vaatimukset
+- Node.js
+- npm/yarn/pnpm
+- Grok API -avain
 
-## Asennus ja Käyttöönotto
 
-1. Kloonaa repositorio:
+### Asennus
+1. Kloonaa repositorio
 ```bash
-git clone https://github.com/wisestein/demand-forecast.git
+git clone [repositorion-url]
 ```
 
-2. Asenna riippuvuudet:
+2. Asenna riippuvuudet
 ```bash
 npm install
 ```
 
-3. Luo .env tiedosto ja lisää OpenAI API avain:
-```
-VITE_OPENAI_API_KEY=your-api-key-here
+3. Luo .env.local-tiedosto ja lisää tarvittavat ympäristömuuttujat
+```env
+VITE_OPENAI_API_KEY=xxx
+VITE_FIREBASE_API_KEY=xxx
+VITE_FIREBASE_AUTH_DOMAIN=xxx
+VITE_FIREBASE_PROJECT_ID=xxx
+VITE_FIREBASE_STORAGE_BUCKET=xxx
+VITE_FIREBASE_MESSAGING_SENDER_ID=xxx
+VITE_FIREBASE_APP_ID=xxx
 ```
 
-4. Käynnistä kehityspalvelin:
+4. Käynnistä kehityspalvelin
 ```bash
 npm run dev
 ```
 
-Sovellus käynnistyy osoitteeseen http://localhost:8081
-
-## Kirjautuminen
-
-- Käyttäjätunnus: forecasting@kemppi.com
-- Salasana: laatu
-
-## Projektin Rakenne
-
-Katso tarkempi dokumentaatio projektin rakenteesta [PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md)
-
-## Testaus
-
-OpenAI API:n testaus:
-```bash
-npm run test:openai
+## Projektin rakenne
+```
+ai-kysyntaennuste/
+├── public/              # Staattiset tiedostot
+│   └── logo.png        # Wisestein logo
+├── src/                # Lähdekoodi
+│   ├── components/     # React-komponentit
+│   │   └── ui/        # UI-komponenttikirjasto
+│   ├── pages/         # Sivukomponentit
+│   ├── lib/           # Apukirjastot ja työkalut
+│   └── App.tsx        # Pääsovelluskomponentti
+└── README.md          # Projektin dokumentaatio
 ```
 
-## Teknologiat
+## Kehitys ja testaus
+- Noudata yhtenäistä koodaustyyliä
+- Testaa muutokset huolellisesti ennen tuotantoon vientiä
+- Dokumentoi merkittävät muutokset
 
-- React + TypeScript
-- Vite
-- Tailwind CSS
-- OpenAI API (responses API)
-- Shadcn/ui
+## Lisenssi
+Kaikki tekijänoikeudet kuuluvat SCM Best Oy:lle
+
+## Yhteystiedot
+Lisätietoja ja tukea saat osoitteesta [https://wisestein.fi/yhteystiedot](https://wisestein.fi/yhteystiedot)

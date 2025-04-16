@@ -1,0 +1,22 @@
+{
+  "timestamp": "2025-04-15T20:14:49.062Z",
+  "tests": [
+    {
+      "name": "Basic Text Query",
+      "input": "What is the capital of France?",
+      "output": "Paris\n",
+      "success": true
+    },
+    {
+      "name": "Image Analysis",
+      "error": "[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro-vision:generateContent: [404 Not Found] models/gemini-1.5-pro-vision is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.",
+      "success": false
+    },
+    {
+      "name": "Advanced Text Query",
+      "input": "Weather query with safety settings",
+      "output": "I do not have real-time access to weather data.  To get the most recent weather information for Helsinki, I recommend checking a reliable weather website or app.  Some good options include:\n\n* **foreca.fi:** (Often considered very accurate for Finland)\n* **ilmatieteenlaitos.fi:** (The Finnish Meteorological Institute - the official source)\n* **yr.no:** (A Norwegian meteorological institute, also generally reliable for Scandinavia)\n* **Google Weather:** (Just search \"weather Helsinki\")\n* **Apple Weather:** (Built into Apple devices)\n* Other reputable weather apps like AccuWeather, The Weather Channel, etc.\n\n\nThese sources will provide you with the latest information on temperature, precipitation, wind, and other weather conditions.\n",
+      "success": true
+    }
+  ]
+}

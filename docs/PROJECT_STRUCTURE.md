@@ -56,3 +56,49 @@ User Input -> ChatInterface.tsx
 - Modern, responsive design using Tailwind CSS
 - Shadcn/ui component library integration
 - Custom themed components in `src/components/ui/` 
+
+## Frontend Components
+
+### Pages
+- `src/pages/Workbench.tsx`: Main workbench page with:
+  - Radio button selection for products
+  - Product image display
+  - Chat interface integration with Grok API
+  - Loading states and error handling
+
+### Components
+- `src/components/ChatInterface.tsx`: Chat interface component with:
+  - Message history display
+  - File upload support
+  - Image analysis capabilities
+  - Real-time responses
+
+### API Integration
+- `src/api/chat.ts`: Grok API integration with:
+  - Text-based conversations (grok-3-beta)
+  - Image analysis (grok-2-vision-latest)
+  - Error handling and type safety
+
+## Environment Configuration
+- `.env`: Environment variables for:
+  - Grok API key (VITE_GROK_API_KEY)
+  - OpenAI API key (VITE_OPENAI_API_KEY)
+
+## UI Components
+- Radio button selection for product choice
+- Image display with remove functionality
+- Chat interface with message history
+- Loading indicators and error messages
+
+## Data Flow
+1. User selects product via radio buttons
+2. Product image is displayed
+3. User can interact with chat interface
+4. Chat interface communicates with Grok API
+5. Responses are displayed in real-time
+
+## Error Handling
+- API error handling
+- Image loading states
+- File upload validation
+- Network error recovery 

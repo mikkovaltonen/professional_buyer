@@ -1,0 +1,35 @@
+{
+  "timestamp": "2025-04-15T19:35:15.796Z",
+  "tests": [
+    {
+      "name": "Developer Quickstart",
+      "input": "What is the capital of France?",
+      "output": {
+        "format": {
+          "type": "text"
+        }
+      },
+      "success": true
+    },
+    {
+      "name": "Analyze Image Inputs",
+      "input": "Image analysis of basketball game",
+      "output": {
+        "format": {
+          "type": "text"
+        }
+      },
+      "success": true
+    },
+    {
+      "name": "Extend the Model with Tools",
+      "input": "Weather query with web search",
+      "output": {
+        "format": {
+          "type": "text"
+        }
+      },
+      "success": true
+    }
+  ]
+}

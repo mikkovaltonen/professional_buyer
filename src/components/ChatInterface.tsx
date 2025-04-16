@@ -2,15 +2,16 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Send, Bot, File, Search, Code } from "lucide-react";
+import { Send, Bot, File, Search, Code, Image } from "lucide-react";
 import { createResponse } from "@/api/chat";
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
   attachments?: {
-    type: 'file' | 'web' | 'code';
+    type: 'file' | 'image' | 'web' | 'code';
     content: string;
+    url?: string;
   }[];
 }
 
@@ -41,17 +42,60 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedImageUrl }
     }
   };
 
+  const isImageFile = (file: File) => {
+    return file.type.startsWith('image/');
+  };
+
   const handleSendMessage = async () => {
     if (!input.trim() && !selectedFile) return;
 
     const attachments: Message['attachments'] = [];
     
     if (selectedFile) {
-      const fileContent = await selectedFile.text();
-      attachments.push({
-        type: 'file',
-        content: fileContent
-      });
+      if (isImageFile(selectedFile)) {
+        const imageUrl = URL.createObjectURL(selectedFile);
+        attachments.push({
+          type: 'image',
+          content: selectedFile.name,
+          url: imageUrl
+        });
+
+        // Convert image to base64 for API
+        const reader = new FileReader();
+        reader.onloadend = async () => {
+          const base64Data = reader.result as string;
+          
+          try {
+            const response = await createResponse(input, base64Data);
+            const assistantMessage: Message = {
+              role: "assistant",
+              content: response,
+            };
+            setMessages((prev) => [...prev, assistantMessage]);
+          } catch (error) {
+            console.error("Error sending message:", error);
+            const errorMessage: Message = {
+              role: "assistant",
+              content: "Pahoittelen, viestin käsittelyssä tapahtui virhe. Yritä uudelleen.",
+            };
+            setMessages((prev) => [...prev, errorMessage]);
+          } finally {
+            setIsLoading(false);
+          }
+        };
+        reader.readAsDataURL(selectedFile);
+        return;
+      } else {
+        try {
+          const fileContent = await selectedFile.text();
+          attachments.push({
+            type: 'file',
+            content: fileContent
+          });
+        } catch (error) {
+          console.error('Error reading file:', error);
+        }
+      }
     }
 
     const userMessage: Message = {
@@ -69,7 +113,10 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedImageUrl }
     setIsLoading(true);
 
     try {
-      const response = await createResponse(input, selectedFile ? await selectedFile.text() : undefined);
+      const response = await createResponse(
+        input,
+        selectedFile && !isImageFile(selectedFile) ? await selectedFile.text() : undefined
+      );
       
       const assistantMessage: Message = {
         role: "assistant",
@@ -81,13 +128,26 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedImageUrl }
       console.error("Error sending message:", error);
       const errorMessage: Message = {
         role: "assistant",
-        content: "Sorry, there was an error processing your message. Please try again.",
+        content: "Pahoittelen, viestin käsittelyssä tapahtui virhe. Yritä uudelleen.",
       };
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
     }
   };
+
+  // Cleanup URLs when component unmounts
+  useEffect(() => {
+    return () => {
+      messages.forEach(message => {
+        message.attachments?.forEach(attachment => {
+          if (attachment.url) {
+            URL.revokeObjectURL(attachment.url);
+          }
+        });
+      });
+    };
+  }, []);
 
   return (
     <div className="flex flex-col h-[500px]">
@@ -111,11 +171,25 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedImageUrl }
               )}
               {message.content}
               {message.attachments?.map((attachment, idx) => (
-                <div key={idx} className="mt-2 text-sm">
-                  {attachment.type === 'file' && <File className="h-4 w-4 inline-block mr-1" />}
+                <div key={idx} className="mt-2">
+                  {attachment.type === 'file' && (
+                    <div className="text-sm">
+                      <File className="h-4 w-4 inline-block mr-1" />
+                      {attachment.content.substring(0, 50)}...
+                    </div>
+                  )}
+                  {attachment.type === 'image' && attachment.url && (
+                    <div>
+                      <Image className="h-4 w-4 inline-block mr-1" />
+                      <img 
+                        src={attachment.url} 
+                        alt={attachment.content}
+                        className="max-w-full h-auto mt-2 rounded-lg"
+                      />
+                    </div>
+                  )}
                   {attachment.type === 'web' && <Search className="h-4 w-4 inline-block mr-1" />}
                   {attachment.type === 'code' && <Code className="h-4 w-4 inline-block mr-1" />}
-                  {attachment.content.substring(0, 50)}...
                 </div>
               ))}
             </div>
@@ -137,7 +211,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedImageUrl }
             ref={fileInputRef}
             onChange={handleFileSelect}
             className="hidden"
-            accept=".txt,.csv,.json,.xlsx,.xls"
+            accept="image/*,.txt,.csv,.json,.xlsx,.xls"
           />
           <Button
             type="button"

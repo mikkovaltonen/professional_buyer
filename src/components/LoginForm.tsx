@@ -18,12 +18,23 @@ const LoginForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-
-    const success = await login(formData.email, formData.password);
-    if (success) {
-      navigate('/workbench');
-    } else {
-      setError('Virheellinen sähköposti tai salasana');
+    
+    console.log('🔐 Login form submitted with email:', formData.email);
+    
+    try {
+      const success = await login(formData.email, formData.password);
+      console.log('📝 Login attempt result:', success);
+      
+      if (success) {
+        console.log('✅ Login successful, navigating to workbench...');
+        navigate('/workbench');
+      } else {
+        console.log('❌ Login failed, showing error message');
+        setError('Virheellinen sähköposti tai salasana');
+      }
+    } catch (error) {
+      console.error('❌ Login error:', error);
+      setError('Kirjautumisessa tapahtui virhe. Yritä uudelleen.');
     }
   };
 

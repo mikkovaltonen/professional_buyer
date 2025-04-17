@@ -6,6 +6,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
+// Test comment to verify auto-deployment
 const LoginForm = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({

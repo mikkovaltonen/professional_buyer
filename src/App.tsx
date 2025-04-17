@@ -6,12 +6,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { useEffect } from 'react';
 
 const App = () => {
-  const { user, loading, isAuthenticated } = useAuth();
+  const { user, loading } = useAuth();
 
   useEffect(() => {
     console.log('🧪 App mounted - Testing Vercel logs');
-    console.log('Auth state:', { user, loading, isAuthenticated });
-  }, [user, loading, isAuthenticated]);
+    console.log('Auth state:', { user, loading });
+  }, [user, loading]);
 
   if (loading) {
     return <div>Loading...</div>;
@@ -24,7 +24,7 @@ const App = () => {
         <Route path="/login" element={<LoginForm />} />
         <Route 
           path="/workbench" 
-          element={isAuthenticated ? <Workbench /> : <Navigate to="/" replace />} 
+          element={user?.isAuthenticated ? <Workbench /> : <Navigate to="/" replace />} 
         />
       </Routes>
     </BrowserRouter>

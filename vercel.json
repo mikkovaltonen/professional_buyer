@@ -1,6 +1,17 @@
 {
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    { 
+      "source": "/workbench",
+      "destination": "/index.html"
+    },
+    { 
+      "source": "/login",
+      "destination": "/index.html"
+    },
+    { 
+      "source": "/(.*)", 
+      "destination": "/index.html"
+    }
   ],
   "headers": [
     {

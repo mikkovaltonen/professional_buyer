@@ -19,23 +19,8 @@ AI Kysynnänennusteavustaja on moderni web-sovellus, joka auttaa yrityksiä ennu
 - Shadcn/ui
 - Grok API
 
-### Grok API Mallit
-Sovellus käyttää kahta eri Grok-mallia:
-
-1. **grok-2-vision-latest**
-   - Käytetään kuvien analysointiin ja multimodaaliseen keskusteluun
-   - Tukee sekä tekstiä että kuvia
-   - Optimoitu visuaalisen datan analysointiin ja tulkintaan
-   - Käytössä kun käsitellään kuvaajia tai muuta visuaalista dataa
-   - Kun sessio alkaa kuvalla, tämä malli pysyy käytössä koko session ajan
-
-2. **grok-3-beta**
-   - Käytetään tekstipohjaiseen keskusteluun
-   - Optimoitu luonnollisen kielen käsittelyyn
-   - Käytössä kun keskustelu ei sisällä kuvia
-   - Käytetään vain jos sessio alkaa ilman kuvaa
-
-Mallin valinta tapahtuu automaattisesti session alussa, eikä malli vaihdu kesken session. Jos sessio alkaa kuvalla tai sisältää kuvan, käytetään grok-2-vision-latest mallia koko session ajan. Jos sessio alkaa ilman kuvaa, käytetään grok-3-beta mallia.
+### Gemini 2.5 API 
+Kysyntä ennusteen tulkitsemisessa käytetään Gemini 2.5 Pro mallia joka sekä tukitsee kuvat että tekee nettihaun kysyntää 
 
 ## Toiminnalliset speksit
 
@@ -96,7 +81,7 @@ npm install
 
 3. Luo .env.local-tiedosto ja lisää tarvittavat ympäristömuuttujat
 ```env
-GROK_API_KEY=xxx
+VITE_GEMINI_API_KEY=xxx
 ```
 
 4. Käynnistä kehityspalvelin

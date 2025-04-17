@@ -68,7 +68,8 @@ export const initializeChat = async (selectedProduct: string, imageUrl: string) 
             - Haku omista ja kilpailijoiden substituutti tuotteiden tuotelanseerauksista 
             - Haku omista ja kilpailijoiden markkinointi kampanjoista ja jakelikoiden ilmoituksista
             - Haku omista ja kilpoailijoiden lehti artikkeleista 
-            - Haku kysyntään vaikuttavista makrotalousindikaattoreiasta ja niiden muutoksista `
+            - Haku kysyntään vaikuttavista makrotalousindikaattoreiasta ja niiden muutoksista 
+            - Haluatko että annan linkit kaikkiin ennusteeseen vaikuttaviin löytämiini uutisiin`
       } as Part,
       {
         inlineData: {

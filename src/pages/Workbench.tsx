@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import ChatInterface from "@/components/ChatInterface";
 import { fileService } from "@/lib/fileService";
 import { toast } from "sonner";
+import { clearChatSession } from "@/api/chat";
 
 const demoProducts = [
   {
@@ -36,7 +37,7 @@ const Workbench = () => {
   const handleLogout = () => {
     if (imageUrl) {
       URL.revokeObjectURL(imageUrl);
-          }
+    }
     logout();
     navigate('/');
   };
@@ -47,6 +48,9 @@ const Workbench = () => {
       if (imageUrl) {
         URL.revokeObjectURL(imageUrl);
       }
+      
+      // Clear chat session when product is changed
+      clearChatSession();
       
       const product = demoProducts.find(p => p.id === productId);
       if (product) {
@@ -67,6 +71,8 @@ const Workbench = () => {
       URL.revokeObjectURL(imageUrl);
       setImageUrl(null);
       setSelectedProduct(null);
+      // Clear chat session when file is removed
+      clearChatSession();
     }
   };
 
@@ -75,8 +81,8 @@ const Workbench = () => {
     return () => {
       if (imageUrl) {
         URL.revokeObjectURL(imageUrl);
-    }
-  };
+      }
+    };
   }, []);
 
   return (
@@ -86,8 +92,8 @@ const Workbench = () => {
         <Button variant="outline" onClick={handleLogout}>
           <LogOut className="mr-2 h-4 w-4" />
           Kirjaudu ulos
-            </Button>
-        </div>
+        </Button>
+      </div>
         
       <div className="space-y-6">
         <Card>

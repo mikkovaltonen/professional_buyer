@@ -3,6 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Bot, Send } from 'lucide-react';
 import { createResponse, initializeChat, clearChatSession } from '@/api/chat';
+import ReactMarkdown from 'react-markdown';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -120,7 +121,32 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ className, selectedProduc
               {message.role === 'assistant' && (
                 <Bot className="h-4 w-4 mb-1 inline-block mr-2" />
               )}
-              <div className="whitespace-pre-wrap">{message.content}</div>
+              <div className="whitespace-pre-wrap">
+                <ReactMarkdown
+                  components={{
+                    a: ({ node, ...props }) => (
+                      <a {...props} className="text-blue-600 hover:text-blue-800 underline" target="_blank" rel="noopener noreferrer" />
+                    ),
+                    ul: ({ node, ...props }) => (
+                      <ul {...props} className="list-disc pl-5" />
+                    ),
+                    li: ({ node, ...props }) => (
+                      <li {...props} className="mb-1" />
+                    ),
+                    p: ({ node, ...props }) => (
+                      <p {...props} className="mb-2" />
+                    ),
+                    strong: ({ node, ...props }) => (
+                      <strong {...props} className="font-bold" />
+                    ),
+                    em: ({ node, ...props }) => (
+                      <em {...props} className="italic" />
+                    )
+                  }}
+                >
+                  {message.content}
+                </ReactMarkdown>
+              </div>
             </div>
           </div>
         ))}

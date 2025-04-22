@@ -14,18 +14,43 @@
 - `src/pages/Workbench.tsx` - Main workspace for demand forecasting analysis
 
 #### API and Services
-- `src/api/chat.ts` - OpenAI API integration for chat functionality
+- `src/api/chat.ts` - Gemini API integration for chat functionality
 - `src/lib/env.ts` - Environment variable configuration
-- `src/lib/userService.ts` - User authentication service
+- `src/lib/` - Utility functions and services
+
+#### Hooks
+- `src/hooks/useAuth.ts` - Authentication hook for user management
+- `src/hooks/` - Custom React hooks for application logic
+
+#### Types
+- `src/types/` - TypeScript type definitions and interfaces
 
 ### Tests
-- `tests/openai-test.mjs` - OpenAI API integration test
+- `tests/` - Test files and test utilities
+- `tests/openai-test.mjs` - API integration tests
 
-### Configuration
+### Configuration Files
+
+#### TypeScript Configuration
+- `tsconfig.json` - Base TypeScript configuration
+- `tsconfig.app.json` - Application-specific TypeScript configuration
+- `tsconfig.node.json` - Node.js-specific TypeScript configuration
+- `tsconfig.test.json` - Test-specific TypeScript configuration
+
+#### Build and Development Tools
+- `vite.config.ts` - Vite build tool configuration
+- `tailwind.config.ts` - Tailwind CSS configuration
+- `postcss.config.js` - PostCSS configuration for CSS processing
+- `eslint.config.js` - ESLint configuration for code quality
+- `components.json` - shadcn/ui component configuration
+
+#### Deployment
+- `vercel.json` - Vercel deployment configuration
+- `.firebaserc` - Firebase project configuration
+
+### Environment Configuration
 - `.env` - Environment variables (not in repository)
-- `vite.config.ts` - Vite configuration
-- `tailwind.config.js` - Tailwind CSS configuration
-- `tsconfig.json` - TypeScript configuration
+- `.env.example` - Example environment variables template
 
 ### Public Assets
 - `public/` - Static assets like images and icons
@@ -34,7 +59,7 @@
 
 ### Chat Implementation
 ```ascii
-OpenAI API Call Flow:
+Gemini API Call Flow:
 
 User Input -> ChatInterface.tsx
        |
@@ -42,7 +67,7 @@ User Input -> ChatInterface.tsx
     chat.ts
        |
        v
-[OpenAI API] gpt-4.1
+[Gemini API] 
        |
        v
   Response -> UI
@@ -51,6 +76,8 @@ User Input -> ChatInterface.tsx
 ### Authentication
 - Simple authentication with hardcoded credentials
 - Login handled through `src/hooks/useAuth.ts`
+- Secure storage of user data in localStorage
+- Error handling and logging for authentication operations
 
 ### UI Components
 - Modern, responsive design using Tailwind CSS
@@ -63,7 +90,7 @@ User Input -> ChatInterface.tsx
 - `src/pages/Workbench.tsx`: Main workbench page with:
   - Radio button selection for products
   - Product image display
-  - Chat interface integration with Grok API
+  - Chat interface integration with Gemini API
   - Loading states and error handling
 
 ### Components
@@ -74,31 +101,39 @@ User Input -> ChatInterface.tsx
   - Real-time responses
 
 ### API Integration
-- `src/api/chat.ts`: Grok API integration with:
-  - Text-based conversations (grok-3-beta)
-  - Image analysis (grok-2-vision-latest)
+- `src/api/chat.ts`: Gemini API integration with:
+  - Text-based conversations
+  - Image analysis capabilities
   - Error handling and type safety
 
-## Environment Configuration
-- `.env`: Environment variables for:
-  - Grok API key (VITE_GROK_API_KEY)
-  - OpenAI API key (VITE_OPENAI_API_KEY)
+## Build and Deployment Process
 
-## UI Components
-- Radio button selection for product choice
-- Image display with remove functionality
-- Chat interface with message history
-- Loading indicators and error messages
+### Development
+1. Local development using Vite
+2. TypeScript for type safety
+3. ESLint for code quality
+4. Tailwind CSS for styling
 
-## Data Flow
-1. User selects product via radio buttons
-2. Product image is displayed
-3. User can interact with chat interface
-4. Chat interface communicates with Grok API
-5. Responses are displayed in real-time
+### Testing
+1. Unit tests in `tests/` directory
+2. API integration tests
+3. Type checking with TypeScript
+
+### Deployment
+1. Vercel for frontend deployment
+2. Firebase for backend services (if needed)
+3. Environment variables configuration
 
 ## Error Handling
 - API error handling
 - Image loading states
 - File upload validation
-- Network error recovery 
+- Network error recovery
+- Authentication error handling
+- Local storage error handling
+
+## Security Considerations
+- Environment variables for sensitive data
+- Secure authentication flow
+- Error handling for sensitive operations
+- Input validation and sanitization 

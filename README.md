@@ -11,16 +11,19 @@ AI Kysynnänennusteavustaja on moderni web-sovellus, joka auttaa yrityksiä ennu
 - 📝 Päätösongelmien dokumentointi ja oppiminen
 - 🔍 Automaattinen markkinasignaalien seuranta
 - 🔄 Integroitavissa olemassa oleviin järjestelmiin (tbd)
+- 🔐 Turvallinen käyttäjienhallinta
 
 ## Teknologiat
 - React + TypeScript
 - Vite
 - Tailwind CSS
 - Shadcn/ui
-- Grok API
+- Gemini API
+- Vercel (deployment)
+- Firebase (backend services)
 
-### Gemini 2.5 API 
-Kysyntä ennusteen tulkitsemisessa käytetään Gemini 2.5 Pro mallia joka sekä tukitsee kuvat että tekee nettihaun kysyntää 
+### Gemini API 
+Kysyntä ennusteen tulkitsemisessa käytetään Gemini Pro mallia, joka tukee sekä kuvien analysointia että nettihakua kysynnän ennustamiseen.
 
 ## Toiminnalliset speksit
 
@@ -61,17 +64,23 @@ Kysyntä ennusteen tulkitsemisessa käytetään Gemini 2.5 Pro mallia joka sekä
 - Kuvan käsittelyvirheet ilmoitetaan käyttäjälle
 - Nettihakuvirheet käsitellään ja ilmoitetaan
 
+### 6. Testaus
+- Yksikkötestit komponenteille
+- API-integraatiotestit
+- Tyypintarkistus TypeScriptillä
+- Testitiedostot löytyvät `tests/`-hakemistosta
+
 ## Käyttöönotto
 
 ### Vaatimukset
 - Node.js
 - npm/yarn/pnpm
-- Grok API -avain
+- Gemini API -avain
 
 ### Asennus
 1. Kloonaa repositorio
 ```bash
-git clone [repositorion-url]
+git clone https://github.com/your-org/ai-kysyntaennuste.git
 ```
 
 2. Asenna riippuvuudet
@@ -79,7 +88,7 @@ git clone [repositorion-url]
 npm install
 ```
 
-3. Luo .env.local-tiedosto ja lisää tarvittavat ympäristömuuttujat
+3. Luo .env-tiedosto ja lisää tarvittavat ympäristömuuttujat
 ```env
 VITE_GEMINI_API_KEY=xxx
 ```
@@ -89,19 +98,37 @@ VITE_GEMINI_API_KEY=xxx
 npm run dev
 ```
 
+### Testaus
+```bash
+npm run test
+```
+
+### Tuotantoon vieminen
+Sovellus on konfiguroitu käyttämään Vercel-palvelua tuotantoon viemiseen. Muutokset main-haaraan deployautuvat automaattisesti.
+
 ## Projektin rakenne
 ```
 ai-kysyntaennuste/
 ├── public/              # Staattiset tiedostot
-│   └── logo.png        # Wisestein logo
 ├── src/                # Lähdekoodi
-│   ├── components/     # React-komponentit
-│   │   └── ui/        # UI-komponenttikirjasto
-│   ├── pages/         # Sivukomponentit
-│   ├── lib/           # Apukirjastot ja työkalut
-│   └── App.tsx        # Pääsovelluskomponentti
-└── README.md          # Projektin dokumentaatio
+│   ├── api/           # API-integraatiot
+│   ├── components/    # React-komponentit
+│   │   └── ui/       # UI-komponenttikirjasto
+│   ├── hooks/        # React-hookit
+│   ├── lib/          # Apukirjastot ja työkalut
+│   ├── pages/        # Sivukomponentit
+│   ├── types/        # TypeScript-tyypit
+│   └── App.tsx       # Pääsovelluskomponentti
+├── tests/            # Testitiedostot
+├── docs/            # Dokumentaatio
+└── config/          # Konfiguraatiotiedostot
 ```
+
+## Turvallisuus
+- Käyttäjienhallinta toteutettu turvallisesti
+- API-avaimet suojattu ympäristömuuttujilla
+- Virheenkäsittely toteutettu kaikille kriittisille toiminnoille
+- Syötteiden validointi ja sanitointi
 
 ## Lisenssi
 Kaikki tekijänoikeudet kuuluvat SCM Best Oy:lle

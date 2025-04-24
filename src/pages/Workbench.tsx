@@ -3,31 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNavigate, Link } from "react-router-dom";
-import { LogOut, Loader2, BarChart, Bot, X, Archive } from "lucide-react";
+import { LogOut, Archive } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import ChatInterface from "@/components/ChatInterface";
-import { fileService } from "@/lib/fileService";
-import { toast } from "sonner";
 import { clearChatSession } from "@/api/chat";
 import ProductSelectionContent from "@/components/ProductSelectionContent";
-
-const demoProducts = [
-  {
-    id: "minarctig",
-    name: "MINARCTIG EVO 200MLP POWER SOURCE",
-    image: "/demo_data/MINARCTIG EVO 200MLP POWER SOURCE.png"
-  },
-  {
-    id: "x3p",
-    name: "X3P POWER SOURCE PULSE 450 W",
-    image: "/demo_data/X3P POWER SOURCE PULSE 450 W.png"
-  },
-  {
-    id: "x5",
-    name: "X5 POWER SOURCE 400 PULSE WP",
-    image: "/demo_data/X5 POWER SOURCE 400 PULSE WP.png"
-  }
-];
 
 const Workbench = () => {
   const navigate = useNavigate();
@@ -50,19 +29,18 @@ const Workbench = () => {
       URL.revokeObjectURL(imageUrl);
       setImageUrl(null);
       setSelectedProduct(null);
-      // Clear chat session when file is removed
       clearChatSession();
     }
   };
 
-  // Siivoa URL kun komponentti unmountataan
+  // Clean up URL when component unmounts
   useEffect(() => {
     return () => {
       if (imageUrl) {
         URL.revokeObjectURL(imageUrl);
       }
     };
-  }, []);
+  }, [imageUrl]);
 
   return (
     <div className="container mx-auto px-4 py-8">

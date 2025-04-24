@@ -128,22 +128,39 @@ export class DataService {
     // Create aggregated data by summing quantities for each date
     const aggregatedData = dates.map(date => {
       const rowsForDate = groupData.filter(row => row.Year_Month === date);
+      
+      // Only sum non-empty values
       const totalQuantity = rowsForDate
-        .map(row => row.Quantity === '' ? 0 : parseFloat(row.Quantity))
-        .reduce((sum, qty) => sum + qty, 0);
+        .filter(row => row.Quantity !== '')
+        .reduce((sum, row) => sum + parseFloat(row.Quantity), 0);
+
       const totalForecast = rowsForDate
-        .map(row => row.forecast_12m === '' ? 0 : parseFloat(row.forecast_12m))
-        .reduce((sum, forecast) => sum + forecast, 0);
+        .filter(row => row.forecast_12m !== '')
+        .reduce((sum, row) => sum + parseFloat(row.forecast_12m), 0);
+
+      const totalOldForecast = rowsForDate
+        .filter(row => row.old_forecast !== '')
+        .reduce((sum, row) => sum + parseFloat(row.old_forecast), 0);
+
+      const totalOldForecastError = rowsForDate
+        .filter(row => row.old_forecast_error !== '')
+        .reduce((sum, row) => sum + parseFloat(row.old_forecast_error), 0);
+
+      // If all values for a metric are empty, return empty string
+      const hasQuantity = rowsForDate.some(row => row.Quantity !== '');
+      const hasForecast = rowsForDate.some(row => row.forecast_12m !== '');
+      const hasOldForecast = rowsForDate.some(row => row.old_forecast !== '');
+      const hasOldForecastError = rowsForDate.some(row => row.old_forecast_error !== '');
       
       return {
         Year_Month: date,
         "Product Group": productGroup,
         "Product code": "GROUP_TOTAL",
         "Product description": `${productGroup} Total`,
-        Quantity: totalQuantity.toString(),
-        forecast_12m: totalForecast.toString(),
-        old_forecast: '',
-        old_forecast_error: ''
+        Quantity: hasQuantity ? totalQuantity.toString() : '',
+        forecast_12m: hasForecast ? totalForecast.toString() : '',
+        old_forecast: hasOldForecast ? totalOldForecast.toString() : '',
+        old_forecast_error: hasOldForecastError ? totalOldForecastError.toString() : ''
       };
     });
 

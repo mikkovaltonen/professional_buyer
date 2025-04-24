@@ -7,6 +7,7 @@ import { LogOut, Archive } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { clearChatSession } from "@/api/chat";
 import ProductSelectionContent from "@/components/ProductSelectionContent";
+import ProductGroupForecastContent from "@/components/ProductGroupForecastContent";
 
 const Workbench = () => {
   const navigate = useNavigate();
@@ -66,9 +67,7 @@ const Workbench = () => {
         </TabsList>
         
         <TabsContent value="tuoteryhma">
-          <ProductSelectionContent
-            selectedProduct={selectedProduct}
-            setSelectedProduct={setSelectedProduct}
+          <ProductGroupForecastContent
             imageUrl={imageUrl}
             setImageUrl={setImageUrl}
             isLoading={isLoading}

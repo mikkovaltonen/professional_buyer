@@ -115,4 +115,49 @@ export class DataService {
 
     return sortedData;
   }
+
+  public getProductGroupData(productGroup: string): TimeSeriesData[] {
+    console.log('Getting aggregated data for product group:', productGroup);
+    
+    // Filter data for the specific product group
+    const groupData = this.data.filter(row => row["Product Group"] === productGroup);
+    
+    // Get unique dates
+    const dates = [...new Set(groupData.map(row => row.Year_Month))];
+    
+    // Create aggregated data by summing quantities for each date
+    const aggregatedData = dates.map(date => {
+      const rowsForDate = groupData.filter(row => row.Year_Month === date);
+      const totalQuantity = rowsForDate
+        .map(row => row.Quantity === '' ? 0 : parseFloat(row.Quantity))
+        .reduce((sum, qty) => sum + qty, 0);
+      const totalForecast = rowsForDate
+        .map(row => row.forecast_12m === '' ? 0 : parseFloat(row.forecast_12m))
+        .reduce((sum, forecast) => sum + forecast, 0);
+      
+      return {
+        Year_Month: date,
+        "Product Group": productGroup,
+        "Product code": "GROUP_TOTAL",
+        "Product description": `${productGroup} Total`,
+        Quantity: totalQuantity.toString(),
+        forecast_12m: totalForecast.toString(),
+        old_forecast: '',
+        old_forecast_error: ''
+      };
+    });
+
+    // Sort by date
+    const sortedData = aggregatedData.sort((a, b) => 
+      new Date(a.Year_Month).getTime() - new Date(b.Year_Month).getTime()
+    );
+
+    console.log(`Generated ${sortedData.length} aggregated data points for group ${productGroup}`);
+    if (sortedData.length > 0) {
+      console.log('First aggregated row:', sortedData[0]);
+      console.log('Last aggregated row:', sortedData[sortedData.length - 1]);
+    }
+
+    return sortedData;
+  }
 } 

@@ -12,11 +12,11 @@ export const useAuth = () => {
   // Initialize auth state from localStorage
   useEffect(() => {
     const initializeAuth = () => {
-      const storedUser = localStorage.getItem('user');
-      console.log('🔍 Checking stored user:', storedUser);
-      
-      if (storedUser) {
-        try {
+      try {
+        const storedUser = localStorage.getItem('user');
+        console.log('🔍 Checking stored user:', storedUser);
+        
+        if (storedUser) {
           const parsedUser = JSON.parse(storedUser);
           // Validate stored user data
           if (parsedUser && typeof parsedUser === 'object' && 
@@ -26,30 +26,35 @@ export const useAuth = () => {
           } else {
             console.warn('⚠️ Invalid stored user data format');
             localStorage.removeItem('user');
+            setUser(null);
           }
-        } catch (error) {
-          console.error('❌ Error parsing stored user:', error);
-          localStorage.removeItem('user');
+        } else {
+          console.log('ℹ️ No stored user found');
+          setUser(null);
         }
-      } else {
-        console.log('ℹ️ No stored user found');
+      } catch (error) {
+        console.error('❌ Error parsing stored user:', error);
+        localStorage.removeItem('user');
+        setUser(null);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     initializeAuth();
   }, []);
 
   const login = async (email: string, password: string) => {
+    setLoading(true);
     console.log('🔑 Login attempt:', { email });
     
-    if (email === 'forecasting@kemppi.com' && password === 'laatu') {
-      const userData = {
-        email: 'forecasting@kemppi.com',
-        isAuthenticated: true
-      };
-      
-      try {
+    try {
+      if (email === 'forecasting@kemppi.com' && password === 'laatu') {
+        const userData = {
+          email: 'forecasting@kemppi.com',
+          isAuthenticated: true
+        };
+        
         // Store in localStorage first
         localStorage.setItem('user', JSON.stringify(userData));
         console.log('✅ Login successful, user data stored');
@@ -57,17 +62,20 @@ export const useAuth = () => {
         // Then update state
         setUser(userData);
         return true;
-      } catch (error) {
-        console.error('❌ Error storing user data:', error);
-        return false;
       }
+      
+      console.log('❌ Login failed: Invalid credentials');
+      return false;
+    } catch (error) {
+      console.error('❌ Error during login:', error);
+      return false;
+    } finally {
+      setLoading(false);
     }
-    
-    console.log('❌ Login failed: Invalid credentials');
-    return false;
   };
 
   const logout = () => {
+    setLoading(true);
     console.log('🚪 Logging out user');
     try {
       // Clear localStorage first
@@ -77,6 +85,8 @@ export const useAuth = () => {
       console.log('✅ Logout successful');
     } catch (error) {
       console.error('❌ Error during logout:', error);
+    } finally {
+      setLoading(false);
     }
   };
 

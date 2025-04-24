@@ -31,19 +31,11 @@ const demoProducts = [
 
 const Workbench = () => {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { logout } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("tuoteryhma");
-
-  // Check authentication on mount
-  useEffect(() => {
-    if (!user?.isAuthenticated) {
-      console.log('🔒 Workbench: User not authenticated, redirecting to login');
-      navigate('/login', { replace: true });
-    }
-  }, [user, navigate]);
 
   const handleLogout = () => {
     if (imageUrl) {

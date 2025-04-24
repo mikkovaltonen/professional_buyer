@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
 import Workbench from "./pages/Workbench";
 import LoginForm from "./components/LoginForm";
+import ProtectedRoute from "./components/ProtectedRoute";
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect } from 'react';
 
@@ -33,12 +34,10 @@ const AppRoutes = () => {
       <Route 
         path="/workbench" 
         element={
-          user?.isAuthenticated ? (
+          <ProtectedRoute>
             <Workbench />
-          ) : (
-            <Navigate to="/login" replace state={{ from: "/workbench" }} />
-          )
-        } 
+          </ProtectedRoute>
+        }
       />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

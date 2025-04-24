@@ -5,7 +5,7 @@ import LoginForm from "./components/LoginForm";
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect } from 'react';
 
-const App = () => {
+const AppRoutes = () => {
   const { user, loading } = useAuth();
 
   useEffect(() => {
@@ -18,31 +18,37 @@ const App = () => {
   }
 
   return (
+    <Routes>
+      <Route path="/" element={<Index />} />
+      <Route 
+        path="/login" 
+        element={
+          user?.isAuthenticated ? (
+            <Navigate to="/workbench" replace /> 
+          ) : (
+            <LoginForm />
+          )
+        } 
+      />
+      <Route 
+        path="/workbench" 
+        element={
+          user?.isAuthenticated ? (
+            <Workbench />
+          ) : (
+            <Navigate to="/login" replace state={{ from: "/workbench" }} />
+          )
+        } 
+      />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+};
+
+const App = () => {
+  return (
     <BrowserRouter basename="/">
-      <Routes>
-        <Route path="/" element={<Index />} />
-        <Route 
-          path="/login" 
-          element={
-            user?.isAuthenticated ? (
-              <Navigate to="/workbench" replace /> 
-            ) : (
-              <LoginForm />
-            )
-          } 
-        />
-        <Route 
-          path="/workbench" 
-          element={
-            user?.isAuthenticated ? (
-              <Workbench />
-            ) : (
-              <Navigate to="/login" replace state={{ from: "/workbench" }} />
-            )
-          } 
-        />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <AppRoutes />
     </BrowserRouter>
   );
 };

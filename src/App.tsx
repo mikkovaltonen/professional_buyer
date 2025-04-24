@@ -18,14 +18,30 @@ const App = () => {
   }
 
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/">
       <Routes>
         <Route path="/" element={<Index />} />
-        <Route path="/login" element={<LoginForm />} />
+        <Route 
+          path="/login" 
+          element={
+            user?.isAuthenticated ? (
+              <Navigate to="/workbench" replace /> 
+            ) : (
+              <LoginForm />
+            )
+          } 
+        />
         <Route 
           path="/workbench" 
-          element={user?.isAuthenticated ? <Workbench /> : <Navigate to="/" replace />} 
+          element={
+            user?.isAuthenticated ? (
+              <Workbench />
+            ) : (
+              <Navigate to="/login" replace state={{ from: "/workbench" }} />
+            )
+          } 
         />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );

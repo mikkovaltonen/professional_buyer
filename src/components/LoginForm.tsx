@@ -2,40 +2,41 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 // Test comment to verify auto-deployment
 const LoginForm = () => {
-  const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-  });
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    
-    console.log('🔐 Login form submitted with email:', formData.email);
-    
+    setIsLoading(true);
+
     try {
-      const success = await login(formData.email, formData.password);
-      console.log('📝 Login attempt result:', success);
+      console.log('🔐 Attempting login with:', email);
+      const success = await login(email, password);
       
       if (success) {
         console.log('✅ Login successful, navigating to workbench...');
-        navigate('/workbench');
+        const from = location.state?.from || '/workbench';
+        navigate(from, { replace: true });
       } else {
-        console.log('❌ Login failed, showing error message');
-        setError('Virheellinen sähköposti tai salasana');
+        setError('Invalid credentials');
       }
-    } catch (error) {
-      console.error('❌ Login error:', error);
-      setError('Kirjautumisessa tapahtui virhe. Yritä uudelleen.');
+    } catch (err) {
+      console.error('❌ Login error:', err);
+      setError('An error occurred during login');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -58,8 +59,8 @@ const LoginForm = () => {
                 id="email"
                 type="email"
                 placeholder="forecasting@kemppi.com"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 required
                 className="w-full"
               />
@@ -70,8 +71,8 @@ const LoginForm = () => {
                 id="password"
                 type="password"
                 placeholder="••••••"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 required
                 className="w-full"
               />
@@ -84,6 +85,7 @@ const LoginForm = () => {
             <Button 
               type="submit" 
               className="w-full bg-[#4ADE80] hover:bg-[#22C55E] text-white h-11"
+              disabled={isLoading}
             >
               Kirjaudu sisään
             </Button>

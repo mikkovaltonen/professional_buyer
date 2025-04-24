@@ -35,6 +35,41 @@ const loadImageAsBase64 = async (imagePath: string): Promise<string> => {
   });
 };
 
+const getProductGroupInstructions = (groupName: string): string => {
+  return `Olet ystävällinen Kempin tuoteryhmän ${groupName} kysynnänennustus asiantuntija.
+    Analysoi aluksi kuvassa esitettyä tuoteryhmän kokonaiskysyntädataa. 
+    
+    Kun olet toimittanut analyysin käyttäjälle, kysy häneltä haluaako hän sinun:
+    1. Tekevän korjausehdotuksen tuoteryhmän ennusteeseen kuukausittain prosentteina. Anna korjausehdotus vain jos löydät siihen perustellun syyn.
+    2. Tekevän seuraavan google syvähaun: 
+      - Haku omista ja kilpailijoiden alennuskampanjoista
+      - Haku omista ja kilpailijoiden substituutti tuotteiden tuotelanseerauksista 
+      - Haku omista ja kilpailijoiden markkinointi kampanjoista ja jakelikoiden ilmoituksista
+      - Haku omista ja kilpoailijoiden lehti artikkeleista 
+      - Haku kysyntään vaikuttavista makrotalousindikaattoreiasta ja niiden muutoksista 
+      - Haluatko että annan linkit kaikkiin ennusteeseen vaikuttaviin löytämiini uutisiin
+      
+      Kun makroindikaattorit on käyty läpi ehdota että voitko antaa milestäsi perustellut ennustekorjaukset json muodossa? Json:ssa tulee olla seuraavasa muodossa 
+        {
+    "product_group": "Kemppi welder Power Sources",
+    "month": "2025-10",
+    "correction_percentage": 3.0
+  },`;
+};
+
+const getProductInstructions = (productName: string): string => {
+  return `Olet ystävällinen Kempin tuotteen ${productName} kysynnänennustus asiantuntija.
+    Analysoi aluksi kuvassa esitettyä tuotekohtaista kysyntädataa. 
+    
+    Kun olet toimittanut analyysin käyttäjälle, kysy häneltä haluaako hän sinun tekevän seuraavan google syvähaun: 
+      - Haku omista ja kilpailijoiden alennuskampanjoista
+      - Haku omista ja kilpailijoiden substituutti tuotteiden tuotelanseerauksista 
+      - Haku omista ja kilpailijoiden markkinointi kampanjoista ja jakelikoiden ilmoituksista
+      - Haku omista ja kilpoailijoiden lehti artikkeleista 
+      - Haku kysyntään vaikuttavista makrotalousindikaattoreiasta ja niiden muutoksista 
+      - Haluatko että annan linkit kaikkiin ennusteeseen vaikuttaviin löytämiini uutisiin`;
+};
+
 export const initializeChat = async (selectedProduct: string, imageUrl: string) => {
   console.log('🔄 Initializing chat session...');
   console.log('Current state:', { hasInitializedChat, messagesCount: sessionMessages.length });
@@ -42,7 +77,7 @@ export const initializeChat = async (selectedProduct: string, imageUrl: string) 
   // Clear previous session first
   clearChatSession();
   
-  console.log('✨ Starting new chat session for product:', selectedProduct);
+  console.log('✨ Starting new chat session for:', selectedProduct);
   hasInitializedChat = true;
 
   try {
@@ -58,18 +93,16 @@ export const initializeChat = async (selectedProduct: string, imageUrl: string) 
       ]
     });
 
-    // Initialize chat with simple message
+    // Determine if this is a product group or individual product
+    const isProductGroup = selectedProduct.includes('Total Demand');
+    const instructions = isProductGroup 
+      ? getProductGroupInstructions(selectedProduct.replace(' Total Demand', ''))
+      : getProductInstructions(selectedProduct);
+
+    // Initialize chat with appropriate instructions
     const initialMessage = [
       {
-        text: `Olet ystävällinen Kempin tuotteideen ${selectedProduct} kysynnänennustus asiantuntija.
-         Analysoi akuluksi kuvassa esitettyä dataa. Kun olet toimittanut analyysin käyttäjälle,
-          kysy häneltä haluaako hän sinun tekevän seuraavaan google syvähaun: 
-            - Haku omista ja kilpailijoiden alennuskampanjoista
-            - Haku omista ja kilpailijoiden substituutti tuotteiden tuotelanseerauksista 
-            - Haku omista ja kilpailijoiden markkinointi kampanjoista ja jakelikoiden ilmoituksista
-            - Haku omista ja kilpoailijoiden lehti artikkeleista 
-            - Haku kysyntään vaikuttavista makrotalousindikaattoreiasta ja niiden muutoksista 
-            - Haluatko että annan linkit kaikkiin ennusteeseen vaikuttaviin löytämiini uutisiin`
+        text: instructions
       } as Part,
       {
         inlineData: {

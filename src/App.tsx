@@ -5,6 +5,7 @@ import LoginForm from "./components/LoginForm";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect } from 'react';
+import { saveForecast } from './api/saveForecast';
 
 const AppRoutes = () => {
   const { user, loading } = useAuth();
@@ -51,5 +52,11 @@ const App = () => {
     </BrowserRouter>
   );
 };
+
+// Add API route handler
+app.post('/api/save-forecast', async (req, res) => {
+  const response = await saveForecast(req);
+  return response;
+});
 
 export default App;

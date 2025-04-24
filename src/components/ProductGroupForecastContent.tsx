@@ -8,6 +8,7 @@ import ChatInterface from "@/components/ChatInterface";
 import { DataService } from "@/lib/dataService";
 import TimeChart from "@/components/TimeChart";
 import { generateChartImage } from "@/lib/chartUtils";
+import SaveForecastButton from "@/components/SaveForecastButton";
 
 interface ProductGroupForecastContentProps {
   imageUrl: string | null;
@@ -27,6 +28,7 @@ const ProductGroupForecastContent: React.FC<ProductGroupForecastContentProps> = 
   const [productGroups, setProductGroups] = useState<string[]>([]);
   const [selectedGroup, setSelectedGroup] = useState<string>('');
   const [chartData, setChartData] = useState<{ date: string; value: number | null; forecast?: number | null; old_forecast?: number | null; old_forecast_error?: number | null }[]>([]);
+  const [chatContent, setChatContent] = useState<string>('');
 
   useEffect(() => {
     const loadData = async () => {
@@ -153,30 +155,39 @@ const ProductGroupForecastContent: React.FC<ProductGroupForecastContentProps> = 
 
       {/* Chat Interface */}
       {selectedGroup && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <div className="flex items-center">
-                <Bot className="h-5 w-5 text-[#4ADE80] mr-2" />
-                Keskustele tuoteryhmästä
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleRemoveFile}
-                className="h-8 w-8"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ChatInterface 
-              selectedProduct={`${selectedGroup} Total Demand`}
-              selectedImageUrl={imageUrl}
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <Bot className="h-5 w-5 text-[#4ADE80] mr-2" />
+                  Keskustele tuoteryhmästä
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleRemoveFile}
+                  className="h-8 w-8"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ChatInterface 
+                selectedProduct={`${selectedGroup} Total Demand`}
+                selectedImageUrl={imageUrl}
+                onMessageUpdate={(content) => setChatContent(content)}
+              />
+            </CardContent>
+          </Card>
+          <div className="flex justify-end mt-4">
+            <SaveForecastButton 
+              chatContent={chatContent} 
+              selectedProductGroup={selectedGroup}
             />
-          </CardContent>
-        </Card>
+          </div>
+        </>
       )}
     </div>
   );

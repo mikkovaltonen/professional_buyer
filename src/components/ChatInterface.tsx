@@ -14,9 +14,10 @@ interface ChatInterfaceProps {
   className?: string;
   selectedProduct?: string;
   selectedImageUrl?: string;
+  onMessageUpdate?: (content: string) => void;
 }
 
-const ChatInterface: React.FC<ChatInterfaceProps> = ({ className, selectedProduct, selectedImageUrl }) => {
+const ChatInterface: React.FC<ChatInterfaceProps> = ({ className, selectedProduct, selectedImageUrl, onMessageUpdate }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -92,6 +93,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ className, selectedProduc
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (onMessageUpdate) {
+      const fullContent = messages.map(m => m.content).join('\n');
+      onMessageUpdate(fullContent);
+    }
+  }, [messages, onMessageUpdate]);
 
   // Component cleanup
   useEffect(() => {

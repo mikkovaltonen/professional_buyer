@@ -6,6 +6,7 @@
 
 #### Components
 - `src/components/ChatInterface.tsx` - Main chat interface component that handles user interactions and message display
+- `src/components/SaveForecastButton.tsx` - Component for saving forecast adjustments with JSON validation and file storage
 - `src/components/ui/` - Reusable UI components (buttons, inputs, cards) using shadcn/ui
 - `src/components/Navigation.tsx` - Main navigation component for the application
 
@@ -92,6 +93,7 @@ User Input -> ChatInterface.tsx
   - Product image display
   - Chat interface integration with Gemini API
   - Loading states and error handling
+  - Forecast adjustment saving functionality
 
 ### Components
 - `src/components/ChatInterface.tsx`: Chat interface component with:
@@ -99,6 +101,13 @@ User Input -> ChatInterface.tsx
   - File upload support
   - Image analysis capabilities
   - Real-time responses
+
+- `src/components/SaveForecastButton.tsx`: Forecast adjustment saving component with:
+  - JSON data extraction from chat content
+  - Data validation for required fields
+  - Error handling and user feedback
+  - File storage integration
+  - Support for multiple adjustments in one save
 
 ### API Integration
 - `src/api/chat.ts`: Gemini API integration with:

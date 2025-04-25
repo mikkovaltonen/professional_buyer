@@ -10,6 +10,7 @@ AI Kysynnänennusteavustaja on moderni web-sovellus, joka auttaa yrityksiä ennu
 - 📊 Kysynnän analysointi ja visualisointi
 - 📝 Päätösongelmien dokumentointi ja oppiminen
 - 🔍 Automaattinen markkinasignaalien seuranta
+- 💾 Ennustekorjausten tallennus ja hallinta
 - 🔄 Integroitavissa olemassa oleviin järjestelmiin (tbd)
 - 🔐 Turvallinen käyttäjienhallinta
 
@@ -69,6 +70,14 @@ Kysyntä ennusteen tulkitsemisessa käytetään Gemini Pro mallia, joka tukee se
 - API-integraatiotestit
 - Tyypintarkistus TypeScriptillä
 - Testitiedostot löytyvät `tests/`-hakemistosta
+
+### 7. Ennustekorjausten tallennus
+- Tallenna ennustekorjaukset JSON-muodossa
+- Validointi korjausdatan oikeellisuudelle
+- Automaattinen tuoteryhmän liittäminen korjauksiin
+- Selkeät virheilmoitukset virheellisestä datasta
+- Korjausten tallennus paikalliseen tiedostoon
+- Tuki useille korjauksille samassa tallennuksessa
 
 ## Käyttöönotto
 

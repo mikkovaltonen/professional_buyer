@@ -41,18 +41,10 @@ const SaveForecastButton: React.FC<SaveForecastButtonProps> = ({ chatContent, se
 
       // Validate the input structure
       if (!Array.isArray(adjustments) || !adjustments.every(item => {
-        // Check month field
-        const hasValidMonth = typeof item.kuukausi === 'string' || 
-                            typeof item.month === 'string';
-        
-        // Check correction percentage field
-        const hasValidCorrection = typeof item.korjaus_prosentti === 'number' || 
-                                 typeof item.correction_percentage === 'number';
-        
-        // Check product group field
-        const hasValidProductGroup = typeof item.tuoteryhma === 'string' || 
-                                   typeof item.product_group === 'string' ||
-                                   typeof item.product_group_name === 'string';
+        // Check required fields
+        const hasValidMonth = typeof item.month === 'string';
+        const hasValidCorrection = typeof item.correction_percent === 'number';
+        const hasValidProductGroup = typeof item.product_group === 'string';
 
         console.log('Validation for item:', {
           item,
@@ -64,18 +56,12 @@ const SaveForecastButton: React.FC<SaveForecastButtonProps> = ({ chatContent, se
         return hasValidMonth && hasValidCorrection && hasValidProductGroup;
       })) {
         console.error('Invalid input data structure:', adjustments);
-        toast.error('JSON data ei ole oikeassa muodossa (vaaditaan kuukausi ja korjaus_prosentti)');
+        toast.error('JSON data ei ole oikeassa muodossa (vaaditaan month, correction_percent ja product_group kentät)');
         return;
       }
 
-      // Transform the data to match expected format
-      const transformedAdjustments = adjustments.map(item => ({
-        product_group: item.product_group_name || item.product_group || item.tuoteryhma || selectedProductGroup,
-        month: item.month || item.kuukausi,
-        correction_percent: item.correction_percentage || item.korjaus_prosentti,
-        explanation: item.explanation || item.perustelu || 'Ei perustelua'
-      }));
-      console.log('Transformed adjustments:', transformedAdjustments);
+      // Use the data as is since it's already in the correct format
+      const transformedAdjustments = adjustments;
 
       // Save to file
       console.log('Sending request to save forecast...');

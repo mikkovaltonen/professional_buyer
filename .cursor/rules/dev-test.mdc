@@ -12,4 +12,5 @@ alwaysApply: true
 - Collec all test scripts and test screenshots into "test" - folder. 
 
 - Keep detailed functinal specs in Readme
-- When you clean up obsolete code or files alays do only one deletion at time and perform regression testing and document the testing results into "tests" - folder
+- When you clean up obsolete code or files alays do only one deletion at time and perform regression testing and document the testing results into "test" - folder
+- This project is vite, not next.js

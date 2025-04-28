@@ -53,10 +53,4 @@ const App = () => {
   );
 };
 
-// Add API route handler
-app.post('/api/save-forecast', async (req, res) => {
-  const response = await saveForecast(req);
-  return response;
-});
-
 export default App;

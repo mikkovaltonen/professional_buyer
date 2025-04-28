@@ -144,3 +144,7 @@ Kaikki tekijänoikeudet kuuluvat SCM Best Oy:lle
 
 ## Yhteystiedot
 Lisätietoja ja tukea saat osoitteesta [https://wisestein.fi/yhteystiedot](https://wisestein.fi/yhteystiedot)
+
+## Documentation
+
+- See [docs/data-normalization.md](docs/data-normalization.md) for details on the data normalization layer and field mapping.

@@ -8,6 +8,13 @@ import ChatInterface from "@/components/ChatInterface";
 import { DataService } from "@/lib/dataService";
 import TimeChart from "@/components/TimeChart";
 import { generateChartImage } from "@/lib/chartUtils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface ProductSelectionContentProps {
   selectedProduct: string | null;
@@ -40,11 +47,8 @@ const ProductSelectionContent: React.FC<ProductSelectionContentProps> = ({
         const dataService = DataService.getInstance();
         await dataService.loadCSVData();
         const groups = dataService.getUniqueProductGroups();
-        console.log('Loaded product groups:', groups);
+        console.log('Loaded product groups (diagnostics):', groups);
         setProductGroups(groups);
-        if (groups.length > 0 && !selectedGroup) {
-          handleGroupChange(groups[0]);
-        }
       } catch (err) {
         console.error('Error loading data:', err);
         toast.error('Failed to load data. Please try again.');
@@ -60,10 +64,12 @@ const ProductSelectionContent: React.FC<ProductSelectionContentProps> = ({
     console.log('Group selected:', group);
     setSelectedGroup(group);
     setSelectedProduct(null);
+    setProducts([]);
     if (imageUrl) {
       URL.revokeObjectURL(imageUrl);
       setImageUrl(null);
     }
+    if (!group) return;
     const dataService = DataService.getInstance();
     const productsInGroup = dataService.getProductsInGroup(group);
     console.log('Products in group:', productsInGroup);
@@ -87,10 +93,10 @@ const ProductSelectionContent: React.FC<ProductSelectionContentProps> = ({
         .sort((a, b) => new Date(a.Year_Month).getTime() - new Date(b.Year_Month).getTime())
         .map(item => ({
           date: item.Year_Month,
-          value: item.Quantity === '' ? null : parseFloat(item.Quantity),
-          forecast: item.forecast_12m === '' ? null : parseFloat(item.forecast_12m),
-          old_forecast: item.old_forecast === '' ? null : parseFloat(item.old_forecast),
-          old_forecast_error: item.old_forecast_error === '' ? null : parseFloat(item.old_forecast_error)
+          value: item.Quantity,
+          forecast: item.forecast_12m,
+          old_forecast: item.old_forecast,
+          old_forecast_error: item.old_forecast_error === null ? null : Number(item.old_forecast_error)
         }))
         .filter(item => 
           // Keep items that have either a value or a forecast
@@ -129,24 +135,24 @@ const ProductSelectionContent: React.FC<ProductSelectionContentProps> = ({
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="space-y-2">
-              {productGroups.map((group, index) => (
-                <div key={`group-${group}-${index}`} className="flex items-center space-x-2">
-                  <input
-                    type="radio"
-                    id={`group-${group}-${index}`}
-                    name="productGroup"
-                    value={group}
-                    checked={selectedGroup === group}
-                    onChange={() => handleGroupChange(group)}
-                    className="h-4 w-4 text-[#4ADE80] focus:ring-[#4ADE80]"
-                  />
-                  <label htmlFor={`group-${group}-${index}`} className="text-sm">
-                    {group}
-                  </label>
-                </div>
-              ))}
-            </div>
+            <Select
+              value={selectedGroup}
+              onValueChange={handleGroupChange}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Valitse tuoteryhmä" />
+              </SelectTrigger>
+              <SelectContent>
+                {productGroups.map((group, idx) => {
+                  console.log('Rendering dropdown option (diagnostics):', group, idx);
+                  return (
+                    <SelectItem key={group} value={group}>
+                      {group}
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
@@ -162,24 +168,21 @@ const ProductSelectionContent: React.FC<ProductSelectionContentProps> = ({
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="space-y-2">
-                {products.map((product, index) => (
-                  <div key={`product-${product.code}-${index}`} className="flex items-center space-x-2">
-                    <input
-                      type="radio"
-                      id={`product-${product.code}-${index}`}
-                      name="product"
-                      value={product.code}
-                      checked={selectedProduct === product.code}
-                      onChange={() => handleProductChange(product.code)}
-                      className="h-4 w-4 text-[#4ADE80] focus:ring-[#4ADE80]"
-                    />
-                    <label htmlFor={`product-${product.code}-${index}`} className="text-sm">
+              <Select
+                value={selectedProduct || ''}
+                onValueChange={handleProductChange}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Valitse tuote" />
+                </SelectTrigger>
+                <SelectContent>
+                  {products.map((product) => (
+                    <SelectItem key={product.code} value={product.code}>
                       {product.code} - {product.description}
-                    </label>
-                  </div>
-                ))}
-              </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </CardContent>
         </Card>

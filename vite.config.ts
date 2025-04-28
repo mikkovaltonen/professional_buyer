@@ -5,6 +5,10 @@ import fs from "fs";
 import type { IncomingMessage, NextFunction } from "connect";
 import type { ServerResponse } from "http";
 
+// In-memory storage for forecast data
+let forecastData: any[] = [];
+let forecastAdjustments: { adjustments: any[], timestamp: string } = { adjustments: [], timestamp: new Date().toISOString() };
+
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
@@ -24,11 +28,54 @@ export default defineConfig({
             return;
           }
 
-          // Handle API requests
+          // Handle forecast data requests
+          if (req.url === '/api/forecast-data' && req.method === 'GET') {
+            res.writeHead(200, { 
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            });
+            res.end(JSON.stringify(forecastData));
+            return;
+          }
+
+          if (req.url === '/api/forecast-data' && req.method === 'POST') {
+            try {
+              const chunks = [];
+              for await (const chunk of req) {
+                chunks.push(chunk);
+              }
+              const data = JSON.parse(Buffer.concat(chunks).toString());
+              
+              if (!Array.isArray(data)) {
+                throw new Error('Invalid request data: array expected');
+              }
+
+              forecastData = data;
+              
+              res.writeHead(200, { 
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+              });
+              res.end(JSON.stringify({ success: true }));
+              return;
+            } catch (error) {
+              console.error('Error saving forecast data:', error);
+              res.writeHead(500, { 
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+              });
+              res.end(JSON.stringify({ 
+                error: 'Failed to save forecast data',
+                details: error instanceof Error ? error.message : 'Unknown error'
+              }));
+              return;
+            }
+          }
+
+          // Handle forecast adjustments requests
           if (req.url === '/api/save-forecast' && req.method === 'POST') {
             console.log('Received save-forecast request');
             try {
-              // Get the request body
               const chunks = [];
               for await (const chunk of req) {
                 chunks.push(chunk);
@@ -43,38 +90,12 @@ export default defineConfig({
                 throw new Error('Invalid request data: adjustments array is required');
               }
 
-              // Save to file in public directory
-              const filePath = path.join(process.cwd(), 'public', 'forecast_adjustments.json');
-              console.log('Saving to file:', filePath);
+              // Store in memory
+              forecastAdjustments = {
+                adjustments: data.adjustments,
+                timestamp: new Date().toISOString()
+              };
               
-              // Ensure public directory exists
-              const publicDir = path.join(process.cwd(), 'public');
-              if (!fs.existsSync(publicDir)) {
-                console.log('Creating public directory');
-                fs.mkdirSync(publicDir, { recursive: true });
-              }
-
-              // Create file if it doesn't exist
-              if (!fs.existsSync(filePath)) {
-                console.log('Creating initial forecast_adjustments.json');
-                fs.writeFileSync(filePath, JSON.stringify({ adjustments: [] }, null, 2));
-              }
-
-              // Read existing data
-              console.log('Reading existing data');
-              const fileContent = fs.readFileSync(filePath, 'utf-8');
-              const existingData = JSON.parse(fileContent);
-              console.log('Existing data:', existingData);
-
-              // Store only the latest adjustments
-              existingData.adjustments = data.adjustments;
-              existingData.timestamp = new Date().toISOString();
-              console.log('Updated data:', existingData);
-
-              // Write updated data back to file
-              console.log('Writing updated data to file');
-              fs.writeFileSync(filePath, JSON.stringify(existingData, null, 2));
-
               res.writeHead(200, { 
                 'Content-Type': 'application/json',
                 'Access-Control-Allow-Origin': '*',
@@ -98,6 +119,16 @@ export default defineConfig({
               }));
               return;
             }
+          }
+
+          // Handle forecast adjustments read requests
+          if (req.url === '/api/forecast-adjustments' && req.method === 'GET') {
+            res.writeHead(200, { 
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            });
+            res.end(JSON.stringify(forecastAdjustments));
+            return;
           }
 
           next();

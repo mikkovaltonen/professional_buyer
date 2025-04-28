@@ -50,11 +50,14 @@ const getProductGroupInstructions = (groupName: string): string => {
       - Haluatko että annan linkit kaikkiin ennusteeseen vaikuttaviin löytämiini uutisiin
       
       Kun makroindikaattorit on käyty läpi ehdota että voitko antaa milestäsi perustellut ennustekorjaukset json muodossa? Json:ssa tulee olla seuraavasa muodossa 
-        {
-    "product_group": "Kemppi welder Power Sources",
-    "month": "2025-10",
-    "correction_percentage": 3.0
-  },`;
+   {
+      "product_group": "Kemppi welder Power Sources",
+      "month": "2025-08",
+      "correction_percent": -2,
+      "explanation": "Esimerkki: Alkuperäisessä ennusteessa kysyntä laskee jyrkästi huipun jälkeen. Koska talouden ja teollisuuden elpymisen odotetaan jatkuvan tasaisemmin läpi vuoden 2025, ehdotan pieniä positiivisia heijastamaan tätä vakaampaa kehitystä ja estämään liian jyrkkää pudotusta ennusteessa (tämä selitys on peräisin alkuperäisestä pyynnöstäsi)."
+    }
+
+      ,`;
 };
 
 const getProductInstructions = (productName: string): string => {

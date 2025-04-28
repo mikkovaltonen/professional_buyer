@@ -9,6 +9,15 @@ import { DataService } from "@/lib/dataService";
 import TimeChart from "@/components/TimeChart";
 import { generateChartImage } from "@/lib/chartUtils";
 import SaveForecastButton from "@/components/SaveForecastButton";
+import ApplyCorrectionsButton from "@/components/ApplyCorrectionsButton";
+import { ForecastCorrection } from "@/lib/dataService";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface ProductGroupForecastContentProps {
   imageUrl: string | null;
@@ -29,6 +38,7 @@ const ProductGroupForecastContent: React.FC<ProductGroupForecastContentProps> = 
   const [selectedGroup, setSelectedGroup] = useState<string>('');
   const [chartData, setChartData] = useState<{ date: string; value: number | null; forecast?: number | null; old_forecast?: number | null; old_forecast_error?: number | null }[]>([]);
   const [chatContent, setChatContent] = useState<string>('');
+  const [corrections, setCorrections] = useState<ForecastCorrection[]>([]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -38,10 +48,7 @@ const ProductGroupForecastContent: React.FC<ProductGroupForecastContentProps> = 
         await dataService.loadCSVData();
         const groups = dataService.getUniqueProductGroups();
         console.log('Loaded product groups:', groups);
-        setProductGroups(groups);
-        if (groups.length > 0 && !selectedGroup) {
-          handleGroupChange(groups[0]);
-        }
+        setProductGroups(groups.map(String));
       } catch (err) {
         console.error('Error loading data:', err);
         toast.error('Failed to load data. Please try again.');
@@ -56,6 +63,8 @@ const ProductGroupForecastContent: React.FC<ProductGroupForecastContentProps> = 
   const handleGroupChange = async (group: string) => {
     console.log('Group selected:', group);
     setSelectedGroup(group);
+    setChartData([]);
+    if (!group) return;
     try {
       setIsLoading(true);
       if (imageUrl) {
@@ -68,10 +77,10 @@ const ProductGroupForecastContent: React.FC<ProductGroupForecastContentProps> = 
       // Transform the data for the chart
       const transformedData = groupData.map(item => ({
         date: item.Year_Month,
-        value: item.Quantity === '' ? null : parseFloat(item.Quantity),
-        forecast: item.forecast_12m === '' ? null : parseFloat(item.forecast_12m),
-        old_forecast: item.old_forecast === '' ? null : parseFloat(item.old_forecast),
-        old_forecast_error: item.old_forecast_error === '' ? null : parseFloat(item.old_forecast_error)
+        value: item.Quantity,
+        forecast: item.forecast_12m,
+        old_forecast: item.old_forecast,
+        old_forecast_error: item.old_forecast_error === null ? null : Number(item.old_forecast_error)
       }))
       .filter(item => 
         item.value !== null || 
@@ -96,6 +105,70 @@ const ProductGroupForecastContent: React.FC<ProductGroupForecastContentProps> = 
     }
   };
 
+  // Add this function to extract corrections from chat content
+  const extractCorrections = (content: string): ForecastCorrection[] => {
+    try {
+      console.log('Attempting to extract corrections from:', content);
+      const jsonRegex = /\[\s*\{[\s\S]*?\}\s*\]/g;
+      const matches = [...content.matchAll(jsonRegex)];
+      console.log('Found JSON matches:', matches);
+      
+      if (matches.length === 0) {
+        console.log('No JSON matches found');
+        return [];
+      }
+
+      const jsonContent = matches[matches.length - 1][0];
+      console.log('Extracted JSON content:', jsonContent);
+      
+      try {
+        const parsedCorrections = JSON.parse(jsonContent);
+        console.log('Successfully parsed corrections:', parsedCorrections);
+        
+        if (Array.isArray(parsedCorrections)) {
+          // Validate the structure of each correction
+          const validCorrections = parsedCorrections.filter(item => {
+            const isValid = item.product_group && item.month && 
+              (typeof item.correction_percent === 'number' || 
+               (typeof item.correction_percent === 'string' && !isNaN(Number(item.correction_percent))));
+            if (!isValid) {
+              console.log('Invalid correction item:', item);
+            }
+            return isValid;
+          });
+          console.log('Valid corrections:', validCorrections);
+          return validCorrections;
+        }
+      } catch (parseError) {
+        console.error('JSON parsing error:', parseError);
+      }
+      
+      return [];
+    } catch (error) {
+      console.error('Error extracting corrections:', error);
+      return [];
+    }
+  };
+
+  // Update chat content handler to also extract corrections
+  const handleChatContentUpdate = (content: string) => {
+    if (content !== chatContent) {
+      console.log('Chat content updated:', content);
+      setChatContent(content);
+      const extractedCorrections = extractCorrections(content);
+      console.log('Extracted corrections:', extractedCorrections);
+      if (JSON.stringify(extractedCorrections) !== JSON.stringify(corrections)) {
+        console.log('Setting new corrections:', extractedCorrections);
+        setCorrections(extractedCorrections);
+      }
+    }
+  };
+
+  // Add useEffect to monitor corrections state
+  useEffect(() => {
+    console.log('Current corrections state:', corrections);
+  }, [corrections]);
+
   return (
     <div className="space-y-6">
       {/* Product Group Selection */}
@@ -108,30 +181,26 @@ const ProductGroupForecastContent: React.FC<ProductGroupForecastContentProps> = 
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="space-y-2">
-              {productGroups.map((group, index) => (
-                <div key={`group-${group}-${index}`} className="flex items-center space-x-2">
-                  <input
-                    type="radio"
-                    id={`group-${group}-${index}`}
-                    name="productGroup"
-                    value={group}
-                    checked={selectedGroup === group}
-                    onChange={() => handleGroupChange(group)}
-                    className="h-4 w-4 text-[#4ADE80] focus:ring-[#4ADE80]"
-                  />
-                  <label htmlFor={`group-${group}-${index}`} className="text-sm">
+            <Select
+              value={selectedGroup}
+              onValueChange={handleGroupChange}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Valitse tuoteryhmä" />
+              </SelectTrigger>
+              <SelectContent>
+                {productGroups.map((group, idx) => (
+                  <SelectItem key={String(group)} value={String(group)}>
                     {group}
-                  </label>
-                </div>
-              ))}
-            </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
 
       {/* Chart Display */}
-      {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
       {selectedGroup && chartData.length > 0 && !isLoading && (
         <Card>
           <CardContent className="pt-6">
@@ -177,13 +246,16 @@ const ProductGroupForecastContent: React.FC<ProductGroupForecastContentProps> = 
               <ChatInterface 
                 selectedProduct={`${selectedGroup} Total Demand`}
                 selectedImageUrl={imageUrl}
-                onMessageUpdate={(content) => setChatContent(content)}
+                onMessageUpdate={handleChatContentUpdate}
               />
             </CardContent>
           </Card>
-          <div className="flex justify-end mt-4">
+          <div className="flex justify-end gap-4 mt-4">
             <SaveForecastButton 
               chatContent={chatContent} 
+              selectedProductGroup={selectedGroup}
+            />
+            <ApplyCorrectionsButton 
               selectedProductGroup={selectedGroup}
             />
           </div>

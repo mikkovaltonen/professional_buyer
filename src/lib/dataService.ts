@@ -5,10 +5,19 @@ export interface TimeSeriesData {
   "Product Group": string;
   "Product code": string;
   "Product description": string;
-  Quantity: string;
-  forecast_12m: string;
-  old_forecast: string;
-  old_forecast_error: string;
+  Quantity: number | null;
+  forecast_12m: number | null;
+  old_forecast: number | null;
+  old_forecast_error: string | null;
+  correction_percent?: number | null;
+  explanation?: string | null;
+}
+
+export interface ForecastCorrection {
+  product_group: string;
+  month: string;
+  correction_percent: number;
+  explanation: string;
 }
 
 export class DataService {
@@ -25,46 +34,30 @@ export class DataService {
   }
 
   public async loadCSVData(): Promise<TimeSeriesData[]> {
-    console.log('Loading CSV data...');
+    console.log('Loading forecast data...');
     if (this.data.length > 0) {
       console.log('Data already loaded, returning cached data');
       return this.data;
     }
 
     try {
-      console.log('Fetching CSV file...');
-      const response = await fetch('/demo_data/Demo data with product groups.csv');
-      const csvText = await response.text();
-      console.log('CSV text loaded, first 500 chars:', csvText.substring(0, 500));
+      console.log('Fetching JSON file...');
+      const response = await fetch('/demo_data/sales_data_with_forecasts.json');
+      const jsonData = await response.json();
+      console.log('JSON data loaded, rows:', jsonData.length);
       
-      return new Promise((resolve, reject) => {
-        Papa.parse<TimeSeriesData>(csvText, {
-          header: true,
-          delimiter: ";",
-          skipEmptyLines: true,
-          complete: (results) => {
-            console.log('Papa Parse complete, rows:', results.data.length);
-            console.log('Sample parsed row:', results.data[0]);
-            
-            if (results.data.length === 0) {
-              console.error('No data found in CSV');
-              reject(new Error('No data found in CSV'));
-              return;
-            }
+      if (jsonData.length === 0) {
+        console.error('No data found in JSON');
+        throw new Error('No data found in JSON');
+      }
 
-            this.data = results.data;
-            console.log('Final data rows:', this.data.length);
-            if (this.data.length > 0) {
-              console.log('Sample processed row:', JSON.stringify(this.data[0], null, 2));
-            }
-            resolve(this.data);
-          },
-          error: (error) => {
-            console.error('Papa Parse error:', error);
-            reject(error);
-          }
-        });
-      });
+      // Normalize all rows to TimeSeriesData
+      this.data = jsonData.map(normalizeTimeSeriesData);
+      console.log('Final data rows:', this.data.length);
+      if (this.data.length > 0) {
+        console.log('Sample processed row:', JSON.stringify(this.data[0], null, 2));
+      }
+      return this.data;
     } catch (error) {
       console.error('Failed to load data:', error);
       throw error;
@@ -131,36 +124,33 @@ export class DataService {
       
       // Only sum non-empty values
       const totalQuantity = rowsForDate
-        .filter(row => row.Quantity !== '')
-        .reduce((sum, row) => sum + parseFloat(row.Quantity), 0);
+        .filter(row => row.Quantity !== null)
+        .reduce((sum, row) => sum + (row.Quantity || 0), 0);
 
       const totalForecast = rowsForDate
-        .filter(row => row.forecast_12m !== '')
-        .reduce((sum, row) => sum + parseFloat(row.forecast_12m), 0);
+        .filter(row => row.forecast_12m !== null)
+        .reduce((sum, row) => sum + (row.forecast_12m || 0), 0);
 
       const totalOldForecast = rowsForDate
-        .filter(row => row.old_forecast !== '')
-        .reduce((sum, row) => sum + parseFloat(row.old_forecast), 0);
+        .filter(row => row.old_forecast !== null)
+        .reduce((sum, row) => sum + (row.old_forecast || 0), 0);
 
-      const totalOldForecastError = rowsForDate
-        .filter(row => row.old_forecast_error !== '')
-        .reduce((sum, row) => sum + parseFloat(row.old_forecast_error), 0);
-
-      // If all values for a metric are empty, return empty string
-      const hasQuantity = rowsForDate.some(row => row.Quantity !== '');
-      const hasForecast = rowsForDate.some(row => row.forecast_12m !== '');
-      const hasOldForecast = rowsForDate.some(row => row.old_forecast !== '');
-      const hasOldForecastError = rowsForDate.some(row => row.old_forecast_error !== '');
+      // If all values for a metric are empty, return null
+      const hasQuantity = rowsForDate.some(row => row.Quantity !== null);
+      const hasForecast = rowsForDate.some(row => row.forecast_12m !== null);
+      const hasOldForecast = rowsForDate.some(row => row.old_forecast !== null);
       
       return {
         Year_Month: date,
         "Product Group": productGroup,
         "Product code": "GROUP_TOTAL",
         "Product description": `${productGroup} Total`,
-        Quantity: hasQuantity ? totalQuantity.toString() : '',
-        forecast_12m: hasForecast ? totalForecast.toString() : '',
-        old_forecast: hasOldForecast ? totalOldForecast.toString() : '',
-        old_forecast_error: hasOldForecastError ? totalOldForecastError.toString() : ''
+        Quantity: hasQuantity ? totalQuantity : null,
+        forecast_12m: hasForecast ? totalForecast : null,
+        old_forecast: hasOldForecast ? totalOldForecast : null,
+        old_forecast_error: null,
+        correction_percent: null,
+        explanation: null
       };
     });
 
@@ -177,4 +167,61 @@ export class DataService {
 
     return sortedData;
   }
+
+  public applyCorrections(corrections: ForecastCorrection[]): void {
+    console.log('Applying corrections:', corrections);
+    
+    // 1. Group corrections by product_group and month
+    const correctionMap = new Map<string, ForecastCorrection>();
+    corrections.forEach(correction => {
+      const key = `${correction.product_group}|${correction.month}`;
+      correctionMap.set(key, correction);
+    });
+
+    // 2. Update forecast values in CSV data
+    this.data = this.data.map(row => {
+      const key = `${row["Product Group"]}|${row.Year_Month}`;
+      const correction = correctionMap.get(key);
+
+      if (correction && row.forecast_12m) {
+        const currentForecast = row.forecast_12m;
+        const correctedForecast = currentForecast * (1 + correction.correction_percent / 100);
+        
+        return {
+          ...row,
+          forecast_12m: correctedForecast,
+          old_forecast: row.forecast_12m, // Store original forecast
+          old_forecast_error: correction.explanation
+        };
+      }
+      
+      return row;
+    });
+
+    console.log('Corrections applied successfully');
+  }
+
+  public exportCorrectedData(): string {
+    console.log('Exporting corrected data...');
+    return Papa.unparse(this.data, {
+      delimiter: ";",
+      header: true
+    });
+  }
+}
+
+// Normalization function: maps any incoming data format to TimeSeriesData
+export function normalizeTimeSeriesData(row: any): TimeSeriesData {
+  return {
+    Year_Month: row.Year_Month || row.year_month || '',
+    "Product Group": row["Product Group"] || row.prodgroup || '',
+    "Product code": row["Product code"] || row.prodcode || '',
+    "Product description": row["Product description"] || row.product_description || '',
+    Quantity: row.Quantity ?? row.qty ?? null,
+    forecast_12m: row.forecast_12m ?? row.new_forecast ?? null,
+    old_forecast: row.old_forecast ?? null,
+    old_forecast_error: row.old_forecast_error ?? null,
+    correction_percent: row.correction_percent ?? null,
+    explanation: row.explanation ?? null
+  };
 } 

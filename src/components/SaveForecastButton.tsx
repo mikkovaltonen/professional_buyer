@@ -43,7 +43,8 @@ const SaveForecastButton: React.FC<SaveForecastButtonProps> = ({ chatContent, se
       if (!Array.isArray(adjustments) || !adjustments.every(item => {
         // Check required fields
         const hasValidMonth = typeof item.month === 'string';
-        const hasValidCorrection = typeof item.correction_percent === 'number';
+        const hasValidCorrection = typeof item.correction_percent === 'number' || 
+          (typeof item.correction_percent === 'string' && !isNaN(Number(item.correction_percent)));
         const hasValidProductGroup = typeof item.product_group === 'string';
 
         console.log('Validation for item:', {

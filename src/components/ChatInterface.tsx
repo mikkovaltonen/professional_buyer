@@ -95,9 +95,22 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ className, selectedProduc
   };
 
   useEffect(() => {
-    if (onMessageUpdate) {
-      const fullContent = messages.map(m => m.content).join('\n');
-      onMessageUpdate(fullContent);
+    if (onMessageUpdate && messages.length > 0) {
+      // Combine all messages into a single string
+      const fullContent = messages
+        .map(msg => msg.content)
+        .join('\n\n');
+      
+      // Call onMessageUpdate immediately for the first message
+      if (messages.length === 1) {
+        onMessageUpdate(fullContent);
+      } else {
+        // Use a timeout to prevent rapid successive updates for subsequent messages
+        const timeoutId = setTimeout(() => {
+          onMessageUpdate(fullContent);
+        }, 100);
+        return () => clearTimeout(timeoutId);
+      }
     }
   }, [messages, onMessageUpdate]);
 

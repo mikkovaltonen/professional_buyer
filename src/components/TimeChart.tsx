@@ -19,9 +19,10 @@ interface TimeChartProps {
     old_forecast_error?: number | null;
   }[];
   title: string;
+  subtitle?: string;
 }
 
-const TimeChart: React.FC<TimeChartProps> = ({ data, title }) => {
+const TimeChart: React.FC<TimeChartProps> = ({ data, title, subtitle }) => {
   // Format date to show only month and year in Finnish
   const formatDate = (date: string) => {
     const d = new Date(date);
@@ -49,7 +50,15 @@ const TimeChart: React.FC<TimeChartProps> = ({ data, title }) => {
 
   return (
     <div className="w-full h-[400px]">
-      <h3 className="text-lg font-semibold mb-4">{title}</h3>
+      <h3 className="text-lg font-semibold mb-1">{title}</h3>
+      {subtitle && (
+        <div className="mb-3">
+          <div className="text-xs text-gray-500 mb-1 font-semibold">Tuoteryhmään kuuluvat tuotteet:</div>
+          <div className="text-xs text-gray-700 bg-gray-100 rounded p-2 overflow-x-auto whitespace-nowrap" style={{maxWidth: '100%', minHeight: '2.5em'}}>
+            {subtitle}
+          </div>
+        </div>
+      )}
       <ResponsiveContainer width="100%" height="100%">
         <LineChart
           data={data}

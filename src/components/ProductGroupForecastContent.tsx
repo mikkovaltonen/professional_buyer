@@ -39,6 +39,7 @@ const ProductGroupForecastContent: React.FC<ProductGroupForecastContentProps> = 
   const [chartData, setChartData] = useState<{ date: string; value: number | null; forecast?: number | null; old_forecast?: number | null; old_forecast_error?: number | null }[]>([]);
   const [chatContent, setChatContent] = useState<string>('');
   const [corrections, setCorrections] = useState<ForecastCorrection[]>([]);
+  const [productDescriptions, setProductDescriptions] = useState<string[]>([]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -64,6 +65,7 @@ const ProductGroupForecastContent: React.FC<ProductGroupForecastContentProps> = 
     console.log('Group selected:', group);
     setSelectedGroup(group);
     setChartData([]);
+    setProductDescriptions([]);
     if (!group) return;
     try {
       setIsLoading(true);
@@ -73,7 +75,9 @@ const ProductGroupForecastContent: React.FC<ProductGroupForecastContentProps> = 
       await clearChatSession();
       const dataService = DataService.getInstance();
       const groupData = dataService.getProductGroupData(group);
-      
+      // Fetch product descriptions for subtitle
+      const products = dataService.getProductsInGroup(group);
+      setProductDescriptions(products.map(p => p.description));
       // Transform the data for the chart
       const transformedData = groupData.map(item => ({
         date: item.Year_Month,
@@ -216,6 +220,7 @@ const ProductGroupForecastContent: React.FC<ProductGroupForecastContentProps> = 
               <TimeChart 
                 data={chartData}
                 title={`${selectedGroup} Total Demand`}
+                subtitle={productDescriptions.join(', ')}
               />
             </div>
           </CardContent>

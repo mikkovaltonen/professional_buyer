@@ -77,7 +77,7 @@ const TimeChart: React.FC<TimeChartProps> = ({ data, title }) => {
             dataKey="value"
             name="Quantity"
             stroke="#4338ca"
-            dot={{ r: 4 }}
+            dot={false}
             strokeWidth={2}
             connectNulls={false}
           />
@@ -86,7 +86,7 @@ const TimeChart: React.FC<TimeChartProps> = ({ data, title }) => {
             dataKey="forecast"
             name="Forecast"
             stroke="#f59e0b"
-            dot={{ r: 4 }}
+            dot={false}
             strokeWidth={2}
             strokeDasharray="5 5"
             connectNulls={false}
@@ -96,7 +96,7 @@ const TimeChart: React.FC<TimeChartProps> = ({ data, title }) => {
             dataKey="old_forecast"
             name="Old Forecast"
             stroke="#10b981"
-            dot={{ r: 3 }}
+            dot={false}
             strokeWidth={2}
             strokeDasharray="3 3"
             connectNulls={false}
@@ -106,7 +106,7 @@ const TimeChart: React.FC<TimeChartProps> = ({ data, title }) => {
             dataKey="old_forecast_error"
             name="Forecast Error"
             stroke="#ef4444"
-            dot={{ r: 3 }}
+            dot={false}
             strokeWidth={1}
             strokeDasharray="2 2"
             connectNulls={false}

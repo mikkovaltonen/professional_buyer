@@ -17,6 +17,7 @@ interface TimeChartProps {
     forecast?: number | null;
     old_forecast?: number | null;
     old_forecast_error?: number | null;
+    new_forecast_manually_adjusted?: number | null;
   }[];
   title: string;
   subtitle?: string;
@@ -38,7 +39,8 @@ const TimeChart: React.FC<TimeChartProps> = ({ data, title, subtitle, showForeca
         'Quantity': 'Toteutunut',
         'Forecast': 'Ennuste',
         'Old Forecast': 'Vanha ennuste',
-        'Forecast Error': 'Ennustevirhe'
+        'Forecast Error': 'Ennustevirhe',
+        'Adjusted Forecast': 'Korjattu ennuste'
       };
 
       return (
@@ -117,6 +119,15 @@ const TimeChart: React.FC<TimeChartProps> = ({ data, title, subtitle, showForeca
             dot={false}
             strokeWidth={2}
             strokeDasharray="3 3"
+            connectNulls={false}
+          />
+          <Line
+            type="monotone"
+            dataKey="new_forecast_manually_adjusted"
+            name="Korjattu ennuste"
+            stroke="#dc2626"
+            dot={false}
+            strokeWidth={2}
             connectNulls={false}
           />
           {showForecastErrorLine && (

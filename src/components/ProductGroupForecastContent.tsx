@@ -35,7 +35,7 @@ const ProductGroupForecastContent: React.FC<ProductGroupForecastContentProps> = 
 }) => {
   const [productGroups, setProductGroups] = useState<string[]>([]);
   const [selectedGroup, setSelectedGroup] = useState<string>('');
-  const [chartData, setChartData] = useState<{ date: string; value: number | null; forecast?: number | null; old_forecast?: number | null; old_forecast_error?: number | null }[]>([]);
+  const [chartData, setChartData] = useState<{ date: string; value: number | null; forecast?: number | null; old_forecast?: number | null; old_forecast_error?: number | null; new_forecast_manually_adjusted?: number | null }[]>([]);
   const [chatContent, setChatContent] = useState<string>('');
   const [productDescriptions, setProductDescriptions] = useState<string[]>([]);
 
@@ -82,13 +82,15 @@ const ProductGroupForecastContent: React.FC<ProductGroupForecastContentProps> = 
         value: item.Quantity,
         forecast: item.forecast_12m,
         old_forecast: item.old_forecast,
-        old_forecast_error: item.old_forecast_error === null ? null : Number(item.old_forecast_error)
+        old_forecast_error: item.old_forecast_error === null ? null : Number(item.old_forecast_error),
+        new_forecast_manually_adjusted: item.new_forecast_manually_adjusted
       }))
       .filter(item => 
         item.value !== null || 
         item.forecast !== null || 
         item.old_forecast !== null ||
-        item.old_forecast_error !== null
+        item.old_forecast_error !== null ||
+        item.new_forecast_manually_adjusted !== null
       );
 
       console.log('Transformed chart data:', transformedData);

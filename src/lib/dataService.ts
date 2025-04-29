@@ -14,7 +14,9 @@ export interface TimeSeriesData {
   old_forecast_error: string | null;
   correction_percent?: number | null;
   explanation?: string | null;
-  id?: string;  // Add id to the interface
+  new_forecast_manually_adjusted?: number | null;
+  correction_timestamp?: string | null;
+  id?: string;
 }
 
 export interface ForecastCorrection {
@@ -197,8 +199,17 @@ export class DataService {
     console.log('Starting to apply corrections:', corrections);
     
     try {
+      // Ensure data is loaded
+      if (this.data.length === 0) {
+        console.log('No data loaded, loading data first...');
+        await this.loadCSVData();
+      }
+      console.log('Data loaded, rows:', this.data.length);
+
+      // Check authentication status before proceeding
+      console.log('Current auth state:', auth.currentUser ? 'Logged in' : 'Not logged in');
       await this.ensureAuthenticated();
-      console.log('Authentication successful');
+      console.log('Authentication successful, user:', auth.currentUser?.email);
 
       // Validate corrections
       if (!corrections || corrections.length === 0) {
@@ -206,9 +217,10 @@ export class DataService {
       }
 
       // 1. Group corrections by product_group and month
+      const normalizeString = (str: string) => str.replace(/\s+/g, ' ').trim();
       const correctionMap = new Map<string, ForecastCorrection>();
       corrections.forEach(correction => {
-        const key = `${correction.product_group}|${correction.month}`;
+        const key = `${normalizeString(correction.product_group)}|${correction.month}`;
         correctionMap.set(key, correction);
         console.log(`Mapped correction for key: ${key}`, correction);
       });
@@ -220,50 +232,71 @@ export class DataService {
       let skippedCount = 0;
 
       console.log('Starting to process data rows for updates');
+      
+      // Log the first few rows of data to understand the structure
+      console.log('Sample data rows:', this.data.slice(0, 3));
+      
       // Update local data and prepare Firestore updates
-      this.data = await Promise.all(this.data.map(async row => {
-        const key = `${row["Product Group"]}|${row.Year_Month}`;
+      for (const row of this.data) {
+        const key = `${normalizeString(row["Product Group"])}|${row.Year_Month}`;
         const correction = correctionMap.get(key);
 
-        if (correction && row.forecast_12m && row.id) {
+        // Log every 100th row to avoid console spam
+        if (skippedCount % 100 === 0) {
+          console.log('Processing row:', {
+            key,
+            productGroup: row["Product Group"],
+            normalizedProductGroup: normalizeString(row["Product Group"]),
+            yearMonth: row.Year_Month,
+            hasCorrection: !!correction,
+            availableKeys: Array.from(correctionMap.keys()).join(', ')
+          });
+        }
+
+        if (correction && row.forecast_12m !== null && row.id) {
           const currentForecast = row.forecast_12m;
           const correctedForecast = currentForecast * (1 + correction.correction_percent / 100);
           
-          console.log(`Updating forecast for ${key}:`, {
-            current: currentForecast,
+          console.log(`Preparing update for document ${row.id}:`, {
+            key,
+            currentForecast,
             correction: correction.correction_percent,
-            new: correctedForecast
+            newForecast: correctedForecast
           });
 
-          // Update the document in Firestore with correct field names
-          const docRef = doc(db, 'sales_data_with_forecasts', row.id);
-          batch.update(docRef, {
-            new_forecast_manually_adjusted: correctedForecast,
-            explanation: correction.explanation,
-            correction_percent: correction.correction_percent,
-            correction_timestamp: new Date().toISOString()
-          });
+          try {
+            // Update the document in Firestore
+            const docRef = doc(db, 'sales_data_with_forecasts', row.id);
+            batch.update(docRef, {
+              new_forecast_manually_adjusted: correctedForecast,
+              explanation: correction.explanation,
+              correction_percent: correction.correction_percent,
+              correction_timestamp: new Date().toISOString()
+            });
+            console.log(`Added document ${row.id} to batch`);
 
-          updateCount++;
-          return {
-            ...row,
-            new_forecast_manually_adjusted: correctedForecast,
-            explanation: correction.explanation,
-            correction_percent: correction.correction_percent,
-            correction_timestamp: new Date().toISOString()
-          };
+            // Update local data
+            row.new_forecast_manually_adjusted = correctedForecast;
+            row.explanation = correction.explanation;
+            row.correction_percent = correction.correction_percent;
+            
+            updateCount++;
+          } catch (updateError) {
+            console.error(`Error preparing update for document ${row.id}:`, updateError);
+            throw updateError;
+          }
         } else {
           if (correction) {
-            console.log(`Skipping update for ${key} - missing forecast or id:`, {
-              hasForecast: !!row.forecast_12m,
-              hasId: !!row.id
+            console.log(`Skipping update for ${key}:`, {
+              hasForecast: row.forecast_12m !== null,
+              hasId: !!row.id,
+              forecast: row.forecast_12m,
+              id: row.id
             });
           }
           skippedCount++;
         }
-        
-        return row;
-      }));
+      }
 
       console.log(`Processed ${this.data.length} rows: ${updateCount} updates, ${skippedCount} skipped`);
 
@@ -276,25 +309,13 @@ export class DataService {
       await batch.commit();
       console.log(`Successfully updated ${updateCount} records in Firestore with corrections`);
 
-      // Also update the corrections collection for tracking
-      console.log('Recording corrections in tracking collection...');
-      const correctionsCollection = collection(db, 'forecast_corrections');
-      const batch2 = writeBatch(db);
-      
-      corrections.forEach(correction => {
-        const docRef = doc(correctionsCollection);
-        batch2.set(docRef, {
-          ...correction,
-          timestamp: new Date().toISOString(),
-          applied_by: auth.currentUser?.email || 'unknown'
-        });
-      });
-
-      await batch2.commit();
-      console.log('Successfully recorded corrections in tracking collection');
-
     } catch (error) {
       console.error('Error applying corrections to Firestore:', error);
+      console.error('Error details:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      });
       throw error;
     }
   }
@@ -316,6 +337,8 @@ export function normalizeTimeSeriesData(row: any): TimeSeriesData {
     old_forecast_error: row.old_forecast_error,
     correction_percent: row.correction_percent,
     explanation: row.explanation,
+    new_forecast_manually_adjusted: row.new_forecast_manually_adjusted,
+    correction_timestamp: row.correction_timestamp,
     id: row.id // Include the document ID
   };
 } 

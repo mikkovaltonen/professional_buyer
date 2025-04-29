@@ -38,7 +38,7 @@ const ProductSelectionContent: React.FC<ProductSelectionContentProps> = ({
   const [productGroups, setProductGroups] = useState<string[]>([]);
   const [selectedGroup, setSelectedGroup] = useState<string>('');
   const [products, setProducts] = useState<{ code: string; description: string }[]>([]);
-  const [chartData, setChartData] = useState<{ date: string; value: number | null; forecast?: number | null; old_forecast?: number | null; old_forecast_error?: number | null }[]>([]);
+  const [chartData, setChartData] = useState<{ date: string; value: number | null; forecast?: number | null; old_forecast?: number | null; old_forecast_error?: number | null; new_forecast_manually_adjusted?: number | null }[]>([]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -96,13 +96,15 @@ const ProductSelectionContent: React.FC<ProductSelectionContentProps> = ({
           value: item.Quantity,
           forecast: item.forecast_12m,
           old_forecast: item.old_forecast,
-          old_forecast_error: item.old_forecast_error === null ? null : Number(item.old_forecast_error)
+          old_forecast_error: item.old_forecast_error === null ? null : Number(item.old_forecast_error),
+          new_forecast_manually_adjusted: item.new_forecast_manually_adjusted
         }))
         .filter(item => 
-          // Keep items that have either a value or a forecast
           item.value !== null || 
           item.forecast !== null || 
-          item.old_forecast !== null
+          item.old_forecast !== null ||
+          item.old_forecast_error !== null ||
+          item.new_forecast_manually_adjusted !== null
         );
 
       console.log('Raw product data:', productData);

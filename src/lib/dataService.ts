@@ -260,44 +260,54 @@ export class DataService {
           });
         }
 
-        if (correction && row.new_forecast_manually_adjusted !== null && row.id) {
-          const currentForecast = row.new_forecast_manually_adjusted;
-          const correctedForecast = currentForecast * (1 + correction.correction_percent / 100);
-          
-          console.log(`Preparing update for document ${row.id}:`, {
-            key,
-            currentForecast,
-            correction: correction.correction_percent,
-            newForecast: correctedForecast
-          });
+        if (correction && row.id) {
+          // Use new_forecast_manually_adjusted if it exists, otherwise use new_forecast
+          const currentForecast = row.new_forecast_manually_adjusted !== null 
+            ? row.new_forecast_manually_adjusted 
+            : row.new_forecast;
 
-          try {
-            // Update the document in Firestore
-            const docRef = doc(db, 'sales_data_with_forecasts', row.id);
-            batch.update(docRef, {
-              new_forecast_manually_adjusted: correctedForecast,
-              explanation: correction.explanation,
-              correction_percent: correction.correction_percent,
-              correction_timestamp: new Date().toISOString()
-            });
-            console.log(`Added document ${row.id} to batch`);
-
-            // Update local data
-            row.new_forecast_manually_adjusted = correctedForecast;
-            row.explanation = correction.explanation;
-            row.correction_percent = correction.correction_percent;
+          if (currentForecast !== null) {
+            const correctedForecast = currentForecast * (1 + correction.correction_percent / 100);
             
-            updateCount++;
-          } catch (updateError) {
-            console.error(`Error preparing update for document ${row.id}:`, updateError);
-            throw updateError;
+            console.log(`Preparing update for document ${row.id}:`, {
+              key,
+              currentForecast,
+              correction: correction.correction_percent,
+              newForecast: correctedForecast
+            });
+
+            try {
+              // Update the document in Firestore
+              const docRef = doc(db, 'sales_data_with_forecasts', row.id);
+              batch.update(docRef, {
+                new_forecast_manually_adjusted: correctedForecast,
+                explanation: correction.explanation,
+                correction_percent: correction.correction_percent,
+                correction_timestamp: new Date().toISOString()
+              });
+              console.log(`Added document ${row.id} to batch`);
+
+              // Update local data
+              row.new_forecast_manually_adjusted = correctedForecast;
+              row.explanation = correction.explanation;
+              row.correction_percent = correction.correction_percent;
+              row.correction_timestamp = new Date().toISOString();
+              
+              updateCount++;
+            } catch (updateError) {
+              console.error(`Error preparing update for document ${row.id}:`, updateError);
+              throw updateError;
+            }
+          } else {
+            console.log(`Skipping update for ${key}: No forecast value available`);
+            skippedCount++;
           }
         } else {
           if (correction) {
             console.log(`Skipping update for ${key}:`, {
-              hasForecast: row.new_forecast_manually_adjusted !== null,
               hasId: !!row.id,
               forecast: row.new_forecast_manually_adjusted,
+              newForecast: row.new_forecast,
               id: row.id
             });
           }

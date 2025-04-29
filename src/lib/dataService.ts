@@ -194,53 +194,105 @@ export class DataService {
   }
 
   public async applyCorrections(corrections: ForecastCorrection[]): Promise<void> {
-    console.log('Applying corrections:', corrections);
+    console.log('Starting to apply corrections:', corrections);
     
     try {
       await this.ensureAuthenticated();
+      console.log('Authentication successful');
+
+      // Validate corrections
+      if (!corrections || corrections.length === 0) {
+        throw new Error('No valid corrections provided');
+      }
 
       // 1. Group corrections by product_group and month
       const correctionMap = new Map<string, ForecastCorrection>();
       corrections.forEach(correction => {
         const key = `${correction.product_group}|${correction.month}`;
         correctionMap.set(key, correction);
+        console.log(`Mapped correction for key: ${key}`, correction);
       });
 
       // 2. Update forecast values in Firestore
       const batch = writeBatch(db);
       const salesCollection = collection(db, 'sales_data_with_forecasts');
+      let updateCount = 0;
+      let skippedCount = 0;
 
+      console.log('Starting to process data rows for updates');
       // Update local data and prepare Firestore updates
       this.data = await Promise.all(this.data.map(async row => {
         const key = `${row["Product Group"]}|${row.Year_Month}`;
         const correction = correctionMap.get(key);
 
-        if (correction && row.forecast_12m && row.id) { // Add row.id check
+        if (correction && row.forecast_12m && row.id) {
           const currentForecast = row.forecast_12m;
           const correctedForecast = currentForecast * (1 + correction.correction_percent / 100);
           
-          // Update the document in Firestore
-          const docRef = doc(db, 'sales_data_with_forecasts', row.id);
-          batch.update(docRef, {
-            forecast_12m: correctedForecast,
-            old_forecast: row.forecast_12m,
-            old_forecast_error: correction.explanation
+          console.log(`Updating forecast for ${key}:`, {
+            current: currentForecast,
+            correction: correction.correction_percent,
+            new: correctedForecast
           });
 
+          // Update the document in Firestore with correct field names
+          const docRef = doc(db, 'sales_data_with_forecasts', row.id);
+          batch.update(docRef, {
+            new_forecast_manually_adjusted: correctedForecast,
+            old_forecast: row.forecast_12m,
+            explanation: correction.explanation,
+            correction_percent: correction.correction_percent,
+            correction_timestamp: new Date().toISOString()
+          });
+
+          updateCount++;
           return {
             ...row,
             forecast_12m: correctedForecast,
             old_forecast: row.forecast_12m,
-            old_forecast_error: correction.explanation
+            explanation: correction.explanation,
+            correction_percent: correction.correction_percent
           };
+        } else {
+          if (correction) {
+            console.log(`Skipping update for ${key} - missing forecast or id:`, {
+              hasForecast: !!row.forecast_12m,
+              hasId: !!row.id
+            });
+          }
+          skippedCount++;
         }
         
         return row;
       }));
 
+      console.log(`Processed ${this.data.length} rows: ${updateCount} updates, ${skippedCount} skipped`);
+
+      if (updateCount === 0) {
+        throw new Error('No matching records found for the provided corrections');
+      }
+
       // Commit all updates in a single batch
+      console.log('Committing batch update to Firestore...');
       await batch.commit();
-      console.log('Successfully updated Firestore with corrections');
+      console.log(`Successfully updated ${updateCount} records in Firestore with corrections`);
+
+      // Also update the corrections collection for tracking
+      console.log('Recording corrections in tracking collection...');
+      const correctionsCollection = collection(db, 'forecast_corrections');
+      const batch2 = writeBatch(db);
+      
+      corrections.forEach(correction => {
+        const docRef = doc(correctionsCollection);
+        batch2.set(docRef, {
+          ...correction,
+          timestamp: new Date().toISOString(),
+          applied_by: auth.currentUser?.email || 'unknown'
+        });
+      });
+
+      await batch2.commit();
+      console.log('Successfully recorded corrections in tracking collection');
 
     } catch (error) {
       console.error('Error applying corrections to Firestore:', error);

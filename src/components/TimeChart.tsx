@@ -33,13 +33,21 @@ const TimeChart: React.FC<TimeChartProps> = ({ data, title, subtitle, showForeca
   // Custom tooltip content with Finnish number formatting
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
+      // Create a mapping for translating the names
+      const nameTranslations: { [key: string]: string } = {
+        'Quantity': 'Toteutunut',
+        'Forecast': 'Ennuste',
+        'Old Forecast': 'Vanha ennuste',
+        'Forecast Error': 'Ennustevirhe'
+      };
+
       return (
         <div className="bg-white p-3 border rounded shadow">
           <p className="font-semibold">{formatDate(label)}</p>
           {payload.map((entry: any, index: number) => (
             entry.value !== null && (
               <p key={index} style={{ color: entry.color }}>
-                {entry.name}: {entry.value.toLocaleString('fi-FI', { maximumFractionDigits: 0 })}
+                {nameTranslations[entry.name] || entry.name}: {entry.value.toLocaleString('fi-FI', { maximumFractionDigits: 0 })}
               </p>
             )
           ))}

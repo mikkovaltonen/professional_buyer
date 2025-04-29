@@ -85,7 +85,7 @@ const TimeChart: React.FC<TimeChartProps> = ({ data, title, subtitle, showForeca
           <Line
             type="monotone"
             dataKey="value"
-            name="Quantity"
+            name="Toteutunut"
             stroke="#4338ca"
             dot={false}
             strokeWidth={2}
@@ -94,7 +94,7 @@ const TimeChart: React.FC<TimeChartProps> = ({ data, title, subtitle, showForeca
           <Line
             type="monotone"
             dataKey="forecast"
-            name="Forecast"
+            name="Ennuste"
             stroke="#f59e0b"
             dot={false}
             strokeWidth={2}
@@ -104,7 +104,7 @@ const TimeChart: React.FC<TimeChartProps> = ({ data, title, subtitle, showForeca
           <Line
             type="monotone"
             dataKey="old_forecast"
-            name="Old Forecast"
+            name="Vanha ennuste"
             stroke="#10b981"
             dot={false}
             strokeWidth={2}
@@ -115,7 +115,7 @@ const TimeChart: React.FC<TimeChartProps> = ({ data, title, subtitle, showForeca
             <Line
               type="monotone"
               dataKey="old_forecast_error"
-              name="Forecast Error"
+              name="Ennustevirhe"
               stroke="#ef4444"
               dot={false}
               strokeWidth={1}

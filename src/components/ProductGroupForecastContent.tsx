@@ -80,14 +80,14 @@ const ProductGroupForecastContent: React.FC<ProductGroupForecastContentProps> = 
       const transformedData = groupData.map(item => ({
         date: item.Year_Month,
         value: item.Quantity,
-        forecast: item.forecast_12m,
+        new_forecast: item.new_forecast,
         old_forecast: item.old_forecast,
         old_forecast_error: item.old_forecast_error === null ? null : Number(item.old_forecast_error),
         new_forecast_manually_adjusted: item.new_forecast_manually_adjusted
       }))
       .filter(item => 
         item.value !== null || 
-        item.forecast !== null || 
+        item.new_forecast !== null || 
         item.old_forecast !== null ||
         item.old_forecast_error !== null ||
         item.new_forecast_manually_adjusted !== null

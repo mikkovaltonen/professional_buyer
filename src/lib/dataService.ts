@@ -9,12 +9,12 @@ export interface TimeSeriesData {
   "Product code": string;
   "Product description": string;
   Quantity: number | null;
-  forecast_12m: number | null;
+  new_forecast: number | null;
   old_forecast: number | null;
   old_forecast_error: string | null;
   correction_percent?: number | null;
   explanation?: string | null;
-  new_forecast_manually_adjusted?: number | null;
+  new_forecast_manually_adjusted: number | null;
   correction_timestamp?: string | null;
   id?: string;
 }
@@ -154,9 +154,13 @@ export class DataService {
         .filter(row => row.Quantity !== null)
         .reduce((sum, row) => sum + (row.Quantity || 0), 0);
 
-      const totalForecast = rowsForDate
-        .filter(row => row.forecast_12m !== null)
-        .reduce((sum, row) => sum + (row.forecast_12m || 0), 0);
+      const totalNewForecast = rowsForDate
+        .filter(row => row.new_forecast !== null)
+        .reduce((sum, row) => sum + (row.new_forecast || 0), 0);
+
+      const totalNewForecastAdjusted = rowsForDate
+        .filter(row => row.new_forecast_manually_adjusted !== null)
+        .reduce((sum, row) => sum + (row.new_forecast_manually_adjusted || 0), 0);
 
       const totalOldForecast = rowsForDate
         .filter(row => row.old_forecast !== null)
@@ -164,7 +168,8 @@ export class DataService {
 
       // If all values for a metric are empty, return null
       const hasQuantity = rowsForDate.some(row => row.Quantity !== null);
-      const hasForecast = rowsForDate.some(row => row.forecast_12m !== null);
+      const hasNewForecast = rowsForDate.some(row => row.new_forecast !== null);
+      const hasNewForecastAdjusted = rowsForDate.some(row => row.new_forecast_manually_adjusted !== null);
       const hasOldForecast = rowsForDate.some(row => row.old_forecast !== null);
       
       return {
@@ -173,11 +178,13 @@ export class DataService {
         "Product code": "GROUP_TOTAL",
         "Product description": `${productGroup} Total`,
         Quantity: hasQuantity ? totalQuantity : null,
-        forecast_12m: hasForecast ? totalForecast : null,
+        new_forecast: hasNewForecast ? totalNewForecast : null,
+        new_forecast_manually_adjusted: hasNewForecastAdjusted ? totalNewForecastAdjusted : null,
         old_forecast: hasOldForecast ? totalOldForecast : null,
         old_forecast_error: null,
         correction_percent: null,
-        explanation: null
+        explanation: null,
+        correction_timestamp: null
       };
     });
 
@@ -253,8 +260,8 @@ export class DataService {
           });
         }
 
-        if (correction && row.forecast_12m !== null && row.id) {
-          const currentForecast = row.forecast_12m;
+        if (correction && row.new_forecast_manually_adjusted !== null && row.id) {
+          const currentForecast = row.new_forecast_manually_adjusted;
           const correctedForecast = currentForecast * (1 + correction.correction_percent / 100);
           
           console.log(`Preparing update for document ${row.id}:`, {
@@ -288,9 +295,9 @@ export class DataService {
         } else {
           if (correction) {
             console.log(`Skipping update for ${key}:`, {
-              hasForecast: row.forecast_12m !== null,
+              hasForecast: row.new_forecast_manually_adjusted !== null,
               hasId: !!row.id,
-              forecast: row.forecast_12m,
+              forecast: row.new_forecast_manually_adjusted,
               id: row.id
             });
           }
@@ -332,7 +339,7 @@ export function normalizeTimeSeriesData(row: any): TimeSeriesData {
     "Product code": row.prodcode || row["Product code"],
     "Product description": row.product_description || row["Product description"],
     Quantity: row.qty !== undefined ? row.qty : row.Quantity,
-    forecast_12m: row.new_forecast !== undefined ? row.new_forecast : row.forecast_12m,
+    new_forecast: row.new_forecast,
     old_forecast: row.old_forecast,
     old_forecast_error: row.old_forecast_error,
     correction_percent: row.correction_percent,

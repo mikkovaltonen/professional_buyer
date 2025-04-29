@@ -36,7 +36,7 @@ const loadImageAsBase64 = async (imagePath: string): Promise<string> => {
 };
 
 const getProductGroupInstructions = (groupName: string): string => {
-  return `Olet ystävällinen Kempin tuoteryhmän ${groupName} kysynnänennustus asiantuntija.
+return `Olet ystävällinen Kempin Viratälahtisiin kuuluvuvan komponenttiryhmän ${groupName} kysynnänennustus asiantuntija.
     Analysoi aluksi kuvassa esitettyä tuoteryhmän kokonaiskysyntädataa. 
     
     Kun olet toimittanut analyysin käyttäjälle, kysy häneltä haluaako hän sinun:
@@ -57,6 +57,9 @@ const getProductGroupInstructions = (groupName: string): string => {
       "explanation": "Esimerkki: Alkuperäisessä ennusteessa kysyntä laskee jyrkästi huipun jälkeen. Koska talouden ja teollisuuden elpymisen odotetaan jatkuvan tasaisemmin läpi vuoden 2025, ehdotan pieniä positiivisia heijastamaan tätä vakaampaa kehitystä ja estämään liian jyrkkää pudotusta ennusteessa (tämä selitys on peräisin alkuperäisestä pyynnöstäsi)."
     }
 
+    Jasonissa tilee käytä exaktisti oikeaa product group codea, esim  "10905 ACDC THREE-PHASE"
+
+    Json korjaus tulee koskea ainoastaa uuden ennusteen korjausta eli tulevaisuutta jolle ei ole toteumaa. 
       ,`;
 };
 

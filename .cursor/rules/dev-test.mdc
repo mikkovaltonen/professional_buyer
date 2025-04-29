@@ -14,3 +14,6 @@ alwaysApply: true
 - Keep detailed functinal specs in Readme
 - When you clean up obsolete code or files alays do only one deletion at time and perform regression testing and document the testing results into "test" - folder
 - This project is vite, not next.js
+
+- Vercel is autodeploy broken so each time you push to git also use powershell command "vercel --prod --for
+ce" to deploy to vercel 

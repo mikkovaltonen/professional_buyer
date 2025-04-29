@@ -14,9 +14,9 @@ interface TimeChartProps {
   data: {
     date: string;
     value: number | null;
-    forecast?: number | null;
     old_forecast?: number | null;
     old_forecast_error?: number | null;
+    new_forecast?: number | null;
     new_forecast_manually_adjusted?: number | null;
   }[];
   title: string;
@@ -36,11 +36,11 @@ const TimeChart: React.FC<TimeChartProps> = ({ data, title, subtitle, showForeca
     if (active && payload && payload.length) {
       // Create a mapping for translating the names
       const nameTranslations: { [key: string]: string } = {
-        'Quantity': 'Toteutunut',
-        'Forecast': 'Ennuste',
-        'Old Forecast': 'Vanha ennuste',
-        'Forecast Error': 'Ennustevirhe',
-        'Adjusted Forecast': 'Korjattu ennuste'
+        'qty': 'Toteutunut (qty)',
+        'new_forecast': 'Ennuste (new_forecast)',
+        'new_forecast_manually_adjusted': 'Korjattu ennuste (new_forecast_manually_adjusted)',
+        'old_forecast': 'Vanha ennuste (old_forecast)',
+        'old_forecast_error': 'Ennustevirhe (old_forecast_error)'
       };
 
       return (
@@ -95,7 +95,7 @@ const TimeChart: React.FC<TimeChartProps> = ({ data, title, subtitle, showForeca
           <Line
             type="monotone"
             dataKey="value"
-            name="Toteutunut"
+            name="qty"
             stroke="#4338ca"
             dot={false}
             strokeWidth={2}
@@ -103,18 +103,8 @@ const TimeChart: React.FC<TimeChartProps> = ({ data, title, subtitle, showForeca
           />
           <Line
             type="monotone"
-            dataKey="forecast"
-            name="Ennuste"
-            stroke="#f59e0b"
-            dot={false}
-            strokeWidth={2}
-            strokeDasharray="5 5"
-            connectNulls={false}
-          />
-          <Line
-            type="monotone"
             dataKey="old_forecast"
-            name="Vanha ennuste"
+            name="old_forecast"
             stroke="#10b981"
             dot={false}
             strokeWidth={2}
@@ -123,8 +113,18 @@ const TimeChart: React.FC<TimeChartProps> = ({ data, title, subtitle, showForeca
           />
           <Line
             type="monotone"
+            dataKey="new_forecast"
+            name="new_forecast"
+            stroke="#f59e0b"
+            dot={false}
+            strokeWidth={2}
+            strokeDasharray="5 5"
+            connectNulls={false}
+          />
+          <Line
+            type="monotone"
             dataKey="new_forecast_manually_adjusted"
-            name="Korjattu ennuste"
+            name="new_forecast_manually_adjusted"
             stroke="#dc2626"
             dot={false}
             strokeWidth={2}
@@ -134,7 +134,7 @@ const TimeChart: React.FC<TimeChartProps> = ({ data, title, subtitle, showForeca
             <Line
               type="monotone"
               dataKey="old_forecast_error"
-              name="Ennustevirhe"
+              name="old_forecast_error"
               stroke="#ef4444"
               dot={false}
               strokeWidth={1}

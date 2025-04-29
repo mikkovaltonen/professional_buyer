@@ -182,7 +182,7 @@ User Input -> ChatInterface.tsx
   - `new_forecast_manually_adjusted`: New forecast value after applying the correction
 
 ### Forecast Correction Process
-1. When corrections are applied through the "Poimi korjaprosentit chatistä ja tallenna ne tietokantaan" button:
+1. When corrections are applied through the "Poimi korjaprosentit chatista ja tallenna ne tietokantaan" button:
    - The original forecast values (`forecast_12m`, `old_forecast`, etc.) must remain unchanged
    - New corrections are stored in dedicated fields (`correction_percent`, `explanation`, etc.)
    - The adjusted forecast is stored in `new_forecast_manually_adjusted`

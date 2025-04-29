@@ -29,8 +29,14 @@ async function importSalesData() {
 
     // Import each entry as a document
     for (const entry of salesData) {
-      await addDoc(collection(db, "sales_data_with_forecasts"), entry);
-      console.log("Imported:", entry);
+      // Add null value for new_forecast_manually_adjusted field
+      const entryWithNullField = {
+        ...entry,
+        new_forecast_manually_adjusted: null
+      };
+      
+      await addDoc(collection(db, "sales_data_with_forecasts"), entryWithNullField);
+      console.log("Imported:", entryWithNullField);
     }
 
     console.log("All sales data imported!");

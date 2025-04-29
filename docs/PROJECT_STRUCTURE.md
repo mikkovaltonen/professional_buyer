@@ -112,11 +112,14 @@ User Input -> ChatInterface.tsx
   - Support for multiple adjustments in one save
 
 - `src/components/ApplyCorrectionsButton.tsx`: Forecast correction application component with:
-  - Automatic extraction of corrections from chat content
-  - Application of corrections to CSV data
-  - Export of corrected data to CSV file
-  - Error handling and user feedback
-  - Support for multiple corrections across different products and months
+  - Extracts correction data from chat content using JSON parsing
+  - Validates correction data structure (product_group, month, correction_percent, explanation)
+  - Reads the main forecast data from sales_data_with_forecasts.json
+  - Applies corrections to matching items based on product group and month
+  - Updates forecast values and stores old forecasts
+  - Saves updated data back to the system
+  - Provides user feedback through toast notifications
+  - Handles loading states and error cases
 
 ### API Integration
 - `src/api/chat.ts`: Gemini API integration with:

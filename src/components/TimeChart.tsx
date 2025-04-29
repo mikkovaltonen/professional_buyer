@@ -20,9 +20,10 @@ interface TimeChartProps {
   }[];
   title: string;
   subtitle?: string;
+  showForecastErrorLine?: boolean;
 }
 
-const TimeChart: React.FC<TimeChartProps> = ({ data, title, subtitle }) => {
+const TimeChart: React.FC<TimeChartProps> = ({ data, title, subtitle, showForecastErrorLine = true }) => {
   // Format date to show only month and year in Finnish
   const formatDate = (date: string) => {
     const d = new Date(date);
@@ -110,16 +111,18 @@ const TimeChart: React.FC<TimeChartProps> = ({ data, title, subtitle }) => {
             strokeDasharray="3 3"
             connectNulls={false}
           />
-          <Line
-            type="monotone"
-            dataKey="old_forecast_error"
-            name="Forecast Error"
-            stroke="#ef4444"
-            dot={false}
-            strokeWidth={1}
-            strokeDasharray="2 2"
-            connectNulls={false}
-          />
+          {showForecastErrorLine && (
+            <Line
+              type="monotone"
+              dataKey="old_forecast_error"
+              name="Forecast Error"
+              stroke="#ef4444"
+              dot={false}
+              strokeWidth={1}
+              strokeDasharray="2 2"
+              connectNulls={false}
+            />
+          )}
         </LineChart>
       </ResponsiveContainer>
     </div>

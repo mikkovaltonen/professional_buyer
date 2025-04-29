@@ -38,7 +38,6 @@ const ProductGroupForecastContent: React.FC<ProductGroupForecastContentProps> = 
   const [selectedGroup, setSelectedGroup] = useState<string>('');
   const [chartData, setChartData] = useState<{ date: string; value: number | null; forecast?: number | null; old_forecast?: number | null; old_forecast_error?: number | null }[]>([]);
   const [chatContent, setChatContent] = useState<string>('');
-  const [corrections, setCorrections] = useState<ForecastCorrection[]>([]);
   const [productDescriptions, setProductDescriptions] = useState<string[]>([]);
 
   useEffect(() => {
@@ -109,69 +108,13 @@ const ProductGroupForecastContent: React.FC<ProductGroupForecastContentProps> = 
     }
   };
 
-  // Add this function to extract corrections from chat content
-  const extractCorrections = (content: string): ForecastCorrection[] => {
-    try {
-      console.log('Attempting to extract corrections from:', content);
-      const jsonRegex = /\[\s*\{[\s\S]*?\}\s*\]/g;
-      const matches = [...content.matchAll(jsonRegex)];
-      console.log('Found JSON matches:', matches);
-      
-      if (matches.length === 0) {
-        console.log('No JSON matches found');
-        return [];
-      }
-
-      const jsonContent = matches[matches.length - 1][0];
-      console.log('Extracted JSON content:', jsonContent);
-      
-      try {
-        const parsedCorrections = JSON.parse(jsonContent);
-        console.log('Successfully parsed corrections:', parsedCorrections);
-        
-        if (Array.isArray(parsedCorrections)) {
-          // Validate the structure of each correction
-          const validCorrections = parsedCorrections.filter(item => {
-            const isValid = item.product_group && item.month && 
-              (typeof item.correction_percent === 'number' || 
-               (typeof item.correction_percent === 'string' && !isNaN(Number(item.correction_percent))));
-            if (!isValid) {
-              console.log('Invalid correction item:', item);
-            }
-            return isValid;
-          });
-          console.log('Valid corrections:', validCorrections);
-          return validCorrections;
-        }
-      } catch (parseError) {
-        console.error('JSON parsing error:', parseError);
-      }
-      
-      return [];
-    } catch (error) {
-      console.error('Error extracting corrections:', error);
-      return [];
-    }
-  };
-
-  // Update chat content handler to also extract corrections
+  // Päivitetään chatin sisältö vain setChatContentilla
   const handleChatContentUpdate = (content: string) => {
     if (content !== chatContent) {
       console.log('Chat content updated:', content);
       setChatContent(content);
-      const extractedCorrections = extractCorrections(content);
-      console.log('Extracted corrections:', extractedCorrections);
-      if (JSON.stringify(extractedCorrections) !== JSON.stringify(corrections)) {
-        console.log('Setting new corrections:', extractedCorrections);
-        setCorrections(extractedCorrections);
-      }
     }
   };
-
-  // Add useEffect to monitor corrections state
-  useEffect(() => {
-    console.log('Current corrections state:', corrections);
-  }, [corrections]);
 
   return (
     <div className="space-y-6">
@@ -209,23 +152,19 @@ const ProductGroupForecastContent: React.FC<ProductGroupForecastContentProps> = 
         <Card>
           <CardContent className="pt-6">
             <div className="relative">
-              <Button
-                variant="outline"
-                size="icon"
-                className="absolute top-2 right-2 bg-white hover:bg-gray-100"
-                onClick={handleRemoveFile}
-              >
-                <X className="h-4 w-4" />
-              </Button>
               <TimeChart 
                 data={chartData}
                 title={`${selectedGroup} Total Demand`}
                 subtitle={productDescriptions.join(', ')}
+                showForecastErrorLine={false}
               />
             </div>
           </CardContent>
         </Card>
       )}
+
+      {/* Add extra margin between chart and chat */}
+      <div style={{ marginTop: '2.5rem' }} />
 
       {/* Chat Interface */}
       {selectedGroup && (
@@ -237,17 +176,9 @@ const ProductGroupForecastContent: React.FC<ProductGroupForecastContentProps> = 
                   <Bot className="h-5 w-5 text-[#4ADE80] mr-2" />
                   Keskustele tuoteryhmästä
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleRemoveFile}
-                  className="h-8 w-8"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent style={{ minHeight: '500px' }}>
               <ChatInterface 
                 selectedProduct={`${selectedGroup} Total Demand`}
                 selectedImageUrl={imageUrl}
@@ -260,7 +191,8 @@ const ProductGroupForecastContent: React.FC<ProductGroupForecastContentProps> = 
               chatContent={chatContent} 
               selectedProductGroup={selectedGroup}
             />
-            <ApplyCorrectionsButton 
+            <ApplyCorrectionsButton
+              chatContent={chatContent}
               selectedProductGroup={selectedGroup}
             />
           </div>

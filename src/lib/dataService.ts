@@ -1,4 +1,7 @@
 import Papa from 'papaparse';
+import { collection, getDocs, query, where, orderBy, updateDoc, doc, writeBatch } from 'firebase/firestore';
+import { db, auth } from './firebase';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 
 export interface TimeSeriesData {
   Year_Month: string;
@@ -11,6 +14,7 @@ export interface TimeSeriesData {
   old_forecast_error: string | null;
   correction_percent?: number | null;
   explanation?: string | null;
+  id?: string;  // Add id to the interface
 }
 
 export interface ForecastCorrection {
@@ -33,6 +37,19 @@ export class DataService {
     return DataService.instance;
   }
 
+  private async ensureAuthenticated() {
+    if (!auth.currentUser) {
+      console.log('No user logged in, attempting to sign in...');
+      try {
+        await signInWithEmailAndPassword(auth, "forecasting@kemppi.com", "laatua");
+        console.log('Successfully signed in');
+      } catch (error) {
+        console.error('Failed to sign in:', error);
+        throw error;
+      }
+    }
+  }
+
   public async loadCSVData(): Promise<TimeSeriesData[]> {
     console.log('Loading forecast data...');
     if (this.data.length > 0) {
@@ -41,18 +58,26 @@ export class DataService {
     }
 
     try {
-      console.log('Fetching JSON file...');
-      const response = await fetch('/demo_data/sales_data_with_forecasts.json');
-      const jsonData = await response.json();
-      console.log('JSON data loaded, rows:', jsonData.length);
+      await this.ensureAuthenticated();
+
+      console.log('Fetching data from Firestore...');
+      const salesCollection = collection(db, 'sales_data_with_forecasts');
+      const querySnapshot = await getDocs(salesCollection);
       
-      if (jsonData.length === 0) {
-        console.error('No data found in JSON');
-        throw new Error('No data found in JSON');
+      if (querySnapshot.empty) {
+        console.error('No data found in Firestore');
+        throw new Error('No data found in Firestore');
       }
 
-      // Normalize all rows to TimeSeriesData
-      this.data = jsonData.map(normalizeTimeSeriesData);
+      // Convert Firestore documents to TimeSeriesData format
+      this.data = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return normalizeTimeSeriesData({
+          ...data,
+          id: doc.id // Keep the document ID for future updates
+        });
+      });
+
       console.log('Final data rows:', this.data.length);
       if (this.data.length > 0) {
         console.log('Sample processed row:', JSON.stringify(this.data[0], null, 2));
@@ -168,60 +193,78 @@ export class DataService {
     return sortedData;
   }
 
-  public applyCorrections(corrections: ForecastCorrection[]): void {
+  public async applyCorrections(corrections: ForecastCorrection[]): Promise<void> {
     console.log('Applying corrections:', corrections);
     
-    // 1. Group corrections by product_group and month
-    const correctionMap = new Map<string, ForecastCorrection>();
-    corrections.forEach(correction => {
-      const key = `${correction.product_group}|${correction.month}`;
-      correctionMap.set(key, correction);
-    });
+    try {
+      await this.ensureAuthenticated();
 
-    // 2. Update forecast values in CSV data
-    this.data = this.data.map(row => {
-      const key = `${row["Product Group"]}|${row.Year_Month}`;
-      const correction = correctionMap.get(key);
+      // 1. Group corrections by product_group and month
+      const correctionMap = new Map<string, ForecastCorrection>();
+      corrections.forEach(correction => {
+        const key = `${correction.product_group}|${correction.month}`;
+        correctionMap.set(key, correction);
+      });
 
-      if (correction && row.forecast_12m) {
-        const currentForecast = row.forecast_12m;
-        const correctedForecast = currentForecast * (1 + correction.correction_percent / 100);
+      // 2. Update forecast values in Firestore
+      const batch = writeBatch(db);
+      const salesCollection = collection(db, 'sales_data_with_forecasts');
+
+      // Update local data and prepare Firestore updates
+      this.data = await Promise.all(this.data.map(async row => {
+        const key = `${row["Product Group"]}|${row.Year_Month}`;
+        const correction = correctionMap.get(key);
+
+        if (correction && row.forecast_12m && row.id) { // Add row.id check
+          const currentForecast = row.forecast_12m;
+          const correctedForecast = currentForecast * (1 + correction.correction_percent / 100);
+          
+          // Update the document in Firestore
+          const docRef = doc(db, 'sales_data_with_forecasts', row.id);
+          batch.update(docRef, {
+            forecast_12m: correctedForecast,
+            old_forecast: row.forecast_12m,
+            old_forecast_error: correction.explanation
+          });
+
+          return {
+            ...row,
+            forecast_12m: correctedForecast,
+            old_forecast: row.forecast_12m,
+            old_forecast_error: correction.explanation
+          };
+        }
         
-        return {
-          ...row,
-          forecast_12m: correctedForecast,
-          old_forecast: row.forecast_12m, // Store original forecast
-          old_forecast_error: correction.explanation
-        };
-      }
-      
-      return row;
-    });
+        return row;
+      }));
 
-    console.log('Corrections applied successfully');
+      // Commit all updates in a single batch
+      await batch.commit();
+      console.log('Successfully updated Firestore with corrections');
+
+    } catch (error) {
+      console.error('Error applying corrections to Firestore:', error);
+      throw error;
+    }
   }
 
   public exportCorrectedData(): string {
-    console.log('Exporting corrected data...');
-    return Papa.unparse(this.data, {
-      delimiter: ";",
-      header: true
-    });
+    return Papa.unparse(this.data);
   }
 }
 
-// Normalization function: maps any incoming data format to TimeSeriesData
 export function normalizeTimeSeriesData(row: any): TimeSeriesData {
   return {
-    Year_Month: row.Year_Month || row.year_month || '',
-    "Product Group": row["Product Group"] || row.prodgroup || '',
-    "Product code": row["Product code"] || row.prodcode || '',
-    "Product description": row["Product description"] || row.product_description || '',
-    Quantity: row.Quantity ?? row.qty ?? null,
-    forecast_12m: row.forecast_12m ?? row.new_forecast ?? null,
-    old_forecast: row.old_forecast ?? null,
-    old_forecast_error: row.old_forecast_error ?? null,
-    correction_percent: row.correction_percent ?? null,
-    explanation: row.explanation ?? null
+    Year_Month: row.year_month || row.Year_Month,
+    "Product Group": row.prodgroup || row["Product Group"],
+    "Product code": row.prodcode || row["Product code"],
+    "Product description": row.product_description || row["Product description"],
+    Quantity: row.qty !== undefined ? row.qty : row.Quantity,
+    forecast_12m: row.new_forecast !== undefined ? row.new_forecast : row.forecast_12m,
+    old_forecast: row.old_forecast,
+    old_forecast_error: row.old_forecast_error,
+    correction_percent: row.correction_percent,
+    explanation: row.explanation,
+    id: row.id // Include the document ID
   };
 } 

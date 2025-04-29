@@ -12,6 +12,7 @@
     "test": "node --experimental-specifier-resolution=node --loader ts-node/esm tests/chatbot_roles_test.js"
   },
   "dependencies": {
+    "@google-cloud/storage": "^7.16.0",
     "@google/generative-ai": "^0.24.0",
     "@radix-ui/react-alert-dialog": "^1.0.5",
     "@radix-ui/react-dialog": "^1.0.5",
@@ -27,6 +28,8 @@
     "clsx": "^2.1.0",
     "cors": "^2.8.5",
     "express": "^5.1.0",
+    "firebase": "^11.6.1",
+    "firebase-admin": "^13.3.0",
     "i18next": "^25.0.0",
     "i18next-browser-languagedetector": "^8.0.4",
     "lucide-react": "^0.330.0",

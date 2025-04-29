@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { TimeSeriesData } from '@/lib/dataService';
+import { DataService } from '@/lib/dataService';
 
 interface ApplyCorrectionsButtonProps {
+  chatContent: string;
   selectedProductGroup: string;
 }
 
@@ -15,82 +16,88 @@ interface ForecastCorrection {
   explanation: string;
 }
 
-const ApplyCorrectionsButton: React.FC<ApplyCorrectionsButtonProps> = ({ selectedProductGroup }) => {
+const ApplyCorrectionsButton: React.FC<ApplyCorrectionsButtonProps> = ({ chatContent, selectedProductGroup }) => {
   const [isLoading, setIsLoading] = useState(false);
+
+  const extractCorrectionsFromChat = (content: string): ForecastCorrection[] => {
+    if (!content) {
+      console.log('No chat content provided');
+      return [];
+    }
+
+    try {
+      // Find JSON arrays in the chat content
+      const jsonRegex = /\[\s*\{[\s\S]*?\}\s*\]/g;
+      const matches = content.match(jsonRegex);
+      
+      if (!matches || matches.length === 0) {
+        console.log('No JSON matches found in chat content');
+        return [];
+      }
+
+      // Take the last match (most recent correction)
+      const jsonContent = matches[matches.length - 1];
+      console.log('Found JSON content:', jsonContent);
+      
+      try {
+        const parsedCorrections = JSON.parse(jsonContent);
+        console.log('Parsed corrections:', parsedCorrections);
+        
+        if (Array.isArray(parsedCorrections)) {
+          // Validate the structure of each correction
+          const validCorrections = parsedCorrections.filter(item => {
+            const isValid = item.product_group && 
+                          item.month && 
+                          (typeof item.correction_percent === 'number' || 
+                           (typeof item.correction_percent === 'string' && !isNaN(Number(item.correction_percent)))) &&
+                          item.explanation;
+            if (!isValid) {
+              console.log('Invalid correction item:', item);
+            }
+            return isValid;
+          });
+          console.log('Valid corrections:', validCorrections);
+          return validCorrections;
+        }
+      } catch (parseError) {
+        console.error('JSON parsing error:', parseError);
+      }
+      
+      return [];
+    } catch (error) {
+      console.error('Error extracting corrections:', error);
+      return [];
+    }
+  };
 
   const applyCorrections = async () => {
     try {
       setIsLoading(true);
       console.log('Starting to apply corrections');
+      console.log('Chat content:', chatContent);
 
-      // Read the forecast adjustments from memory
-      const response = await fetch('/api/forecast-adjustments');
-      if (!response.ok) {
-        throw new Error('Failed to read forecast adjustments');
-      }
+      // Extract corrections from chat content
+      const corrections = extractCorrectionsFromChat(chatContent);
+      console.log('Extracted corrections:', corrections);
 
-      const data = await response.json();
-      console.log('Read forecast adjustments:', data);
-
-      if (!data.adjustments || !Array.isArray(data.adjustments)) {
-        throw new Error('Invalid forecast adjustments format');
+      if (corrections.length === 0) {
+        toast.error('Korjauksia ei löytynyt chat-sisällöstä');
+        return;
       }
 
       // Filter corrections for the selected product group
-      const corrections = data.adjustments.filter(
-        (adjustment: ForecastCorrection) => adjustment.product_group === selectedProductGroup
+      const relevantCorrections = corrections.filter(
+        correction => correction.product_group === selectedProductGroup
       );
 
-      if (corrections.length === 0) {
+      if (relevantCorrections.length === 0) {
         toast.info('Ei löytynyt korjauksia valitulle tuoteryhmälle');
         return;
       }
 
-      console.log('Applying corrections:', corrections);
-
-      // Read the forecast data
-      const forecastResponse = await fetch('/api/forecast-data');
-      if (!forecastResponse.ok) {
-        throw new Error('Failed to read forecast data');
-      }
-
-      const forecastData: TimeSeriesData[] = await forecastResponse.json();
-      console.log('Read forecast data');
-
-      // Create a map of corrections by product group and month
-      const correctionsMap = new Map<string, ForecastCorrection>(
-        corrections.map(c => [`${c.product_group}|${c.month}`, c])
-      );
-      console.log('Created corrections map');
-
-      // Update the data with corrections
-      const updatedData = forecastData.map((row: TimeSeriesData) => {
-        const key = `${row['Product Group']}|${row['Year_Month']}`;
-        const correction = correctionsMap.get(key);
-
-        if (correction) {
-          return {
-            ...row,
-            correction_percent: correction.correction_percent,
-            explanation: correction.explanation
-          };
-        }
-        return row;
-      });
-      console.log('Updated data with corrections');
-
-      // Save the updated data to memory
-      const saveResponse = await fetch('/api/forecast-data', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updatedData)
-      });
-
-      if (!saveResponse.ok) {
-        throw new Error('Failed to save updated forecast data');
-      }
+      // Get DataService instance and apply corrections
+      const dataService = DataService.getInstance();
+      await dataService.applyCorrections(relevantCorrections);
 
       toast.success('Korjaukset lisätty onnistuneesti');
     } catch (error) {
@@ -110,7 +117,7 @@ const ApplyCorrectionsButton: React.FC<ApplyCorrectionsButtonProps> = ({ selecte
       {isLoading ? (
         <Loader2 className="h-4 w-4 animate-spin" />
       ) : null}
-      Lisää korjausprosentit JSON:iin
+      Lisää korjausprosentit
     </Button>
   );
 };

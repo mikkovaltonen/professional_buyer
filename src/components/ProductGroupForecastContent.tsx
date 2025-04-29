@@ -8,7 +8,6 @@ import ChatInterface from "@/components/ChatInterface";
 import { DataService } from "@/lib/dataService";
 import TimeChart from "@/components/TimeChart";
 import { generateChartImage } from "@/lib/chartUtils";
-import SaveForecastButton from "@/components/SaveForecastButton";
 import ApplyCorrectionsButton from "@/components/ApplyCorrectionsButton";
 import { ForecastCorrection } from "@/lib/dataService";
 import {
@@ -96,7 +95,7 @@ const ProductGroupForecastContent: React.FC<ProductGroupForecastContentProps> = 
       setChartData(transformedData);
 
       // Generate chart image for chat
-      const chartImageUrl = await generateChartImage(transformedData, `${group} Total Demand`);
+      const chartImageUrl = await generateChartImage(transformedData, `${group} Kokonaiskysyntä`);
       setImageUrl(chartImageUrl);
       
       toast.success('Product group data loaded successfully');
@@ -154,7 +153,7 @@ const ProductGroupForecastContent: React.FC<ProductGroupForecastContentProps> = 
             <div className="relative">
               <TimeChart 
                 data={chartData}
-                title={`${selectedGroup} Total Demand`}
+                title={`${selectedGroup} Kokonaiskysyntä`}
                 subtitle={productDescriptions.join(', ')}
                 showForecastErrorLine={false}
               />
@@ -180,17 +179,13 @@ const ProductGroupForecastContent: React.FC<ProductGroupForecastContentProps> = 
             </CardHeader>
             <CardContent style={{ minHeight: '500px' }}>
               <ChatInterface 
-                selectedProduct={`${selectedGroup} Total Demand`}
+                selectedProduct={`${selectedGroup} Kokonaiskysyntä`}
                 selectedImageUrl={imageUrl}
                 onMessageUpdate={handleChatContentUpdate}
               />
             </CardContent>
           </Card>
           <div className="flex justify-end gap-4 mt-4">
-            <SaveForecastButton 
-              chatContent={chatContent} 
-              selectedProductGroup={selectedGroup}
-            />
             <ApplyCorrectionsButton
               chatContent={chatContent}
               selectedProductGroup={selectedGroup}

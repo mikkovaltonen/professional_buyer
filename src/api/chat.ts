@@ -96,10 +96,10 @@ export const initializeChat = async (selectedProduct: string, imageUrl: string) 
       ]
     });
 
-    // Determine if this is a product group or individual product
-    const isProductGroup = selectedProduct.includes('Total Demand');
-    const instructions = isProductGroup 
-      ? getProductGroupInstructions(selectedProduct.replace(' Total Demand', ''))
+    // Check if this is a product group or individual product
+    const isProductGroup = selectedProduct.includes('Kokonaiskysyntä');
+    const instructions = isProductGroup
+      ? getProductGroupInstructions(selectedProduct.replace(' Kokonaiskysyntä', ''))
       : getProductInstructions(selectedProduct);
 
     // Initialize chat with appropriate instructions

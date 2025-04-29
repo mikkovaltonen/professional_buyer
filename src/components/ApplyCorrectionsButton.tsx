@@ -117,7 +117,7 @@ const ApplyCorrectionsButton: React.FC<ApplyCorrectionsButtonProps> = ({ chatCon
       {isLoading ? (
         <Loader2 className="h-4 w-4 animate-spin" />
       ) : null}
-      Lisää korjausprosentit
+      Poimi korjaprosentit chatistä ja tallenna ne tietokantaan
     </Button>
   );
 };

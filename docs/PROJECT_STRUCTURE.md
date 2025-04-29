@@ -6,10 +6,10 @@
 
 #### Components
 - `src/components/ChatInterface.tsx` - Main chat interface component that handles user interactions and message display
-- `src/components/SaveForecastButton.tsx` - Component for saving forecast adjustments with JSON validation and file storage
 - `src/components/ApplyCorrectionsButton.tsx` - Component for applying forecast corrections to CSV data and exporting the results
 - `src/components/ui/` - Reusable UI components (buttons, inputs, cards) using shadcn/ui
 - `src/components/Navigation.tsx` - Main navigation component for the application
+- `src/components/TimeChart.tsx` - Time series visualization component with multiple data series support
 
 #### Pages
 - `src/pages/Index.tsx` - Landing page component
@@ -61,7 +61,7 @@
 
 ### Chat Implementation
 ```ascii
-Gemini API Call Flow:
+Gemini 2.5 Pro API Call Flow:
 
 User Input -> ChatInterface.tsx
        |
@@ -69,7 +69,7 @@ User Input -> ChatInterface.tsx
     chat.ts
        |
        v
-[Gemini API] 
+[Gemini 2.5 Pro API] 
        |
        v
   Response -> UI
@@ -103,13 +103,6 @@ User Input -> ChatInterface.tsx
   - File upload support
   - Image analysis capabilities
   - Real-time responses
-
-- `src/components/SaveForecastButton.tsx`: Forecast adjustment saving component with:
-  - JSON data extraction from chat content
-  - Data validation for required fields
-  - Error handling and user feedback
-  - File storage integration
-  - Support for multiple adjustments in one save
 
 - `src/components/ApplyCorrectionsButton.tsx`: Forecast correction application component with:
   - Extracts correction data from chat content using JSON parsing
@@ -171,8 +164,8 @@ User Input -> ChatInterface.tsx
 ### Forecast Data Fields
 - Original fields (read-only, should never be modified):
   - `Quantity`: Historical demand quantity
-  - `forecast_12m`: Original forecast value
   - `old_forecast`: Original old forecast value
+  - `new_forecast`: New forecast value
   - `old_forecast_error`: Original forecast error value
 
 - Correction fields (can be created/modified):
@@ -180,6 +173,13 @@ User Input -> ChatInterface.tsx
   - `correction_timestamp`: Timestamp when the correction was applied
   - `explanation`: Explanation for the correction
   - `new_forecast_manually_adjusted`: New forecast value after applying the correction
+
+### Chart Data Series
+- Blue line (#4338ca): Historical demand (`Quantity`)
+- Green dotted line (#10b981): Old forecast (`old_forecast`)
+- Orange dotted line (#f59e0b): New forecast (`new_forecast`)
+- Red line (#dc2626): Manually adjusted forecast (`new_forecast_manually_adjusted`)
+- Red dotted line (#ef4444): Forecast error (`old_forecast_error`)
 
 ### Forecast Correction Process
 1. When corrections are applied through the "Poimi korjaprosentit chatista ja tallenna ne tietokantaan" button:

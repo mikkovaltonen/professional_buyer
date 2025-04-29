@@ -24,7 +24,7 @@ AI Kysynnänennusteavustaja on moderni web-sovellus, joka auttaa yrityksiä ennu
 - Firebase (backend services)
 
 ### Gemini API 
-Kysyntä ennusteen tulkitsemisessa käytetään Gemini Pro mallia, joka tukee sekä kuvien analysointia että nettihakua kysynnän ennustamiseen.
+Kysyntä ennusteen tulkitsemisessa käytetään Gemini 2.5 Pro -mallia, joka tukee sekä kuvien analysointia että nettihakua kysynnän ennustamiseen.
 
 ## Toiminnalliset speksit
 
@@ -113,7 +113,11 @@ npm run test
 ```
 
 ### Tuotantoon vieminen
-Sovellus on konfiguroitu käyttämään Vercel-palvelua tuotantoon viemiseen. Muutokset main-haaraan deployautuvat automaattisesti.
+Sovellus on konfiguroitu käyttämään Vercel-palvelua tuotantoon viemiseen. Huomaa, että automaattinen deployment on rikki, joten jokaisen git-pushin jälkeen täytyy ajaa manuaalisesti:
+
+```bash
+vercel --prod --force
+```
 
 ## Projektin rakenne
 ```
@@ -148,3 +152,15 @@ Lisätietoja ja tukea saat osoitteesta [https://wisestein.fi/yhteystiedot](https
 ## Documentation
 
 - See [docs/data-normalization.md](docs/data-normalization.md) for details on the data normalization layer and field mapping.
+
+### Datarakenne
+Sovellus käsittelee seuraavia datakenttiä:
+
+- `Quantity`: Toteutunut kysyntä
+- `old_forecast`: Vanha ennuste (vihreä katkoviiva)
+- `new_forecast`: Uusi ennuste (oranssi katkoviiva)
+- `new_forecast_manually_adjusted`: Korjattu ennuste (punainen viiva)
+- `old_forecast_error`: Ennustevirhe (punainen katkoviiva)
+- `correction_percent`: Korjausprosentti
+- `explanation`: Korjauksen selitys
+- `correction_timestamp`: Korjauksen aikaleima

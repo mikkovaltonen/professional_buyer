@@ -16,8 +16,9 @@ The data normalization layer decouples external data source field names from the
 | `prodcode`            | `Product code`                 |       |
 | `product_description` | `Product description`          |       |
 | `qty`                 | `Quantity`                     |       |
-| `new_forecast`        | `new_forecast_manually_adjusted`| Maps to red "Korjattu ennuste" line in chart |
-| `old_forecast`        | `old_forecast`                 | Maps to green "Vanha ennuste" line in chart |
+| `new_forecast`        | `new_forecast`                 | Maps to orange dotted "Uusi ennuste" line in chart |
+| `new_forecast_adj`    | `new_forecast_manually_adjusted`| Maps to red "Korjattu ennuste" line in chart |
+| `old_forecast`        | `old_forecast`                 | Maps to green dotted "Vanha ennuste" line in chart |
 | `old_forecast_error`  | `old_forecast_error`          | Maps to red dotted "Ennustevirhe" line in chart |
 | `correction_percent`  | `correction_percent`          | Percentage adjustment for manual corrections |
 | `explanation`         | `explanation`                 | Text explanation for manual corrections |
@@ -26,10 +27,11 @@ The data normalization layer decouples external data source field names from the
 ## Chart Line Mappings
 | Line Color | Line Name | Data Field |
 |------------|-----------|------------|
-| Blue | Toteutunut | `Quantity` |
-| Green dotted | Vanha ennuste | `old_forecast` |
-| Red | Korjattu ennuste | `new_forecast_manually_adjusted` |
-| Red dotted | Ennustevirhe | `old_forecast_error` |
+| Blue (#4338ca) | Toteutunut | `Quantity` |
+| Green dotted (#10b981) | Vanha ennuste | `old_forecast` |
+| Orange dotted (#f59e0b) | Uusi ennuste | `new_forecast` |
+| Red (#dc2626) | Korjattu ennuste | `new_forecast_manually_adjusted` |
+| Red dotted (#ef4444) | Ennustevirhe | `old_forecast_error` |
 
 ## How to Update the Mapping
 1. Edit the normalization function in `src/lib/dataService.ts` (see `normalizeTimeSeriesData`).

@@ -1,0 +1,2 @@
+### ApplyCorrectionsButton.tsx
+A button component that allows users to apply manual corrections. The button displays "Tallenna ehdotetut manuaaliset korjaukset" and processes corrections from chat content when clicked. 

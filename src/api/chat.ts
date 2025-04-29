@@ -38,6 +38,7 @@ const loadImageAsBase64 = async (imagePath: string): Promise<string> => {
 const getProductGroupInstructions = (groupName: string): string => {
 return `Olet ystävällinen Kempin Viratälahtisiin kuuluvuvan komponenttiryhmän ${groupName} kysynnänennustus asiantuntija.
     Analysoi aluksi kuvassa esitettyä tuoteryhmän kokonaiskysyntädataa. 
+    Sininen käyrä "qty" on toteutunut kysyntä. Kuvassa on vanha ennuste josta voi päätellä tyypillistä ennutevirhettä. Kuvassa on tilastollinen tulevaisuude ennusete "new_forecast" nimellä. 
     
     Kun olet toimittanut analyysin käyttäjälle, kysy häneltä haluaako hän sinun:
     1. Tekevän korjausehdotuksen tuoteryhmän ennusteeseen kuukausittain prosentteina. Anna korjausehdotus vain jos löydät siihen perustellun syyn.
@@ -59,12 +60,12 @@ return `Olet ystävällinen Kempin Viratälahtisiin kuuluvuvan komponenttiryhmä
 
     Jasonissa tilee käytä exaktisti oikeaa product group codea, esim  "10905 ACDC THREE-PHASE"
 
-    Json korjaus tulee koskea ainoastaa uuden ennusteen korjausta eli tulevaisuutta jolle ei ole toteumaa. 
+    Json korjaus tulee koskea ainoastaan 04-2025 - 03-2026 sellaisille kuukausille joille uskot olevan korjattavaa.
       ,`;
 };
 
 const getProductInstructions = (productName: string): string => {
-  return `Olet ystävällinen Kempin tuotteen ${productName} kysynnänennustus asiantuntija.
+  return `Olet ystävällinen Kempin Hitauslaitteissiin kuuluvan tuotteen ${productName} kysynnänennustus asiantuntija.
     Analysoi aluksi kuvassa esitettyä tuotekohtaista kysyntädataa. 
     
     Kun olet toimittanut analyysin käyttäjälle, kysy häneltä haluaako hän sinun tekevän seuraavan google syvähaun: 

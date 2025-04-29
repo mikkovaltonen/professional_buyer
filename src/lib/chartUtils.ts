@@ -1,5 +1,12 @@
 export const generateChartImage = (
-  chartData: { date: string; value: number | null; forecast?: number | null }[],
+  chartData: { 
+    date: string; 
+    value: number | null; 
+    old_forecast?: number | null;
+    new_forecast?: number | null;
+    old_forecast_error?: number | null;
+    new_forecast_manually_adjusted?: number | null;
+  }[],
   title: string
 ): Promise<string> => {
   return new Promise((resolve) => {
@@ -27,13 +34,14 @@ export const generateChartImage = (
     ctx.fillText(title, 40, 30);
 
     // Calculate data ranges
-    const values = chartData
-      .map(d => d.value)
-      .filter((v): v is number => v !== null);
-    const forecasts = chartData
-      .map(d => d.forecast)
-      .filter((v): v is number => v !== null);
-    const allValues = [...values, ...forecasts];
+    const allValues = chartData.flatMap(d => [
+      d.value,
+      d.old_forecast,
+      d.new_forecast,
+      d.old_forecast_error,
+      d.new_forecast_manually_adjusted
+    ].filter((v): v is number => v !== null));
+    
     const maxValue = Math.max(...allValues);
     const minValue = Math.min(...allValues);
 
@@ -60,14 +68,16 @@ export const generateChartImage = (
         ctx.setLineDash([]);
       }
 
+      let started = false;
       data.forEach((value, index) => {
         if (value === null) return;
 
         const x = 40 + ((750 - 40) * index) / (data.length - 1);
         const y = 350 - ((350 - 50) * (value - minValue)) / (maxValue - minValue);
 
-        if (index === 0) {
+        if (!started) {
           ctx.moveTo(x, y);
+          started = true;
         } else {
           ctx.lineTo(x, y);
         }
@@ -88,15 +98,12 @@ export const generateChartImage = (
       });
     };
 
-    // Draw actual values
-    drawDataPoints(chartData.map(d => d.value), '#4ADE80');
-
-    // Draw forecast values
-    drawDataPoints(
-      chartData.map(d => d.forecast),
-      '#FFA500',
-      true
-    );
+    // Draw all data series
+    drawDataPoints(chartData.map(d => d.value), '#4338ca'); // Actual values in blue
+    drawDataPoints(chartData.map(d => d.old_forecast), '#10b981', true); // Old forecast in green, dashed
+    drawDataPoints(chartData.map(d => d.new_forecast), '#f59e0b', true); // New forecast in orange, dashed
+    drawDataPoints(chartData.map(d => d.new_forecast_manually_adjusted), '#dc2626'); // Manually adjusted in red
+    drawDataPoints(chartData.map(d => d.old_forecast_error), '#ef4444', true); // Forecast error in red, dashed
 
     // Draw date labels
     ctx.fillStyle = 'black';
@@ -123,30 +130,31 @@ export const generateChartImage = (
     ctx.font = '14px Arial';
     ctx.setLineDash([]);
     
-    // Actual values legend
-    ctx.beginPath();
-    ctx.strokeStyle = '#4ADE80';
-    ctx.moveTo(600, 30);
-    ctx.lineTo(650, 30);
-    ctx.stroke();
-    ctx.fillStyle = '#4ADE80';
-    ctx.arc(625, 30, 4, 0, 2 * Math.PI);
-    ctx.fill();
-    ctx.fillStyle = 'black';
-    ctx.fillText('Kysyntä', 660, 35);
+    const legendItems = [
+      { color: '#4338ca', label: 'Kysyntä', y: 30, dashed: false },
+      { color: '#10b981', label: 'Vanha ennuste', y: 50, dashed: true },
+      { color: '#f59e0b', label: 'Uusi ennuste', y: 70, dashed: true },
+      { color: '#dc2626', label: 'Korjattu ennuste', y: 90, dashed: false },
+      { color: '#ef4444', label: 'Ennustevirhe', y: 110, dashed: true }
+    ];
 
-    // Forecast values legend
-    ctx.beginPath();
-    ctx.strokeStyle = '#FFA500';
-    ctx.setLineDash([5, 5]);
-    ctx.moveTo(600, 50);
-    ctx.lineTo(650, 50);
-    ctx.stroke();
-    ctx.fillStyle = '#FFA500';
-    ctx.arc(625, 50, 4, 0, 2 * Math.PI);
-    ctx.fill();
-    ctx.fillStyle = 'black';
-    ctx.fillText('Ennuste', 660, 55);
+    legendItems.forEach(item => {
+      ctx.beginPath();
+      ctx.strokeStyle = item.color;
+      if (item.dashed) {
+        ctx.setLineDash([5, 5]);
+      } else {
+        ctx.setLineDash([]);
+      }
+      ctx.moveTo(600, item.y);
+      ctx.lineTo(650, item.y);
+      ctx.stroke();
+      ctx.fillStyle = item.color;
+      ctx.arc(625, item.y, 4, 0, 2 * Math.PI);
+      ctx.fill();
+      ctx.fillStyle = 'black';
+      ctx.fillText(item.label, 660, item.y + 5);
+    });
 
     // Convert to image URL
     const imageUrl = canvas.toDataURL('image/png');

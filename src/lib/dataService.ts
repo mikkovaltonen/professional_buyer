@@ -239,7 +239,6 @@ export class DataService {
           const docRef = doc(db, 'sales_data_with_forecasts', row.id);
           batch.update(docRef, {
             new_forecast_manually_adjusted: correctedForecast,
-            old_forecast: row.forecast_12m,
             explanation: correction.explanation,
             correction_percent: correction.correction_percent,
             correction_timestamp: new Date().toISOString()
@@ -248,10 +247,10 @@ export class DataService {
           updateCount++;
           return {
             ...row,
-            forecast_12m: correctedForecast,
-            old_forecast: row.forecast_12m,
+            new_forecast_manually_adjusted: correctedForecast,
             explanation: correction.explanation,
-            correction_percent: correction.correction_percent
+            correction_percent: correction.correction_percent,
+            correction_timestamp: new Date().toISOString()
           };
         } else {
           if (correction) {

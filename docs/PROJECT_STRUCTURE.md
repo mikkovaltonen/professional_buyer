@@ -158,3 +158,32 @@ User Input -> ChatInterface.tsx
 - Secure authentication flow
 - Error handling for sensitive operations
 - Input validation and sanitization 
+
+## Components
+- `src/components/ProductGroupForecastContent.tsx`: Main component with:
+  - Product group selection
+  - Time series visualization
+  - AI chat interface
+  - Forecast correction application 
+
+## Data Structure and Field Specifications
+
+### Forecast Data Fields
+- Original fields (read-only, should never be modified):
+  - `Quantity`: Historical demand quantity
+  - `forecast_12m`: Original forecast value
+  - `old_forecast`: Original old forecast value
+  - `old_forecast_error`: Original forecast error value
+
+- Correction fields (can be created/modified):
+  - `correction_percent`: Percentage adjustment to be applied to the forecast
+  - `correction_timestamp`: Timestamp when the correction was applied
+  - `explanation`: Explanation for the correction
+  - `new_forecast_manually_adjusted`: New forecast value after applying the correction
+
+### Forecast Correction Process
+1. When corrections are applied through the "Poimi korjaprosentit chatistä ja tallenna ne tietokantaan" button:
+   - The original forecast values (`forecast_12m`, `old_forecast`, etc.) must remain unchanged
+   - New corrections are stored in dedicated fields (`correction_percent`, `explanation`, etc.)
+   - The adjusted forecast is stored in `new_forecast_manually_adjusted`
+   - Each correction includes a timestamp for tracking when it was made 

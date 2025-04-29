@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, BarChart, Bot, X } from "lucide-react";
+import { Loader2, BarChart, Bot, X, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { clearChatSession } from "@/api/chat";
 import ChatInterface from "@/components/ChatInterface";
@@ -109,6 +109,53 @@ const ProductGroupForecastContent: React.FC<ProductGroupForecastContentProps> = 
     }
   };
 
+  const handleRefreshChart = async () => {
+    if (!selectedGroup) return;
+    
+    try {
+      setIsLoading(true);
+      const dataService = DataService.getInstance();
+      const groupData = dataService.getProductGroupData(selectedGroup);
+      
+      // Fetch product descriptions for subtitle
+      const products = dataService.getProductsInGroup(selectedGroup);
+      setProductDescriptions(products.map(p => p.description));
+      
+      // Transform the data for the chart
+      const transformedData = groupData.map(item => ({
+        date: item.Year_Month,
+        value: item.Quantity,
+        new_forecast: item.new_forecast,
+        old_forecast: item.old_forecast,
+        old_forecast_error: item.old_forecast_error === null ? null : Number(item.old_forecast_error),
+        new_forecast_manually_adjusted: item.new_forecast_manually_adjusted
+      }))
+      .filter(item => 
+        item.value !== null || 
+        item.new_forecast !== null || 
+        item.old_forecast !== null ||
+        item.old_forecast_error !== null ||
+        item.new_forecast_manually_adjusted !== null
+      );
+
+      setChartData(transformedData);
+
+      // Generate new chart image for chat
+      const chartImageUrl = await generateChartImage(transformedData, `${selectedGroup} Kokonaiskysyntä`);
+      if (imageUrl) {
+        URL.revokeObjectURL(imageUrl);
+      }
+      setImageUrl(chartImageUrl);
+      
+      toast.success('Chart data refreshed successfully');
+    } catch (err) {
+      console.error('Error refreshing chart data:', err);
+      toast.error('Failed to refresh chart data');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Päivitetään chatin sisältö vain setChatContentilla
   const handleChatContentUpdate = (content: string) => {
     if (content !== chatContent) {
@@ -153,6 +200,16 @@ const ProductGroupForecastContent: React.FC<ProductGroupForecastContentProps> = 
         <Card>
           <CardContent className="pt-6">
             <div className="relative">
+              <div className="absolute top-2 right-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="bg-white hover:bg-gray-100"
+                  onClick={handleRefreshChart}
+                >
+                  <RefreshCw className="h-4 w-4" />
+                </Button>
+              </div>
               <TimeChart 
                 data={chartData}
                 title={`${selectedGroup} Kokonaiskysyntä`}

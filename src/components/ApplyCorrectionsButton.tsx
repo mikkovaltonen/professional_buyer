@@ -3,20 +3,27 @@ import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { DataService } from '@/lib/dataService';
+import { Save } from "lucide-react";
 
 interface ApplyCorrectionsButtonProps {
   chatContent: string;
-  selectedProductGroup: string;
+  selectedProductGroup?: string;
+  selectedProduct?: string;
 }
 
 interface ForecastCorrection {
-  product_group: string;
+  product_group?: string;
+  product_code?: string;
   month: string;
   correction_percent: number;
   explanation: string;
 }
 
-const ApplyCorrectionsButton: React.FC<ApplyCorrectionsButtonProps> = ({ chatContent, selectedProductGroup }) => {
+const ApplyCorrectionsButton: React.FC<ApplyCorrectionsButtonProps> = ({ 
+  chatContent, 
+  selectedProductGroup,
+  selectedProduct 
+}) => {
   const [isLoading, setIsLoading] = useState(false);
 
   const extractCorrectionsFromChat = (content: string): ForecastCorrection[] => {
@@ -45,16 +52,22 @@ const ApplyCorrectionsButton: React.FC<ApplyCorrectionsButtonProps> = ({ chatCon
           
           // Validate the structure of each correction
           const validCorrections = corrections.filter(item => {
-            const isValid = item.product_group && 
+            // Check that either product_group or product_code is present
+            const hasValidIdentifier = (item.product_group || item.product_code) && 
+                                    !(item.product_group && item.product_code); // Not both
+            
+            const isValid = hasValidIdentifier && 
                           item.month && 
                           (typeof item.correction_percent === 'number' || 
                            (typeof item.correction_percent === 'string' && !isNaN(Number(item.correction_percent)))) &&
                           item.explanation;
+            
             if (!isValid) {
               console.log('Invalid correction item:', item);
             }
             return isValid;
           });
+          
           console.log('Valid corrections:', validCorrections);
           return validCorrections;
         } catch (parseError) {
@@ -118,22 +131,29 @@ const ApplyCorrectionsButton: React.FC<ApplyCorrectionsButtonProps> = ({ chatCon
         return;
       }
 
-      // Filter corrections for the selected product group
+      // Filter corrections based on whether we're working with product group or single product
       const normalizeString = (str: string) => str.replace(/\s+/g, ' ').trim();
-      console.log('Comparing product groups:', {
-        corrections: corrections.map(c => c.product_group),
-        selected: selectedProductGroup,
-        normalizedCorrections: corrections.map(c => normalizeString(c.product_group)),
-        normalizedSelected: normalizeString(selectedProductGroup)
-      });
+      let relevantCorrections;
       
-      const relevantCorrections = corrections.filter(
-        correction => normalizeString(correction.product_group) === normalizeString(selectedProductGroup)
-      );
-      console.log('Filtered corrections for product group:', selectedProductGroup, relevantCorrections);
+      if (selectedProduct) {
+        // For single product, use all valid corrections but override the product code
+        relevantCorrections = corrections.map(correction => ({
+          ...correction,
+          product_code: selectedProduct,  // Override with selected product
+          product_group: undefined        // Clear any product group
+        }));
+        console.log('Modified corrections for selected product:', selectedProduct, relevantCorrections);
+      } else if (selectedProductGroup) {
+        // Filter for product group corrections
+        relevantCorrections = corrections.filter(
+          correction => normalizeString(correction.product_group) === normalizeString(selectedProductGroup)
+        );
+        console.log('Filtered corrections for product group:', selectedProductGroup, relevantCorrections);
+      }
 
-      if (relevantCorrections.length === 0) {
-        toast.info('Ei löytynyt korjauksia valitulle tuoteryhmälle');
+      if (!relevantCorrections || relevantCorrections.length === 0) {
+        const target = selectedProduct ? 'tuotteelle' : 'tuoteryhmälle';
+        toast.info(`Ei löytynyt korjauksia valitulle ${target}`);
         return;
       }
 
@@ -149,9 +169,9 @@ const ApplyCorrectionsButton: React.FC<ApplyCorrectionsButtonProps> = ({ chatCon
         console.error('Error from applyCorrections:', applyError);
         toast.error('Korjausten lisääminen epäonnistui: ' + (applyError.message || 'Tuntematon virhe'));
       }
-    } catch (error) {
-      console.error('Error in applyCorrections button handler:', error);
-      toast.error('Korjausten lisääminen epäonnistui');
+    } catch (err) {
+      console.error('Error applying corrections:', err);
+      toast.error('Korjausten käsittelyssä tapahtui virhe');
     } finally {
       setIsLoading(false);
     }
@@ -161,11 +181,13 @@ const ApplyCorrectionsButton: React.FC<ApplyCorrectionsButtonProps> = ({ chatCon
     <Button
       onClick={applyCorrections}
       disabled={isLoading}
-      className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white"
+      className="bg-[#4ADE80] hover:bg-[#22C55E] text-white"
     >
       {isLoading ? (
-        <Loader2 className="h-4 w-4 animate-spin" />
-      ) : null}
+        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+      ) : (
+        <Save className="h-4 w-4 mr-2" />
+      )}
       Tallenna ehdotetut manuaaliset korjaukset
     </Button>
   );

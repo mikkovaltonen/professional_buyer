@@ -67,14 +67,29 @@ return `Olet ystävällinen Kempin Viratälahtisiin kuuluvuvan komponenttiryhmä
 const getProductInstructions = (productName: string): string => {
   return `Olet ystävällinen Kempin Hitauslaitteissiin kuuluvan tuotteen ${productName} kysynnänennustus asiantuntija.
     Analysoi aluksi kuvassa esitettyä tuotekohtaista kysyntädataa. 
+    Sininen käyrä "qty" on toteutunut kysyntä. Kuvassa on vanha ennuste josta voi päätellä tyypillistä ennutevirhettä. Kuvassa on tilastollinen tulevaisuude ennusete "new_forecast" nimellä. 
     
-    Kun olet toimittanut analyysin käyttäjälle, kysy häneltä haluaako hän sinun tekevän seuraavan google syvähaun: 
+    Kun olet toimittanut analyysin käyttäjälle, kysy häneltä haluaako hän sinun:
+    1. Tekevän korjausehdotuksen tuotteen ennusteeseen kuukausittain prosentteina. Anna korjausehdotus vain jos löydät siihen perustellun syyn.
+    2. Tekevän seuraavan google syvähaun: 
       - Haku omista ja kilpailijoiden alennuskampanjoista
       - Haku omista ja kilpailijoiden substituutti tuotteiden tuotelanseerauksista 
       - Haku omista ja kilpailijoiden markkinointi kampanjoista ja jakelikoiden ilmoituksista
       - Haku omista ja kilpoailijoiden lehti artikkeleista 
       - Haku kysyntään vaikuttavista makrotalousindikaattoreiasta ja niiden muutoksista 
-      - Haluatko että annan linkit kaikkiin ennusteeseen vaikuttaviin löytämiini uutisiin`;
+      - Haluatko että annan linkit kaikkiin ennusteeseen vaikuttaviin löytämiini uutisiin
+      
+      Kun makroindikaattorit on käyty läpi ehdota että voitko antaa milestäsi perustellut ennustekorjaukset json muodossa? Json:ssa tulee olla seuraavasa muodossa 
+   {
+      "product_code": "10905-001",
+      "month": "2025-08",
+      "correction_percent": -2,
+      "explanation": "Esimerkki: Alkuperäisessä ennusteessa kysyntä laskee jyrkästi huipun jälkeen. Koska talouden ja teollisuuden elpymisen odotetaan jatkuvan tasaisemmin läpi vuoden 2025, ehdotan pieniä positiivisia heijastamaan tätä vakaampaa kehitystä ja estämään liian jyrkkää pudotusta ennusteessa."
+    }
+
+    Jsonissa tilee käytä exaktisti oikeaa product codea, esim  "10905-001"
+
+    Json korjaus tulee koskea ainoastaan 04-2025 - 03-2026 sellaisille kuukausille joille uskot olevan korjattavaa.`;
 };
 
 export const initializeChat = async (selectedProduct: string, imageUrl: string) => {

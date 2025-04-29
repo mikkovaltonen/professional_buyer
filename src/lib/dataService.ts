@@ -20,7 +20,8 @@ export interface TimeSeriesData {
 }
 
 export interface ForecastCorrection {
-  product_group: string;
+  product_group?: string;
+  product_code?: string;
   month: string;
   correction_percent: number;
   explanation: string;
@@ -223,11 +224,15 @@ export class DataService {
         throw new Error('No valid corrections provided');
       }
 
-      // 1. Group corrections by product_group and month
+      // 1. Group corrections by product_group/product_code and month
       const normalizeString = (str: string) => str.replace(/\s+/g, ' ').trim();
       const correctionMap = new Map<string, ForecastCorrection>();
       corrections.forEach(correction => {
-        const key = `${normalizeString(correction.product_group)}|${correction.month}`;
+        // Create key based on whether we have product_group or product_code
+        const identifier = correction.product_group ? 
+          `group:${normalizeString(correction.product_group)}` : 
+          `product:${correction.product_code}`;
+        const key = `${identifier}|${correction.month}`;
         correctionMap.set(key, correction);
         console.log(`Mapped correction for key: ${key}`, correction);
       });
@@ -240,38 +245,46 @@ export class DataService {
 
       console.log('Starting to process data rows for updates');
       
-      // Log the first few rows of data to understand the structure
-      console.log('Sample data rows:', this.data.slice(0, 3));
-      
       // Update local data and prepare Firestore updates
       for (const row of this.data) {
-        const key = `${normalizeString(row["Product Group"])}|${row.Year_Month}`;
-        const correction = correctionMap.get(key);
+        // Create key based on whether the correction is for product group or specific product
+        let key: string | undefined;
+        for (const [correctionKey, correction] of correctionMap.entries()) {
+          if (correction.product_group && 
+              normalizeString(row["Product Group"]) === normalizeString(correction.product_group) && 
+              row.Year_Month === correction.month) {
+            key = correctionKey;
+            break;
+          } else if (correction.product_code && 
+                    row["Product code"] === correction.product_code && 
+                    row.Year_Month === correction.month) {
+            key = correctionKey;
+            break;
+          }
+        }
 
         // Log every 100th row to avoid console spam
         if (skippedCount % 100 === 0) {
           console.log('Processing row:', {
             key,
             productGroup: row["Product Group"],
-            normalizedProductGroup: normalizeString(row["Product Group"]),
+            productCode: row["Product code"],
             yearMonth: row.Year_Month,
-            hasCorrection: !!correction,
+            hasCorrection: !!key,
             availableKeys: Array.from(correctionMap.keys()).join(', ')
           });
         }
 
-        if (correction && row.id) {
-          // Use new_forecast_manually_adjusted if it exists, otherwise use new_forecast
-          const currentForecast = row.new_forecast_manually_adjusted !== null 
-            ? row.new_forecast_manually_adjusted 
-            : row.new_forecast;
+        const correction = key ? correctionMap.get(key) : undefined;
 
-          if (currentForecast !== null) {
-            const correctedForecast = currentForecast * (1 + correction.correction_percent / 100);
+        if (correction && row.id) {
+          // Always use the original new_forecast value for calculations
+          if (row.new_forecast !== null) {
+            const correctedForecast = row.new_forecast * (1 + correction.correction_percent / 100);
             
             console.log(`Preparing update for document ${row.id}:`, {
               key,
-              currentForecast,
+              originalForecast: row.new_forecast,
               correction: correction.correction_percent,
               newForecast: correctedForecast
             });

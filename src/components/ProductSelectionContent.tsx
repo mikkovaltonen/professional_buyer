@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, BarChart, Bot, X } from "lucide-react";
+import { Loader2, BarChart, Bot, X, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { clearChatSession } from "@/api/chat";
 import ChatInterface from "@/components/ChatInterface";
@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import ApplyCorrectionsButton from "@/components/ApplyCorrectionsButton";
 
 interface ProductSelectionContentProps {
   selectedProduct: string | null;
@@ -35,45 +36,32 @@ const ProductSelectionContent: React.FC<ProductSelectionContentProps> = ({
   setIsLoading,
   handleRemoveFile
 }) => {
-  const [productGroups, setProductGroups] = useState<string[]>([]);
   const [selectedGroup, setSelectedGroup] = useState<string>('');
+  const [chartData, setChartData] = useState<any[]>([]);
+  const [chatContent, setChatContent] = useState<string>('');
+  const [productGroups, setProductGroups] = useState<string[]>([]);
   const [products, setProducts] = useState<{ code: string; description: string }[]>([]);
-  const [chartData, setChartData] = useState<{ date: string; value: number | null; forecast?: number | null; old_forecast?: number | null; old_forecast_error?: number | null; new_forecast_manually_adjusted?: number | null }[]>([]);
 
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        setIsLoading(true);
-        const dataService = DataService.getInstance();
-        await dataService.loadCSVData();
-        const groups = dataService.getUniqueProductGroups();
-        console.log('Loaded product groups (diagnostics):', groups);
-        setProductGroups(groups);
-      } catch (err) {
-        console.error('Error loading data:', err);
-        toast.error('Failed to load data. Please try again.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadData();
+    const dataService = DataService.getInstance();
+    const groups = dataService.getUniqueProductGroups();
+    setProductGroups(groups);
   }, []);
 
-  const handleGroupChange = (group: string) => {
-    console.log('Group selected:', group);
+  const handleGroupChange = async (group: string) => {
     setSelectedGroup(group);
     setSelectedProduct(null);
-    setProducts([]);
-    if (imageUrl) {
-      URL.revokeObjectURL(imageUrl);
-      setImageUrl(null);
-    }
+    setChartData([]);
     if (!group) return;
-    const dataService = DataService.getInstance();
-    const productsInGroup = dataService.getProductsInGroup(group);
-    console.log('Products in group:', productsInGroup);
-    setProducts(productsInGroup);
+    
+    try {
+      const dataService = DataService.getInstance();
+      const groupProducts = dataService.getProductsInGroup(group);
+      setProducts(groupProducts);
+    } catch (err) {
+      console.error('Error loading products:', err);
+      toast.error('Failed to load products. Please try again.');
+    }
   };
 
   const handleProductChange = async (productCode: string) => {
@@ -120,6 +108,60 @@ const ProductSelectionContent: React.FC<ProductSelectionContentProps> = ({
     } catch (err) {
       console.error('Error loading product data:', err);
       toast.error('Failed to load product data. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Päivitetään chatin sisältö vain setChatContentilla
+  const handleChatContentUpdate = (content: string) => {
+    if (content !== chatContent) {
+      console.log('Chat content updated:', content);
+      setChatContent(content);
+    }
+  };
+
+  const handleRefreshChart = async () => {
+    if (!selectedProduct) return;
+    
+    try {
+      setIsLoading(true);
+      const dataService = DataService.getInstance();
+      const productData = dataService.getProductData(selectedProduct);
+      
+      // Transform the data for the chart
+      const transformedData = productData
+        .sort((a, b) => new Date(a.Year_Month).getTime() - new Date(b.Year_Month).getTime())
+        .map(item => ({
+          date: item.Year_Month,
+          value: item.Quantity,
+          new_forecast: item.new_forecast,
+          old_forecast: item.old_forecast,
+          old_forecast_error: item.old_forecast_error === null ? null : Number(item.old_forecast_error),
+          new_forecast_manually_adjusted: item.new_forecast_manually_adjusted
+        }))
+        .filter(item => 
+          item.value !== null || 
+          item.new_forecast !== null || 
+          item.old_forecast !== null ||
+          item.old_forecast_error !== null ||
+          item.new_forecast_manually_adjusted !== null
+        );
+
+      setChartData(transformedData);
+
+      // Generate new chart image for chat
+      const productDescription = products.find(p => p.code === selectedProduct)?.description || 'Tuotteen kysyntä';
+      const chartImageUrl = await generateChartImage(transformedData, productDescription);
+      if (imageUrl) {
+        URL.revokeObjectURL(imageUrl);
+      }
+      setImageUrl(chartImageUrl);
+      
+      toast.success('Chart data refreshed successfully');
+    } catch (err) {
+      console.error('Error refreshing chart data:', err);
+      toast.error('Failed to refresh chart data');
     } finally {
       setIsLoading(false);
     }
@@ -196,14 +238,24 @@ const ProductSelectionContent: React.FC<ProductSelectionContentProps> = ({
         <Card>
           <CardContent className="pt-6">
             <div className="relative">
-              <Button
-                variant="outline"
-                size="icon"
-                className="absolute top-2 right-2 bg-white hover:bg-gray-100"
-                onClick={handleRemoveFile}
-              >
-                <X className="h-4 w-4" />
-              </Button>
+              <div className="absolute top-2 right-2 flex gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="bg-white hover:bg-gray-100"
+                  onClick={handleRefreshChart}
+                >
+                  <RefreshCw className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="bg-white hover:bg-gray-100"
+                  onClick={handleRemoveFile}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
               <TimeChart 
                 data={chartData}
                 title={products.find(p => p.code === selectedProduct)?.description || 'Tuotteen kysyntä'}
@@ -215,30 +267,31 @@ const ProductSelectionContent: React.FC<ProductSelectionContentProps> = ({
 
       {/* Chat Interface */}
       {selectedProduct && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <div className="flex items-center">
-                <Bot className="h-5 w-5 text-[#4ADE80] mr-2" />
-                Keskustele tuotteesta
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleRemoveFile}
-                className="h-8 w-8"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ChatInterface 
-              selectedProduct={products.find(p => p.code === selectedProduct)?.description} 
-              selectedImageUrl={imageUrl}
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <Bot className="h-5 w-5 text-[#4ADE80] mr-2" />
+                  Keskustele tuotteesta
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent style={{ minHeight: '500px' }}>
+              <ChatInterface 
+                selectedProduct={selectedProduct}
+                selectedImageUrl={imageUrl}
+                onMessageUpdate={handleChatContentUpdate}
+              />
+            </CardContent>
+          </Card>
+          <div className="flex justify-end gap-4 mt-4">
+            <ApplyCorrectionsButton
+              chatContent={chatContent}
+              selectedProduct={selectedProduct}
             />
-          </CardContent>
-        </Card>
+          </div>
+        </>
       )}
     </div>
   );

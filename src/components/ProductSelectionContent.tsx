@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, BarChart, Bot, X, RefreshCw } from "lucide-react";
+import { Loader2, BarChart, Bot, X } from "lucide-react";
 import { toast } from "sonner";
 import { clearChatSession } from "@/api/chat";
 import ChatInterface from "@/components/ChatInterface";
@@ -27,6 +27,16 @@ interface ProductSelectionContentProps {
   handleRemoveFile: () => void;
 }
 
+interface ChartDataPoint {
+  date: string;
+  value: number | null;
+  new_forecast?: number | null;
+  old_forecast?: number | null;
+  old_forecast_error?: number | null;
+  new_forecast_manually_adjusted?: number | null;
+  explanation?: string;
+}
+
 const ProductSelectionContent: React.FC<ProductSelectionContentProps> = ({
   selectedProduct,
   setSelectedProduct,
@@ -37,7 +47,7 @@ const ProductSelectionContent: React.FC<ProductSelectionContentProps> = ({
   handleRemoveFile
 }) => {
   const [selectedGroup, setSelectedGroup] = useState<string>('');
-  const [chartData, setChartData] = useState<any[]>([]);
+  const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [chatContent, setChatContent] = useState<string>('');
   const [productGroups, setProductGroups] = useState<string[]>([]);
   const [products, setProducts] = useState<{ code: string; description: string }[]>([]);
@@ -85,7 +95,8 @@ const ProductSelectionContent: React.FC<ProductSelectionContentProps> = ({
           new_forecast: item.new_forecast,
           old_forecast: item.old_forecast,
           old_forecast_error: item.old_forecast_error === null ? null : Number(item.old_forecast_error),
-          new_forecast_manually_adjusted: item.new_forecast_manually_adjusted
+          new_forecast_manually_adjusted: item.new_forecast_manually_adjusted,
+          explanation: item.explanation
         }))
         .filter(item => 
           item.value !== null || 
@@ -138,7 +149,8 @@ const ProductSelectionContent: React.FC<ProductSelectionContentProps> = ({
           new_forecast: item.new_forecast,
           old_forecast: item.old_forecast,
           old_forecast_error: item.old_forecast_error === null ? null : Number(item.old_forecast_error),
-          new_forecast_manually_adjusted: item.new_forecast_manually_adjusted
+          new_forecast_manually_adjusted: item.new_forecast_manually_adjusted,
+          explanation: item.explanation
         }))
         .filter(item => 
           item.value !== null || 
@@ -233,29 +245,10 @@ const ProductSelectionContent: React.FC<ProductSelectionContentProps> = ({
       )}
 
       {/* Chart Display */}
-      {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
       {selectedProduct && chartData.length > 0 && !isLoading && (
         <Card>
           <CardContent className="pt-6">
             <div className="relative">
-              <div className="absolute top-2 right-2 flex gap-2">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="bg-white hover:bg-gray-100"
-                  onClick={handleRefreshChart}
-                >
-                  <RefreshCw className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="bg-white hover:bg-gray-100"
-                  onClick={handleRemoveFile}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
               <TimeChart 
                 data={chartData}
                 title={products.find(p => p.code === selectedProduct)?.description || 'Tuotteen kysyntä'}
@@ -289,6 +282,7 @@ const ProductSelectionContent: React.FC<ProductSelectionContentProps> = ({
             <ApplyCorrectionsButton
               chatContent={chatContent}
               selectedProduct={selectedProduct}
+              onCorrectionsApplied={handleRefreshChart}
             />
           </div>
         </>

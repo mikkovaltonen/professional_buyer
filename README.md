@@ -13,6 +13,8 @@ AI Kysynnänennusteavustaja on moderni web-sovellus, joka auttaa yrityksiä ennu
 - 💾 Ennustekorjausten tallennus ja hallinta
 - 🔄 Integroitavissa olemassa oleviin järjestelmiin (tbd)
 - 🔐 Turvallinen käyttäjienhallinta
+- 📈 Automaattinen kuvaajan päivitys korjausten tallennuksen jälkeen
+- 🌐 Täysin suomenkielinen käyttöliittymä
 
 ## Teknologiat
 - React + TypeScript
@@ -78,6 +80,8 @@ Kysyntä ennusteen tulkitsemisessa käytetään Gemini 2.5 Pro -mallia, joka tuk
 - Selkeät virheilmoitukset virheellisestä datasta
 - Korjausten tallennus paikalliseen tiedostoon
 - Tuki useille korjauksille samassa tallennuksessa
+- Automaattinen kuvaajan päivitys tallennuksen jälkeen
+- Korjausten selitykset näkyvät kuvaajan tooltipissä
 
 ## Käyttöönotto
 
@@ -156,11 +160,11 @@ Lisätietoja ja tukea saat osoitteesta [https://wisestein.fi/yhteystiedot](https
 ### Datarakenne
 Sovellus käsittelee seuraavia datakenttiä:
 
-- `Quantity`: Toteutunut kysyntä
+- `Quantity`: Toteutunut kysyntä (sininen viiva)
 - `old_forecast`: Vanha ennuste (vihreä katkoviiva)
-- `new_forecast`: Uusi ennuste (oranssi katkoviiva)
+- `new_forecast`: Tilastollinen ennuste (oranssi katkoviiva)
 - `new_forecast_manually_adjusted`: Korjattu ennuste (punainen viiva)
 - `old_forecast_error`: Ennustevirhe (punainen katkoviiva)
 - `correction_percent`: Korjausprosentti
-- `explanation`: Korjauksen selitys
+- `explanation`: Korjauksen selitys (näkyy kuvaajan tooltipissä)
 - `correction_timestamp`: Korjauksen aikaleima

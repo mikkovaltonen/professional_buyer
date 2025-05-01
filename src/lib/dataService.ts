@@ -172,6 +172,15 @@ export class DataService {
       const hasNewForecast = rowsForDate.some(row => row.new_forecast !== null);
       const hasNewForecastAdjusted = rowsForDate.some(row => row.new_forecast_manually_adjusted !== null);
       const hasOldForecast = rowsForDate.some(row => row.old_forecast !== null);
+
+      // Get the latest explanation and correction info for this date
+      const latestAdjustment = rowsForDate
+        .filter(row => row.correction_timestamp && row.explanation)
+        .sort((a, b) => {
+          const timeA = a.correction_timestamp ? new Date(a.correction_timestamp).getTime() : 0;
+          const timeB = b.correction_timestamp ? new Date(b.correction_timestamp).getTime() : 0;
+          return timeB - timeA;  // Sort in descending order (latest first)
+        })[0];
       
       return {
         Year_Month: date,
@@ -183,9 +192,9 @@ export class DataService {
         new_forecast_manually_adjusted: hasNewForecastAdjusted ? totalNewForecastAdjusted : null,
         old_forecast: hasOldForecast ? totalOldForecast : null,
         old_forecast_error: null,
-        correction_percent: null,
-        explanation: null,
-        correction_timestamp: null
+        correction_percent: latestAdjustment?.correction_percent || null,
+        explanation: latestAdjustment?.explanation || null,
+        correction_timestamp: latestAdjustment?.correction_timestamp || null
       };
     });
 

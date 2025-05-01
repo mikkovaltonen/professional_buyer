@@ -9,8 +9,6 @@ alwaysApply: true
 - Do not chante any other part of code than what is minimally required to complete the work. 
 - Newer do anything in conflict with read me or documents in docs - folder. Always ask permission to chante specs first. 
 - Do only one change at a time and aways perform unit test document test results 
-- Collec all test scripts and test screenshots into "test" - folder. 
-
 - Keep detailed functinal specs in Readme
 - When you clean up obsolete code or files alays do only one deletion at time and perform regression testing and document the testing results into "test" - folder
 - This project is vite, not next.js

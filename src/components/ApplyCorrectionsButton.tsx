@@ -9,6 +9,7 @@ interface ApplyCorrectionsButtonProps {
   chatContent: string;
   selectedProductGroup?: string;
   selectedProduct?: string;
+  onCorrectionsApplied?: () => void;
 }
 
 interface ForecastCorrection {
@@ -22,7 +23,8 @@ interface ForecastCorrection {
 const ApplyCorrectionsButton: React.FC<ApplyCorrectionsButtonProps> = ({ 
   chatContent, 
   selectedProductGroup,
-  selectedProduct 
+  selectedProduct,
+  onCorrectionsApplied 
 }) => {
   const [isLoading, setIsLoading] = useState(false);
 
@@ -165,6 +167,9 @@ const ApplyCorrectionsButton: React.FC<ApplyCorrectionsButtonProps> = ({
         await dataService.applyCorrections(relevantCorrections);
         console.log('Successfully applied corrections');
         toast.success('Korjaukset lisätty onnistuneesti');
+        if (onCorrectionsApplied) {
+          onCorrectionsApplied();
+        }
       } catch (applyError) {
         console.error('Error from applyCorrections:', applyError);
         toast.error('Korjausten lisääminen epäonnistui: ' + (applyError.message || 'Tuntematon virhe'));

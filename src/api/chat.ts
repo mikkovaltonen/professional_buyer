@@ -2,6 +2,7 @@ import { GoogleGenerativeAI, Part } from '@google/generative-ai';
 
 // Initialize the Google AI client
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
+const geminiModel = import.meta.env.VITE_GEMINI_MODEL || 'gemini-2.5-pro-preview-03-25';
 if (!apiKey) {
   console.error('❌ Gemini API key is missing! Please check your .env file.');
 } else {
@@ -36,7 +37,7 @@ const loadImageAsBase64 = async (imagePath: string): Promise<string> => {
 };
 
 const getProductGroupInstructions = (groupName: string): string => {
-return `Olet ystävällinen Kempin Viratälahtisiin kuuluvuvan komponenttiryhmän ${groupName} kysynnänennustus asiantuntija.
+return `Olet ystävällinen Kempin Viratälahtisiin kuuluvuvan komponenttiryhmän ${groupName} kysynnänennustus asiantuntija. Puhu Suomea. 
     Analysoi aluksi kuvassa esitettyä tuoteryhmän kokonaiskysyntädataa. 
     Sininen käyrä "qty" on toteutunut kysyntä. Kuvassa on vanha ennuste josta voi päätellä tyypillistä ennutevirhettä. Kuvassa on tilastollinen tulevaisuude ennusete "new_forecast" nimellä. 
     
@@ -50,6 +51,8 @@ return `Olet ystävällinen Kempin Viratälahtisiin kuuluvuvan komponenttiryhmä
       - Haku kysyntään vaikuttavista makrotalousindikaattoreiasta ja niiden muutoksista 
       - Haluatko että annan linkit kaikkiin ennusteeseen vaikuttaviin löytämiini uutisiin
       
+      Muistuta käyttäjää myös rajoitteesta: Sinulla ei ole tuoterakken tietota niin et tiedä mihin Kempin lopputuotteisiin tätä Virtalähteisiin kuuluvaa tuoteryhmää käytetään. 
+
       Kun makroindikaattorit on käyty läpi ehdota että voitko antaa milestäsi perustellut ennustekorjaukset json muodossa? Json:ssa tulee olla seuraavasa muodossa 
    {
       "product_group": "Kemppi welder Power Sources",
@@ -58,14 +61,14 @@ return `Olet ystävällinen Kempin Viratälahtisiin kuuluvuvan komponenttiryhmä
       "explanation": "Esimerkki: Alkuperäisessä ennusteessa kysyntä laskee jyrkästi huipun jälkeen. Koska talouden ja teollisuuden elpymisen odotetaan jatkuvan tasaisemmin läpi vuoden 2025, ehdotan pieniä positiivisia heijastamaan tätä vakaampaa kehitystä ja estämään liian jyrkkää pudotusta ennusteessa (tämä selitys on peräisin alkuperäisestä pyynnöstäsi)."
     }
 
-    Jasonissa tilee käytä exaktisti oikeaa product group codea, esim  "10905 ACDC THREE-PHASE"
+    Jasonissa tulee käytä exaktisti oikeaa product group codea, esim  "10905 ACDC THREE-PHASE"
 
     Json korjaus tulee koskea ainoastaan 04-2025 - 03-2026 sellaisille kuukausille joille uskot olevan korjattavaa.
       ,`;
 };
 
 const getProductInstructions = (productName: string): string => {
-  return `Olet ystävällinen Kempin Hitauslaitteissiin kuuluvan tuotteen ${productName} kysynnänennustus asiantuntija.
+  return `Olet ystävällinen Kempin Hitauslaitteissiin kuuluvan tuotteen ${productName} kysynnänennustus asiantuntija.  Puhu Suomea. 
     Analysoi aluksi kuvassa esitettyä tuotekohtaista kysyntädataa. 
     Sininen käyrä "qty" on toteutunut kysyntä. Kuvassa on vanha ennuste josta voi päätellä tyypillistä ennutevirhettä. Kuvassa on tilastollinen tulevaisuude ennusete "new_forecast" nimellä. 
     
@@ -78,7 +81,11 @@ const getProductInstructions = (productName: string): string => {
       - Haku omista ja kilpoailijoiden lehti artikkeleista 
       - Haku kysyntään vaikuttavista makrotalousindikaattoreiasta ja niiden muutoksista 
       - Haluatko että annan linkit kaikkiin ennusteeseen vaikuttaviin löytämiini uutisiin
+    
       
+ Muistuta käyttäjää myös rajoitteesta: Sinulla ei ole tuoterakken tietota niin et tiedä mihin Kempin lopputuotteisiin tätä Virtalähteisiin kuuluvaa tuotetta käytetään. 
+
+
       Kun makroindikaattorit on käyty läpi ehdota että voitko antaa milestäsi perustellut ennustekorjaukset json muodossa? Json:ssa tulee olla seuraavasa muodossa 
    {
       "product_code": "10905-001",
@@ -87,7 +94,7 @@ const getProductInstructions = (productName: string): string => {
       "explanation": "Esimerkki: Alkuperäisessä ennusteessa kysyntä laskee jyrkästi huipun jälkeen. Koska talouden ja teollisuuden elpymisen odotetaan jatkuvan tasaisemmin läpi vuoden 2025, ehdotan pieniä positiivisia heijastamaan tätä vakaampaa kehitystä ja estämään liian jyrkkää pudotusta ennusteessa."
     }
 
-    Jsonissa tilee käytä exaktisti oikeaa product codea, esim  "10905-001"
+    Jsonissa tulee käytä exaktisti oikeaa product codea, esim  "10905-001"
 
     Json korjaus tulee koskea ainoastaan 04-2025 - 03-2026 sellaisille kuukausille joille uskot olevan korjattavaa.`;
 };
@@ -109,7 +116,7 @@ export const initializeChat = async (selectedProduct: string, imageUrl: string) 
 
     // Get the model with Google Search tool
     const model = genAI.getGenerativeModel({ 
-      model: 'gemini-2.5-pro-preview-03-25',
+      model: geminiModel,
       tools: [
         { googleSearch: {} } as any
       ]
@@ -186,7 +193,7 @@ export const createResponse = async (message: string) => {
   try {
     // Get the model with Google Search tool
     const model = genAI.getGenerativeModel({ 
-      model: 'gemini-2.5-pro-preview-03-25',
+      model: geminiModel,
       tools: [
         { googleSearch: {} } as any
       ]

@@ -201,37 +201,72 @@ export const createResponse = async (message: string)
 public async applyCorrections(corrections: ForecastCorrection[]): Promise<void>
 ```
 
-## Data Structure
+## Data Structures
 
 ### TimeSeriesData Interface
 ```typescript
 interface TimeSeriesData {
-  Year_Month: string;
-  "Product Group": string;
-  "Product code": string;
-  "Product description": string;
-  Quantity: number | null;
-  new_forecast: number | null;
-  old_forecast: number | null;
-  old_forecast_error: string | null;
-  correction_percent?: number | null;
-  explanation?: string | null;
-  new_forecast_manually_adjusted: number | null;
-  correction_timestamp?: string | null;
-  id?: string;
+  dates: string[];
+  values: number[];
+  forecasts: number[];
+  corrections: number[];
+  prod_class: string;  // Product class identifier (e.g., "Virtalähteet")
 }
 ```
 
-### Chart Data Points
+### ChartDataPoint Interface
 ```typescript
 interface ChartDataPoint {
   date: string;
-  value: number | null;
-  old_forecast?: number | null;
-  old_forecast_error?: number | null;
-  new_forecast?: number | null;
-  new_forecast_manually_adjusted?: number | null;
-  explanation?: string;
+  value: number;
+  forecast: number;
+  correction: number;
+  prod_class: string;  // Product class identifier
+}
+```
+
+### Database Schema (Firestore)
+
+#### Collection: sales_data_with_forecasts
+```typescript
+interface SalesDataDocument {
+  // Required fields
+  date: string;           // Date of the data point
+  value: number;          // Actual sales value
+  forecast: number;       // AI-generated forecast
+  correction: number;     // User-applied correction
+  prod_class: string;     // Product class identifier (e.g., "Virtalähteet")
+  
+  // Optional fields
+  product_id?: string;    // Product identifier
+  product_name?: string;  // Product name
+  category?: string;      // Product category
+  region?: string;        // Sales region
+  notes?: string;         // Additional notes or metadata
+}
+```
+
+### Data Normalization
+The system includes a data normalization layer that maps between external and internal data formats:
+
+```typescript
+interface DataMapping {
+  external: {
+    date: string;
+    sales: number;
+    product: string;
+    category: string;
+    region: string;
+    prod_class: string;
+  };
+  internal: {
+    date: string;
+    value: number;
+    product_id: string;
+    category: string;
+    region: string;
+    prod_class: string;
+  };
 }
 ```
 

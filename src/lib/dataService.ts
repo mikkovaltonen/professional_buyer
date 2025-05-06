@@ -8,6 +8,7 @@ export interface TimeSeriesData {
   "Product Group": string;
   "Product code": string;
   "Product description": string;
+  prod_class: string;
   Quantity: number | null;
   new_forecast: number | null;
   old_forecast: number | null;
@@ -137,6 +138,22 @@ export class DataService {
     return sortedData;
   }
 
+  public getUniqueProductClasses(): string[] {
+    const classes = [...new Set(this.data.map(row => row["prod_class"]))];
+    console.log('Found product classes:', classes);
+    return classes;
+  }
+
+  public getProductGroupsInClass(productClass: string): string[] {
+    const groups = [...new Set(
+      this.data
+        .filter(row => row["prod_class"] === productClass)
+        .map(row => row["Product Group"])
+    )];
+    console.log('Found product groups for class:', productClass, groups);
+    return groups;
+  }
+
   public getProductGroupData(productGroup: string): TimeSeriesData[] {
     console.log('Getting aggregated data for product group:', productGroup);
     
@@ -187,6 +204,7 @@ export class DataService {
         "Product Group": productGroup,
         "Product code": "GROUP_TOTAL",
         "Product description": `${productGroup} Total`,
+        prod_class: rowsForDate[0]?.["prod_class"] || "",
         Quantity: hasQuantity ? totalQuantity : null,
         new_forecast: hasNewForecast ? totalNewForecast : null,
         new_forecast_manually_adjusted: hasNewForecastAdjusted ? totalNewForecastAdjusted : null,
@@ -370,6 +388,7 @@ export function normalizeTimeSeriesData(row: any): TimeSeriesData {
     "Product Group": row.prodgroup || row["Product Group"],
     "Product code": row.prodcode || row["Product code"],
     "Product description": row.product_description || row["Product description"],
+    prod_class: row.prod_class || row["prod_class"] || "",
     Quantity: row.qty !== undefined ? row.qty : row.Quantity,
     new_forecast: row.new_forecast,
     old_forecast: row.old_forecast,

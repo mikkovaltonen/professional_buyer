@@ -63,7 +63,6 @@ const Workbench = () => {
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="tuoteryhma">Tuoteryhmäennustus</TabsTrigger>
           <TabsTrigger value="tuotekohtainen">Tuotekohtainen ennustus</TabsTrigger>
-          <TabsTrigger value="arkisto">Arkisto</TabsTrigger>
         </TabsList>
         
         <TabsContent value="tuoteryhma">
@@ -86,22 +85,6 @@ const Workbench = () => {
             setIsLoading={setIsLoading}
             handleRemoveFile={handleRemoveFile}
           />
-        </TabsContent>
-        
-        <TabsContent value="arkisto">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Archive className="h-5 w-5 text-[#4ADE80] mr-2" />
-                Arkisto
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-gray-500">
-                Arkisto-ominaisuus on tulossa pian...
-              </p>
-            </CardContent>
-          </Card>
         </TabsContent>
       </Tabs>
     </div>

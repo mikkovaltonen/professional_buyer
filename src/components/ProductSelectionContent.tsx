@@ -46,6 +46,8 @@ const ProductSelectionContent: React.FC<ProductSelectionContentProps> = ({
   setIsLoading,
   handleRemoveFile
 }) => {
+  const [productClasses, setProductClasses] = useState<string[]>([]);
+  const [selectedClass, setSelectedClass] = useState<string>('');
   const [selectedGroup, setSelectedGroup] = useState<string>('');
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [chatContent, setChatContent] = useState<string>('');
@@ -53,10 +55,40 @@ const ProductSelectionContent: React.FC<ProductSelectionContentProps> = ({
   const [products, setProducts] = useState<{ code: string; description: string }[]>([]);
 
   useEffect(() => {
-    const dataService = DataService.getInstance();
-    const groups = dataService.getUniqueProductGroups();
-    setProductGroups(groups);
+    const loadData = async () => {
+      try {
+        const dataService = DataService.getInstance();
+        const classes = dataService.getUniqueProductClasses();
+        console.log('Loaded product classes:', classes);
+        setProductClasses(classes.map(String));
+        console.log('DEBUG: productClasses', classes);
+      } catch (err) {
+        console.error('Error loading data:', err);
+        toast.error('Failed to load data. Please try again.');
+      }
+    };
+
+    loadData();
   }, []);
+
+  const handleClassChange = async (productClass: string) => {
+    console.log('Class selected:', productClass);
+    setSelectedClass(productClass);
+    setSelectedGroup('');
+    setSelectedProduct(null);
+    setChartData([]);
+    if (!productClass) return;
+    
+    try {
+      const dataService = DataService.getInstance();
+      const groups = dataService.getProductGroupsInClass(productClass);
+      console.log('Loaded product groups for class:', groups);
+      setProductGroups(groups.map(String));
+    } catch (err) {
+      console.error('Error loading product groups:', err);
+      toast.error('Failed to load product groups. Please try again.');
+    }
+  };
 
   const handleGroupChange = async (group: string) => {
     setSelectedGroup(group);
@@ -181,52 +213,59 @@ const ProductSelectionContent: React.FC<ProductSelectionContentProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Product Group Selection */}
+      {/* Suodattimet yhdessä kortissa rinnakkain */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
             <BarChart className="h-5 w-5 text-[#4ADE80] mr-2" />
-            Valitse tuoteryhmä
+            Valitse suodattimet
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <Select
-              value={selectedGroup}
-              onValueChange={handleGroupChange}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Valitse tuoteryhmä" />
-              </SelectTrigger>
-              <SelectContent>
-                {productGroups.map((group, idx) => {
-                  console.log('Rendering dropdown option (diagnostics):', group, idx);
-                  return (
+          <div className="flex flex-col md:flex-row gap-4">
+            {/* Tuoteluokka */}
+            <div className="flex-1">
+              <Select
+                value={selectedClass}
+                onValueChange={handleClassChange}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Valitse tuoteluokka" />
+                </SelectTrigger>
+                <SelectContent>
+                  {productClasses.map((productClass, idx) => (
+                    <SelectItem key={String(productClass)} value={String(productClass)}>
+                      {productClass}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {/* Tuoteryhmä */}
+            <div className="flex-1">
+              <Select
+                value={selectedGroup}
+                onValueChange={handleGroupChange}
+                disabled={!selectedClass}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Valitse tuoteryhmä" />
+                </SelectTrigger>
+                <SelectContent>
+                  {productGroups.map((group, idx) => (
                     <SelectItem key={group} value={group}>
                       {group}
                     </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Product Selection */}
-      {selectedGroup && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <BarChart className="h-5 w-5 text-[#4ADE80] mr-2" />
-              Valitse tuote
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {/* Tuote */}
+            <div className="flex-1">
               <Select
                 value={selectedProduct || ''}
                 onValueChange={handleProductChange}
+                disabled={!selectedGroup}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Valitse tuote" />
@@ -240,9 +279,9 @@ const ProductSelectionContent: React.FC<ProductSelectionContentProps> = ({
                 </SelectContent>
               </Select>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Chart Display */}
       {selectedProduct && chartData.length > 0 && !isLoading && (

@@ -70,7 +70,10 @@ This document describes the purpose and main functionality of each source code f
 ### Components (`src/components/`)
 
 - **ChatInterface.tsx**  
-  Interactive chat component that handles user messages, displays bot responses, and manages chat sessions. Supports markdown formatting and automatic scrolling.
+  Interactive chat component that handles user messages, displays bot responses, and manages chat sessions. Supports markdown formatting and automatic scrolling. Operates independently of image management.
+
+- **ImageManager.tsx**  
+  New component for handling image operations independently of chat sessions. Manages image upload, storage, processing, and display.
 
 - **ProductGroupForecastContent.tsx**  
   Component for displaying and managing product group forecasts.
@@ -106,12 +109,42 @@ Contains reusable UI components built with shadcn/ui:
 - **select.tsx** - Dropdown select component
 - And many more UI components for building the interface
 
----
+### Services (`src/services/`)
+
+- **imageService.ts**  
+  Service for handling image-related operations:
+  - Image storage and retrieval
+  - Image processing and analysis
+  - Image display management
+  - Independent image state management
+
+- **chatSessionService.ts**  
+  Service for managing chat sessions independently:
+  - Session state management
+  - Session lifecycle control
+  - Chat history management
+  - Session persistence
+
+- **dataService.ts**  
+  Service for handling data operations and transformations.
+
+- **chartService.ts**  
+  Service for chart-related operations.
+
+- **userService.ts**  
+  Service for user-related operations.
 
 ### API Integration (`src/api/`)
 
 - **chat.ts**  
-  Handles chat-related API calls, including initialization and message creation.
+  Handles chat-related API calls, including initialization and message creation. Operates independently of image management.
+
+- **image.ts**  
+  New API module for handling image-related operations:
+  - Image upload/download
+  - Image processing
+  - Image analysis
+  - Image storage management
 
 - **apply-corrections.ts**  
   API functions for applying forecast corrections.
@@ -122,49 +155,6 @@ Contains reusable UI components built with shadcn/ui:
 - **save-json.ts**  
   Functions for saving data in JSON format.
 
----
-
-### Hooks (`src/hooks/`)
-
-- **useAuth.ts**  
-  Authentication hook for managing user state and login/logout functionality.
-
-- **use-mobile.tsx**  
-  Hook for detecting mobile device usage.
-
-- **use-toast.ts**  
-  Hook for managing toast notifications.
-
----
-
-### Libraries (`src/lib/`)
-
-- **dataService.ts**  
-  Service for handling data operations and transformations.
-
-- **chartUtils.ts**  
-  Utility functions for chart creation and manipulation.
-
-- **firebase.ts**  
-  Firebase configuration and initialization.
-
-- **chartService.ts**  
-  Service for chart-related operations.
-
-- **userService.ts**  
-  Service for user-related operations.
-
-- **env.ts**  
-  Environment variable management.
-
-- **fileService.ts**  
-  Service for file operations.
-
-- **utils.ts**  
-  General utility functions.
-
----
-
 ### Types (`src/types/`)
 
 - **forecast.ts**  
@@ -172,6 +162,40 @@ Contains reusable UI components built with shadcn/ui:
 
 - **documents.ts**  
   TypeScript type definitions for document-related data.
+
+- **image.ts**  
+  New type definitions for image-related data:
+  ```typescript
+  interface ImageData {
+    id: string;
+    url: string;
+    metadata: ImageMetadata;
+    state: ImageState;
+  }
+
+  interface ImageState {
+    isProcessed: boolean;
+    isAnalyzed: boolean;
+    analysisResults?: ImageAnalysis;
+  }
+  ```
+
+- **chat.ts**  
+  New type definitions for chat session management:
+  ```typescript
+  interface ChatSession {
+    id: string;
+    state: SessionState;
+    messages: ChatMessage[];
+    metadata: SessionMetadata;
+  }
+
+  interface SessionState {
+    isActive: boolean;
+    lastActivity: Date;
+    status: 'idle' | 'active' | 'ended';
+  }
+  ```
 
 ---
 

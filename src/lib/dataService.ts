@@ -380,6 +380,14 @@ export class DataService {
   public exportCorrectedData(): string {
     return Papa.unparse(this.data);
   }
+
+  public getAllData(): TimeSeriesData[] {
+    return this.data;
+  }
+
+  public getDataByClass(productClass: string): TimeSeriesData[] {
+    return this.data.filter(row => row.prod_class === productClass);
+  }
 }
 
 export function normalizeTimeSeriesData(row: any): TimeSeriesData {

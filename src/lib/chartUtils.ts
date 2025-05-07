@@ -156,12 +156,8 @@ export const generateChartImage = (
       ctx.fillText(item.label, 660, item.y + 5);
     });
 
-    // Convert to image URL
-    const imageUrl = canvas.toDataURL('image/png');
-
-    // Clean up
-    document.body.removeChild(container);
-
-    resolve(imageUrl);
+    // Palauta base64-data-url
+    const dataUrl = canvas.toDataURL('image/png');
+    resolve(dataUrl);
   });
 }; 

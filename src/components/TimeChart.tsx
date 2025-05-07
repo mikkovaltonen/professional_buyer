@@ -73,8 +73,10 @@ const TimeChart: React.FC<TimeChartProps> = ({ data, title, subtitle, showForeca
       <h3 className="text-lg font-semibold mb-1">{title}</h3>
       {subtitle && (
         <div className="mb-3">
-          <div className="text-xs text-gray-500 mb-1 font-semibold">Tuoteryhmään kuuluvat tuotteet:</div>
-          <div className="text-xs text-gray-700 bg-gray-100 rounded p-2 overflow-x-auto whitespace-nowrap" style={{maxWidth: '100%', minHeight: '2.5em'}}>
+          <div
+            className="text-xs text-gray-700 bg-gray-100 rounded p-2 overflow-x-auto"
+            style={{maxWidth: '100%', minHeight: '2.5em', whiteSpace: 'pre-wrap', wordBreak: 'break-word'}}
+          >
             {subtitle}
           </div>
         </div>
@@ -86,7 +88,7 @@ const TimeChart: React.FC<TimeChartProps> = ({ data, title, subtitle, showForeca
             top: 5,
             right: 30,
             left: 20,
-            bottom: 5,
+            bottom: 50,
           }}
         >
           <CartesianGrid strokeDasharray="3 3" />

@@ -8,7 +8,8 @@ import { Save } from "lucide-react";
 interface ApplyCorrectionsButtonProps {
   chatContent: string;
   selectedProductGroup?: string;
-  selectedProduct?: string;
+  selectedProductCode?: string;
+  selectedClass?: string;
   onCorrectionsApplied?: () => void;
 }
 
@@ -23,7 +24,8 @@ interface ForecastCorrection {
 const ApplyCorrectionsButton: React.FC<ApplyCorrectionsButtonProps> = ({ 
   chatContent, 
   selectedProductGroup,
-  selectedProduct,
+  selectedProductCode,
+  selectedClass,
   onCorrectionsApplied 
 }) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -133,28 +135,35 @@ const ApplyCorrectionsButton: React.FC<ApplyCorrectionsButtonProps> = ({
         return;
       }
 
-      // Filter corrections based on whether we're working with product group or single product
+      // Filter corrections based on whether we're working with product group, single product, or class
       const normalizeString = (str: string) => str.replace(/\s+/g, ' ').trim();
       let relevantCorrections;
       
-      if (selectedProduct) {
+      if (selectedProductCode) {
         // For single product, use all valid corrections but override the product code
         relevantCorrections = corrections.map(correction => ({
           ...correction,
-          product_code: selectedProduct,  // Override with selected product
+          product_code: selectedProductCode,  // Override with selected product
           product_group: undefined        // Clear any product group
         }));
-        console.log('Modified corrections for selected product:', selectedProduct, relevantCorrections);
+        console.log('Modified corrections for selected product:', selectedProductCode, relevantCorrections);
       } else if (selectedProductGroup) {
         // Filter for product group corrections
         relevantCorrections = corrections.filter(
           correction => normalizeString(correction.product_group) === normalizeString(selectedProductGroup)
         );
         console.log('Filtered corrections for product group:', selectedProductGroup, relevantCorrections);
+      } else if (selectedClass) {
+        // For class level, use all corrections but ensure they have the correct class
+        relevantCorrections = corrections.map(correction => ({
+          ...correction,
+          product_class: selectedClass
+        }));
+        console.log('Modified corrections for selected class:', selectedClass, relevantCorrections);
       }
 
       if (!relevantCorrections || relevantCorrections.length === 0) {
-        const target = selectedProduct ? 'tuotteelle' : 'tuoteryhmälle';
+        const target = selectedProductCode ? 'tuotteelle' : selectedProductGroup ? 'tuoteryhmälle' : 'tuoteluokalle';
         toast.info(`Ei löytynyt korjauksia valitulle ${target}`);
         return;
       }

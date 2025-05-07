@@ -9,22 +9,37 @@ graph TD
     A[Firestore Collection: sales_data_with_forecasts] --> B[DataService]
     B --> C[ProductGroupForecastContent/ProductSelectionContent]
     C --> D[TimeChart Component]
-    C --> E[Chart Image Generation]
-    E --> F[Chat Interface]
-    F --> G[Google API/Gemini]
+    
+    %% Separate Image Management Flow
+    D --> E1[Image Management Service]
+    E1 --> F1[Image Storage]
+    E1 --> F2[Image Processing]
+    E1 --> F3[Image Display]
+    
+    %% Separate Chat Session Flow
+    D --> E2[Chat Session Service]
+    E2 --> F4[Chat Interface]
+    F4 --> G[Google API/Gemini]
     G --> H[User Corrections]
     H --> I[ApplyCorrectionsButton]
     I --> J[Firestore Update]
+
+    %% Independent Image Analysis Flow
+    F1 --> G1[Image Analysis]
+    F2 --> G1
+    G1 --> H1[Image Insights]
+    H1 --> I1[Image Corrections]
+    I1 --> J
 ```
 
 ## ASCII Visualizations
 
 ### 1. Main Data Flow
 ```
-[Firestore] --> [DataService] --> [UI Components] --> [Chart] --> [Chat] --> [AI] --> [Corrections] --> [Firestore]
-     |              |                  |                |           |          |           |              |
-     v              v                  v                v           v          v           v              v
-[Raw Data] --> [Normalized] --> [Transformed] --> [Visualized] --> [Analyzed] --> [Suggested] --> [Updated] --> [Stored]
+[Firestore] --> [DataService] --> [UI Components] --> [Chart] --> [Separate Services]
+     |              |                  |                |           |
+     v              v                  v                v           v
+[Raw Data] --> [Normalized] --> [Transformed] --> [Visualized] --> [Image/Chat Services]
 ```
 
 ### 2. Component Interaction
@@ -36,22 +51,26 @@ graph TD
         ^                      |                        |
         |                      v                        v
         |              +------------------+     +----------------+
-        |              |  Chart Service   |     |  Chat Service  |
+        |              |  Chart Service   |     |  Image Service |
         |              +------------------+     +----------------+
         |                      |                        |
         |                      v                        v
         |              +------------------+     +----------------+
-        |              |  Chart Image     |     |  AI Service    |
-        |              |  Generation      |     |  (Gemini)      |
+        |              |  Chat Service    |     |  Image Storage |
         |              +------------------+     +----------------+
         |                      |                        |
         |                      v                        v
         |              +------------------+     +----------------+
-        |              |  Corrections     |     |  User Input    |
-        |              |  Processing      |     |  Processing    |
-        |              +------------------+     +----------------+
-        |                      |                        |
-        +----------------------+------------------------+
+        |              |  AI Service      |     |  Image Process |
+        |              |  (Gemini)        |     +----------------+
+        |              +------------------+             |
+        |                      |                        v
+        |                      v                +----------------+
+        |              +------------------+     |  Image Display |
+        |              |  User Input      |     +----------------+
+        |              +------------------+
+        |                      |
+        +----------------------+
 ```
 
 ### 3. Data Transformation Flow
@@ -68,19 +87,23 @@ graph TD
 [Chart Data Points]
         |
         v
-[Chart Visualization]
+[Separate Processing Paths]
         |
-        v
-[Chart Image for Chat]
-        |
-        v
-[AI Analysis]
-        |
-        v
-[User Corrections]
-        |
-        v
-[Updated Data in Firestore]
+        +----------------+----------------+
+        |                |                |
+        v                v                v
+[Chart Image]    [Chat Session]    [Image Analysis]
+        |                |                |
+        v                v                v
+[Image Storage]   [AI Analysis]    [Image Insights]
+        |                |                |
+        v                v                v
+[Image Display]   [User Corrections] [Image Corrections]
+        |                |                |
+        +----------------+----------------+
+                        |
+                        v
+                [Firestore Update]
 ```
 
 ### 4. State Management Flow
@@ -143,16 +166,21 @@ public getProductGroupData(group: string): TimeSeriesData[]
 public getProductData(productCode: string): TimeSeriesData[]
 ```
 
-### 2. Chart Visualization
+### 2. Chart Visualization and Image Management
 
 **Source Files:**
 - `src/components/TimeChart.tsx`
 - `src/lib/chartUtils.ts`
+- `src/services/imageService.ts`
 
 **Flow:**
 1. Data is transformed for chart display
 2. `TimeChart` component renders using Recharts
-3. Chart image is generated for chat interface
+3. Image management service handles:
+   - Image storage
+   - Image processing
+   - Image display
+   - Independent image analysis
 
 **Key Components:**
 ```typescript
@@ -160,16 +188,24 @@ public getProductData(productCode: string): TimeSeriesData[]
 const TimeChart: React.FC<TimeChartProps>
 // chartUtils.ts
 export const generateChartImage = (chartData: ChartDataPoint[], title: string)
+// imageService.ts
+export const ImageService = {
+  storeImage: (image: ImageData) => Promise<void>,
+  processImage: (image: ImageData) => Promise<ProcessedImage>,
+  displayImage: (imageId: string) => Promise<void>,
+  analyzeImage: (image: ImageData) => Promise<ImageAnalysis>
+}
 ```
 
-### 3. Chat Interface and AI Integration
+### 3. Chat Session Management
 
 **Source Files:**
 - `src/components/ChatInterface.tsx`
 - `src/api/chat.ts`
+- `src/services/chatSessionService.ts`
 
 **Flow:**
-1. Chart image is sent to chat interface
+1. Chat session is managed independently of image management
 2. User interacts with AI through chat
 3. AI analyzes data and provides insights
 4. User can make corrections based on AI suggestions
@@ -180,6 +216,13 @@ export const generateChartImage = (chartData: ChartDataPoint[], title: string)
 const handleSendMessage = async ()
 // chat.ts
 export const createResponse = async (message: string)
+// chatSessionService.ts
+export const ChatSessionService = {
+  startSession: () => Promise<void>,
+  endSession: () => Promise<void>,
+  getSessionState: () => SessionState,
+  updateSession: (data: SessionData) => Promise<void>
+}
 ```
 
 ### 4. Data Correction and Update

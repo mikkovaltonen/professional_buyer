@@ -39,11 +39,39 @@ Kysyntä ennusteen tulkitsemisessa käytetään Gemini 2.5 Pro -mallia, joka tuk
 - Viestit skrollautuvat automaattisesti alimpaan viestiin
 - Latausindikaattori näkyy, kun botti vastaa
 
-### 2. Kuvien käsittely
+### 1.1 Chat-session hallinta
+
+Chat-session hallinta on täysin erillinen toiminnallisuus, joka ei ole sidottu kuvien hallintaan. Tämä mahdollistaa joustavamman käytön ja selkeämmän käyttökokemuksen.
+
+#### Chat-session painikkeet
+
+- **Aloita chat**
+  - **Aktiivinen tila (musta fontti):** Painike on käytettävissä, kun olet valinnut tuotteen, tuoteryhmän tai tuoteluokan, eikä chat-istunto ole vielä käynnissä.
+  - **Passiivinen tila (harmaa fontti):** Painike on pois käytöstä, jos chat on jo käynnissä tai dataa ladataan.
+  - **Toiminta:** Käynnistää uuden chat-istunnon ja alustaa keskustelun Gemini 2.5 Pro -mallilla.
+
+- **Puhdista chat**
+  - **Aktiivinen tila (musta fontti):** Painike on käytettävissä, kun chat-istunto on käynnissä.
+  - **Passiivinen tila (harmaa fontti):** Painike on pois käytöstä, jos chat-istuntoa ei ole käynnissä tai dataa ladataan.
+  - **Toiminta:** Tyhjentää chatin viestit ja nollaa chatin tilan.
+
+### 2. Kuvien hallinta
+
+Kuvien hallinta on nyt täysin erillinen toiminnallisuus, joka toimii itsenäisesti chat-session tilasta riippumatta. Tämä mahdollistaa kuvien lataamisen ja käsittelyn missä tahansa sovelluksen tilassa.
+
+#### Kuvien hallinnan ominaisuudet
 - Tuetut tiedostotyypit: PNG, JPG, JPEG
 - Kuvat muunnetaan base64-muotoon lähetettäessä
 - Kuvat näkyvät viestiketjussa
 - Kuvien käsittely tapahtuu asynkronisesti
+- Kuvien hallinta on saatavilla riippumatta chat-session tilasta
+- Kuvat voidaan ladata ja käsitellä ennen chat-session aloittamista
+- Kuvien hallinta säilyttää oman tilansa erillään chat-session tilasta
+
+#### Kuvien hallinnan painikkeet
+- **Lataa kuva**: Mahdollistaa kuvien lataamisen missä tahansa sovelluksen tilassa
+- **Poista kuva**: Mahdollistaa kuvien poistamisen riippumatta chat-session tilasta
+- **Näytä kuva**: Mahdollistaa ladattujen kuvien tarkastelun
 
 ### 3. Nettihaku
 - Tukee Google-hakuja tuotteista

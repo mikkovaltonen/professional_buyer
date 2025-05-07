@@ -3,11 +3,15 @@ import { GoogleGenerativeAI, Part } from '@google/generative-ai';
 
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
 const geminiModel = import.meta.env.VITE_GEMINI_MODEL || 'gemini-2.5-pro-preview-03-25';
-const DEFAULT_IMAGE = '/default-forecast.png'; // Voit vaihtaa tähän vakiokuvan polun
+const DEFAULT_IMAGE = '/default-forecast.png';
 
 const genAI = new GoogleGenerativeAI(apiKey);
 
-const GeminiChat: React.FC = () => {
+interface GeminiChatProps {
+  imageUrl?: string | null;
+}
+
+const GeminiChat: React.FC<GeminiChatProps> = ({ imageUrl }) => {
   const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -16,6 +20,26 @@ const GeminiChat: React.FC = () => {
 
   // Lataa kuva base64-muotoon
   const loadImageAsBase64 = async (imagePath: string): Promise<string> => {
+    if (imagePath.startsWith('data:image/')) {
+      // Jos jo base64, palauta suoraan
+      return imagePath.split(',')[1];
+    }
+    if (imagePath.startsWith('blob:')) {
+      // Blob-url pitää lukea fetchillä ja FileReaderilla
+      const response = await fetch(imagePath);
+      const blob = await response.blob();
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64String = reader.result as string;
+          const base64Data = base64String.split(',')[1];
+          resolve(base64Data);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    }
+    // Oletetaan että imagePath on tiedostopolku (esim. /default-forecast.png)
     const response = await fetch(imagePath);
     const blob = await response.blob();
     return new Promise((resolve, reject) => {
@@ -30,8 +54,8 @@ const GeminiChat: React.FC = () => {
     });
   };
 
-  // Ohjeistus (voit laajentaa myöhemmin)
-  const getInstructions = () => `Olet ystävällinen Kempin tuotteen kysynnänennustus asiantuntija. Puhu suomea. Analysoi kuvassa esitettyä kysyntädataa ja ennusteita.`;
+  // Ohjeistus
+  const getInstructions = () => `Analysoi ja kuvaile sanallisesti oheinen kuva. Kerro mitä trendejä, poikkeamia ja ennusteita siitä löytyy. Puhu suomea.`;
 
   // Aloita uusi chat-sessio
   const handleStartSession = async () => {
@@ -42,12 +66,17 @@ const GeminiChat: React.FC = () => {
     inputRef.current?.focus();
     setIsLoading(true);
     try {
+      // Käytetään imageUrl:ää jos annettu, muuten vakiokuvaa
+      const imgPath = imageUrl || DEFAULT_IMAGE;
+      const imageBase64 = await loadImageAsBase64(imgPath);
+      console.log('Base64 preview:', imageBase64.slice(0, 100), 'length:', imageBase64.length);
       const model = genAI.getGenerativeModel({
         model: geminiModel,
         tools: [ { googleSearch: {} } as any ]
       });
       const initialMessage = [
-        { text: 'Moi, kerro vitsi' } as Part
+        { text: getInstructions() } as Part,
+        { inlineData: { data: imageBase64, mimeType: 'image/png' } } as Part
       ];
       const result = await model.generateContent(initialMessage);
       const response = await result.response;

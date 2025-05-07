@@ -1,13 +1,10 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNavigate, Link } from "react-router-dom";
-import { LogOut, Archive } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { clearChatSession } from "@/api/chat";
-import ProductSelectionContent from "@/components/ProductSelectionContent";
-import ProductGroupForecastContent from "@/components/ProductGroupForecastContent";
+import ForecastContent from "@/components/ForecastContent";
 
 const Workbench = () => {
   const navigate = useNavigate();
@@ -15,7 +12,6 @@ const Workbench = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState("tuoteryhma");
 
   const handleLogout = () => {
     if (imageUrl) {
@@ -28,10 +24,10 @@ const Workbench = () => {
   const handleRemoveFile = () => {
     if (imageUrl) {
       URL.revokeObjectURL(imageUrl);
-      setImageUrl(null);
-      setSelectedProduct(null);
-      clearChatSession();
     }
+    console.log('setImageUrl(null) called from handleRemoveFile');
+    setImageUrl(null);
+    setSelectedProduct(null);
   };
 
   // Clean up URL when component unmounts
@@ -59,34 +55,15 @@ const Workbench = () => {
         </Button>
       </div>
 
-      <Tabs defaultValue="tuoteryhma" className="space-y-6" value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="tuoteryhma">Tuoteryhmäennustus</TabsTrigger>
-          <TabsTrigger value="tuotekohtainen">Tuotekohtainen ennustus</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="tuoteryhma">
-          <ProductGroupForecastContent
-            imageUrl={imageUrl}
-            setImageUrl={setImageUrl}
-            isLoading={isLoading}
-            setIsLoading={setIsLoading}
-            handleRemoveFile={handleRemoveFile}
-          />
-        </TabsContent>
-        
-        <TabsContent value="tuotekohtainen">
-          <ProductSelectionContent
-            selectedProduct={selectedProduct}
-            setSelectedProduct={setSelectedProduct}
-            imageUrl={imageUrl}
-            setImageUrl={setImageUrl}
-            isLoading={isLoading}
-            setIsLoading={setIsLoading}
-            handleRemoveFile={handleRemoveFile}
-          />
-        </TabsContent>
-      </Tabs>
+      <ForecastContent
+        selectedProduct={selectedProduct}
+        setSelectedProduct={setSelectedProduct}
+        imageUrl={imageUrl}
+        setImageUrl={setImageUrl}
+        isLoading={isLoading}
+        setIsLoading={setIsLoading}
+        handleRemoveFile={handleRemoveFile}
+      />
     </div>
   );
 };

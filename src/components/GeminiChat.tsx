@@ -20,6 +20,7 @@ const GeminiChat: React.FC<GeminiChatProps> = ({ imageUrl }) => {
 
   // Lataa kuva base64-muotoon
   const loadImageAsBase64 = async (imagePath: string): Promise<string> => {
+    if (!imagePath) throw new Error('imageUrl puuttuu!');
     if (imagePath.startsWith('data:image/')) {
       // Jos jo base64, palauta suoraan
       return imagePath.split(',')[1];
@@ -39,7 +40,7 @@ const GeminiChat: React.FC<GeminiChatProps> = ({ imageUrl }) => {
         reader.readAsDataURL(blob);
       });
     }
-    // Oletetaan että imagePath on tiedostopolku (esim. /default-forecast.png)
+    // Oletetaan että imagePath on tiedostopolku
     const response = await fetch(imagePath);
     const blob = await response.blob();
     return new Promise((resolve, reject) => {
@@ -66,10 +67,21 @@ const GeminiChat: React.FC<GeminiChatProps> = ({ imageUrl }) => {
     inputRef.current?.focus();
     setIsLoading(true);
     try {
-      // Käytetään imageUrl:ää jos annettu, muuten vakiokuvaa
-      const imgPath = imageUrl || DEFAULT_IMAGE;
+      // Käytetään imageUrl:ää, oletuskuvaa ei enää ole
+      const imgPath = imageUrl;
+      if (!imgPath) throw new Error('imageUrl puuttuu chatin aloituksessa!');
+      console.log('GeminiChat: Käytettävä imgPath', imgPath);
+      if (typeof imgPath === 'string') {
+        if (imgPath.startsWith('data:image/')) {
+          console.log('GeminiChat: imgPath on base64 dataurl, pituus:', imgPath.length, 'alku:', imgPath.slice(0, 100));
+        } else {
+          console.log('GeminiChat: imgPath on url/polku:', imgPath);
+        }
+      } else {
+        console.log('GeminiChat: imgPath EI OLE string:', imgPath);
+      }
       const imageBase64 = await loadImageAsBase64(imgPath);
-      console.log('Base64 preview:', imageBase64.slice(0, 100), 'length:', imageBase64.length);
+      console.log('GeminiChat: imageBase64 pituus:', imageBase64.length, 'alku:', imageBase64.slice(0, 100));
       const model = genAI.getGenerativeModel({
         model: geminiModel,
         tools: [ { googleSearch: {} } as any ]
@@ -135,7 +147,7 @@ const GeminiChat: React.FC<GeminiChatProps> = ({ imageUrl }) => {
         <button
           className="bg-[#4ADE80] hover:bg-[#22C55E] text-white px-4 py-2 rounded"
           onClick={handleStartSession}
-          disabled={sessionActive || isLoading}
+          disabled={sessionActive || isLoading || !imageUrl}
         >
           Aloita chat
         </button>

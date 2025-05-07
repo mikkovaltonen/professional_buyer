@@ -147,6 +147,9 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
       const allData = dataService.getAllData();
       const aggregatedData = aggregateData(allData);
       setChartData(aggregatedData);
+      // Luo kuva koko datasta
+      const chartImageUrl = await generateChartImage(aggregatedData, 'Kaikki tuoteluokat');
+      setImageUrl(chartImageUrl);
       return;
     }
     
@@ -156,6 +159,9 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
       const classData = dataService.getDataByClass(productClass);
       const aggregatedData = aggregateData(classData);
       setChartData(aggregatedData);
+      // Luo kuva valitun luokan datasta
+      const chartImageUrl = await generateChartImage(aggregatedData, productClass);
+      setImageUrl(chartImageUrl);
       const groups = dataService.getProductGroupsInClass(productClass);
       console.log('Loaded product groups for class:', groups);
       setProductGroups(groups.map(String));
@@ -175,6 +181,9 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
       const classData = dataService.getDataByClass(selectedClass);
       const aggregatedData = aggregateData(classData);
       setChartData(aggregatedData);
+      // Luo kuva valitun luokan datasta
+      const chartImageUrl = await generateChartImage(aggregatedData, selectedClass || '');
+      setImageUrl(chartImageUrl);
       return;
     }
     
@@ -188,6 +197,9 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
       const groupData = dataService.getProductGroupData(group);
       const aggregatedData = aggregateData(groupData);
       setChartData(aggregatedData);
+      // Luo kuva valitun ryhmän datasta
+      const chartImageUrl = await generateChartImage(aggregatedData, group);
+      setImageUrl(chartImageUrl);
     } catch (err) {
       console.error('Error loading products:', err);
       toast.error('Failed to load products. Please try again.');

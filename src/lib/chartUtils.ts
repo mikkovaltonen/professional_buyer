@@ -20,8 +20,8 @@ export const generateChartImage = (
 
     // Create a canvas element
     const canvas = document.createElement('canvas');
-    canvas.width = 800;
-    canvas.height = 400;
+    canvas.width = 400;
+    canvas.height = 200;
     const ctx = canvas.getContext('2d')!;
 
     // Set white background
@@ -156,8 +156,8 @@ export const generateChartImage = (
       ctx.fillText(item.label, 660, item.y + 5);
     });
 
-    // Palauta base64-data-url
-    const dataUrl = canvas.toDataURL('image/png');
+    // Palauta base64-data-url JPEG-muodossa (laatu 0.7)
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
     resolve(dataUrl);
   });
 }; 

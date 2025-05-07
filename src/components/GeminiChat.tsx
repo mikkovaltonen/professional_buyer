@@ -165,15 +165,48 @@ const GeminiChat: React.FC<GeminiChatProps> = ({ imageUrl }) => {
       </div>
       <div className="h-64 overflow-y-auto border rounded p-2 bg-gray-50 mb-4">
         {messages.length === 0 && <div className="text-gray-400 text-sm">Ei viestejä</div>}
-        {messages.map((msg, idx) => (
-          <div key={idx} className={`mb-2 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
-            {msg.parts.map((part: any, pidx: number) => (
-              <span key={pidx} className={`inline-block px-3 py-2 rounded-lg max-w-full break-words ${msg.role === 'user' ? 'bg-[#4ADE80] text-white' : 'bg-gray-200 text-gray-800'}`}>
-                <ReactMarkdown>{part.text}</ReactMarkdown>
-              </span>
-            ))}
-          </div>
-        ))}
+        {messages
+          // Piilota initialisointiprompti: älä näytä ensimmäistä user-viestiä, jos se sisältää vain ohjeistuksen ja/tai kuvan
+          .filter((msg, idx) => {
+            if (idx !== 0) return true;
+            // Jos ensimmäinen viesti on user ja parts sisältää vain ohjeistuksen ja/tai kuvan, piilota se
+            if (msg.role === 'user' && Array.isArray(msg.parts) && msg.parts.length <= 2 && msg.parts.some(p => typeof p.text === 'string' && p.text.includes('Kempin tuotteiden markkinatutkija'))) {
+              return false;
+            }
+            return true;
+          })
+          .map((msg, idx) => (
+            <div key={idx} className={`mb-2 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
+              {msg.parts.map((part: any, pidx: number) => (
+                <span key={pidx} className={`inline-block px-3 py-2 rounded-lg max-w-full break-words whitespace-pre-wrap ${msg.role === 'user' ? 'bg-[#4ADE80] text-white' : 'bg-gray-200 text-gray-800'}`}>
+                  <ReactMarkdown
+                    components={{
+                      a: ({ node, ...props }) => (
+                      <a {...props} className="text-blue-600 hover:text-blue-800 underline" target="_blank" rel="noopener noreferrer" />
+                    ),
+                    ul: ({ node, ...props }) => (
+                      <ul {...props} className="list-disc pl-5" />
+                    ),
+                    li: ({ node, ...props }) => (
+                      <li {...props} className="mb-1" />
+                    ),
+                    p: ({ node, ...props }) => (
+                      <p {...props} className="mb-2" />
+                    ),
+                    strong: ({ node, ...props }) => (
+                      <strong {...props} className="font-bold" />
+                    ),
+                    em: ({ node, ...props }) => (
+                      <em {...props} className="italic" />
+                    )
+                  }}
+                  >
+                    {part.text}
+                  </ReactMarkdown>
+                </span>
+              ))}
+            </div>
+          ))}
         {isLoading && (
           <div className="flex items-center gap-2 text-gray-500 text-sm mt-2 animate-pulse">
             <Loader2 className="h-4 w-4 animate-spin" />

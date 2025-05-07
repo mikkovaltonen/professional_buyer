@@ -11,7 +11,7 @@ AI Kysynnänennusteavustaja on moderni web-sovellus, joka auttaa yrityksiä ennu
 - 📝 Päätösongelmien dokumentointi ja oppiminen
 - 🔍 Automaattinen markkinasignaalien seuranta
 - 💾 Ennustekorjausten tallennus ja hallinta
-- 🔄 Integroitavissa olemassa oleviin järjestelmiin (tbd)
+- 🔄 Integroitavissa olemassa oleviin järjestelmiin
 - 🔐 Turvallinen käyttäjienhallinta
 - 📈 Automaattinen kuvaajan päivitys korjausten tallennuksen jälkeen
 - 🌐 Täysin suomenkielinen käyttöliittymä
@@ -30,78 +30,13 @@ Kysyntä ennusteen tulkitsemisessa käytetään Gemini 2.5 Pro -mallia, joka tuk
 
 ## Toiminnalliset speksit
 
-### 1. Chat-ikkuna
-- Tukee markdown-muotoilua viesteissä
-- Hyperlinkit avautuvat uuteen välilehteen
-- Listat näkyvät oikein muotoiltuina
-- Teksti on paremmin muotoiltu yleisesti
-- Viestit näkyvät eri väreillä käyttäjän ja bottiviestien välillä
-- Viestit skrollautuvat automaattisesti alimpaan viestiin
-- Latausindikaattori näkyy, kun botti vastaa
+### 1. Käyttöliittymä
+- Yksinkertainen ja selkeä käyttöliittymä
+- Kovakoodattu käyttäjätunnistus
+- Työpöytä (Workbench) näkymä ennusteiden käsittelyyn
+- Responsiivinen suunnittelu
 
-### 1.1 Chat-session hallinta
-
-Chat-session hallinta on täysin erillinen toiminnallisuus, joka ei ole sidottu kuvien hallintaan. Tämä mahdollistaa joustavamman käytön ja selkeämmän käyttökokemuksen.
-
-#### Chat-session painikkeet
-
-- **Aloita chat**
-  - **Aktiivinen tila (musta fontti):** Painike on käytettävissä, kun olet valinnut tuotteen, tuoteryhmän tai tuoteluokan, eikä chat-istunto ole vielä käynnissä.
-  - **Passiivinen tila (harmaa fontti):** Painike on pois käytöstä, jos chat on jo käynnissä tai dataa ladataan.
-  - **Toiminta:** Käynnistää uuden chat-istunnon ja alustaa keskustelun Gemini 2.5 Pro -mallilla.
-
-- **Puhdista chat**
-  - **Aktiivinen tila (musta fontti):** Painike on käytettävissä, kun chat-istunto on käynnissä.
-  - **Passiivinen tila (harmaa fontti):** Painike on pois käytöstä, jos chat-istuntoa ei ole käynnissä tai dataa ladataan.
-  - **Toiminta:** Tyhjentää chatin viestit ja nollaa chatin tilan.
-
-### 2. Kuvien hallinta
-
-Kuvien hallinta on nyt täysin erillinen toiminnallisuus, joka toimii itsenäisesti chat-session tilasta riippumatta. Tämä mahdollistaa kuvien lataamisen ja käsittelyn missä tahansa sovelluksen tilassa.
-
-#### Kuvien hallinnan ominaisuudet
-- Tuetut tiedostotyypit: PNG, JPG, JPEG
-- Kuvat muunnetaan base64-muotoon lähetettäessä
-- Kuvat näkyvät viestiketjussa
-- Kuvien käsittely tapahtuu asynkronisesti
-- Kuvien hallinta on saatavilla riippumatta chat-session tilasta
-- Kuvat voidaan ladata ja käsitellä ennen chat-session aloittamista
-- Kuvien hallinta säilyttää oman tilansa erillään chat-session tilasta
-
-#### Kuvien hallinnan painikkeet
-- **Lataa kuva**: Mahdollistaa kuvien lataamisen missä tahansa sovelluksen tilassa
-- **Poista kuva**: Mahdollistaa kuvien poistamisen riippumatta chat-session tilasta
-- **Näytä kuva**: Mahdollistaa ladattujen kuvien tarkastelun
-
-### 3. Nettihaku
-- Tukee Google-hakuja tuotteista
-- Haku tulokset näkyvät markdown-muodossa
-- Linkit ovat klikattavia ja avautuvat uuteen välilehteen
-- Haku tulokset sisältävät:
-  - Viralliset tuotesivut
-  - Jälleenmyyjien sivut
-  - Tekniset tiedot
-  - Uutiset ja markkinatiedot
-
-### 4. Sessiohallinta
-- Sessio alkaa tuotteen ja kuvan valinnalla
-- Sessio pysyy aktiivisena, kunnes käyttäjä vaihtaa tuotetta
-- Edellisen session tiedot tyhjennetään automaattisesti
-- Sessio tietoja ei tallenneta pysyvästi
-
-### 5. Virheenkäsittely
-- Virheilmoitukset näkyvät käyttäjälle selkeästi
-- API-virheet käsitellään asianmukaisesti
-- Kuvan käsittelyvirheet ilmoitetaan käyttäjälle
-- Nettihakuvirheet käsitellään ja ilmoitetaan
-
-### 6. Testaus
-- Yksikkötestit komponenteille
-- API-integraatiotestit
-- Tyypintarkistus TypeScriptillä
-- Testitiedostot löytyvät `tests/`-hakemistosta
-
-### 7. Ennustekorjausten tallennus
+### 2. Ennustekorjausten hallinta
 - Tallenna ennustekorjaukset JSON-muodossa
 - Validointi korjausdatan oikeellisuudelle
 - Automaattinen tuoteryhmän liittäminen korjauksiin
@@ -110,6 +45,14 @@ Kuvien hallinta on nyt täysin erillinen toiminnallisuus, joka toimii itsenäise
 - Tuki useille korjauksille samassa tallennuksessa
 - Automaattinen kuvaajan päivitys tallennuksen jälkeen
 - Korjausten selitykset näkyvät kuvaajan tooltipissä
+
+### 3. Datan visualisointi
+- Interaktiivinen aikasarjakuvaaja
+- Toteutunut kysyntä (sininen viiva)
+- Vanha ennuste (vihreä katkoviiva)
+- Tilastollinen ennuste (oranssi katkoviiva)
+- Korjattu ennuste (punainen viiva)
+- Ennustevirhe (punainen katkoviiva)
 
 ## Käyttöönotto
 
@@ -139,13 +82,8 @@ VITE_GEMINI_API_KEY=xxx
 npm run dev
 ```
 
-### Testaus
-```bash
-npm run test
-```
-
 ### Tuotantoon vieminen
-Sovellus on konfiguroitu käyttämään Vercel-palvelua tuotantoon viemiseen. Huomaa, että automaattinen deployment on rikki, joten jokaisen git-pushin jälkeen täytyy ajaa manuaalisesti:
+Sovellus on konfiguroitu käyttämään Vercel-palvelua tuotantoon viemiseen:
 
 ```bash
 vercel --prod --force
@@ -162,9 +100,7 @@ ai-kysyntaennuste/
 │   ├── hooks/        # React-hookit
 │   ├── lib/          # Apukirjastot ja työkalut
 │   ├── pages/        # Sivukomponentit
-│   ├── types/        # TypeScript-tyypit
-│   └── App.tsx       # Pääsovelluskomponentti
-├── tests/            # Testitiedostot
+│   └── types/        # TypeScript-tyypit
 ├── docs/            # Dokumentaatio
 └── config/          # Konfiguraatiotiedostot
 ```

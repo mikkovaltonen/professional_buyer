@@ -13,4 +13,4 @@ alwaysApply: true
 - When you clean up obsolete code or files alays do only one deletion at time and perform regression testing and document the testing results into "test" - folder
 - This project is vite, not next.js
 - Idea is to make code stucute where new souce code files, methods, components and functionalities can be added without chaging old code. Therefore internal API as prefered as they isolated functionalities. 
-
+- This is serverless project and does not have backend server. It will be published in Vercvel

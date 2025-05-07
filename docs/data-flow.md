@@ -400,3 +400,103 @@ The application includes tests for:
    - Enhanced analysis
    - More sophisticated corrections
    - Learning from user feedback 
+
+## 1. Autentikaatio
+```mermaid
+graph TD
+    A[Käyttäjä] -->|Kirjaudu| B[LoginForm]
+    B -->|Tarkista tunnukset| C[userService]
+    C -->|Onnistui| D[Workbench]
+    C -->|Epäonnistui| E[Virheilmoitus]
+```
+
+## 2. Ennusteiden käsittely
+```mermaid
+graph TD
+    A[Workbench] -->|Lataa data| B[dataService]
+    B -->|Muunna data| C[TimeChart]
+    C -->|Näytä ennusteet| D[Käyttäjä]
+    D -->|Korjaa ennuste| E[ApplyCorrectionsButton]
+    E -->|Tallenna korjaus| F[apply-corrections.ts]
+    F -->|Päivitä kuvaaja| C
+```
+
+## 3. Tiedostojen käsittely
+```mermaid
+graph TD
+    A[Käyttäjä] -->|Tallenna| B[save-json.ts]
+    B -->|Tarkista| C[fileService]
+    C -->|Tallenna| D[JSON tiedosto]
+    A -->|Lataa| E[dataService]
+    E -->|Lue| D
+```
+
+## Datarakenne
+
+### Ennustedata
+```typescript
+interface TimeSeriesData {
+  date: string;
+  quantity: number;
+  old_forecast: number;
+  new_forecast: number;
+  new_forecast_manually_adjusted: number;
+  old_forecast_error: number;
+  correction_percent: number;
+  explanation: string;
+  correction_timestamp: string;
+}
+```
+
+### Korjausdata
+```typescript
+interface CorrectionData {
+  date: string;
+  new_forecast_manually_adjusted: number;
+  correction_percent: number;
+  explanation: string;
+  correction_timestamp: string;
+}
+```
+
+## Tiedostomuodot
+
+### JSON
+```json
+{
+  "date": "2024-03-20",
+  "quantity": 100,
+  "old_forecast": 90,
+  "new_forecast": 95,
+  "new_forecast_manually_adjusted": 105,
+  "old_forecast_error": 10,
+  "correction_percent": 10.5,
+  "explanation": "Korjaus perustuu markkinatietoihin",
+  "correction_timestamp": "2024-03-20T12:00:00Z"
+}
+```
+
+### CSV
+```csv
+date,quantity,old_forecast,new_forecast,new_forecast_manually_adjusted,old_forecast_error,correction_percent,explanation,correction_timestamp
+2024-03-20,100,90,95,105,10,10.5,"Korjaus perustuu markkinatietoihin","2024-03-20T12:00:00Z"
+```
+
+## Virheenkäsittely
+
+### Tiedoston käsittely
+- Tarkista tiedoston olemassaolo
+- Validoi tiedoston muoto
+- Käsittele lukuvirheet
+- Ilmoita virheet käyttäjälle
+
+### Datan validointi
+- Tarkista pakolliset kentät
+- Validoi datatyypit
+- Tarkista päivämäärien muoto
+- Ilmoita virheet käyttäjälle
+
+### API-virheet
+- Käsittele verkkoyhteyden virheet
+- Ilmoita API-virheet käyttäjälle
+- Yritä uudelleen tarvittaessa 

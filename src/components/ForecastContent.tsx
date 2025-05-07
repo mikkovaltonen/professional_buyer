@@ -55,6 +55,7 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
   const [selectedProductGroup, setSelectedProductGroup] = useState<string>('');
   const [selectedProductSubclass, setSelectedProductSubclass] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
+  const [chartLevel, setChartLevel] = useState<'class' | 'group' | 'product'>('class');
 
   useEffect(() => {
     const loadData = async () => {
@@ -80,6 +81,19 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
 
     loadData();
   }, []);
+
+  useEffect(() => {
+    // Päivitä chartLevel valitun tason mukaan
+    if (selectedProduct) {
+      setChartLevel('product');
+    } else if (selectedGroup) {
+      setChartLevel('group');
+    } else if (selectedClass) {
+      setChartLevel('class');
+    } else {
+      setChartLevel('class'); // Oletus
+    }
+  }, [selectedProduct, selectedGroup, selectedClass]);
 
   const aggregateData = (data: any[]): ChartDataPoint[] => {
     const dates = [...new Set(data.map(row => row.Year_Month))];
@@ -260,7 +274,7 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
       {/* Product Selection Controls */}
       <Card>
         <CardHeader>
-          <CardTitle>Tuotteen valinta</CardTitle>
+          <CardTitle>Ennustettavan kokonaisuuden valinta</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex gap-4">
@@ -394,7 +408,7 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
 
       {/* Chat wrapper */}
       <div className="bg-white shadow rounded-lg p-4 mt-0">
-        <GeminiChat imageUrl={imageUrl} />
+        <GeminiChat imageUrl={imageUrl} chartLevel={chartLevel} />
       </div>
     </div>
   );

@@ -1,5 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { GoogleGenerativeAI, Part } from '@google/generative-ai';
+import { Loader2 } from "lucide-react";
+import ReactMarkdown from 'react-markdown';
 
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
 const geminiModel = import.meta.env.VITE_GEMINI_MODEL || 'gemini-2.5-pro-preview-03-25';
@@ -56,7 +58,9 @@ const GeminiChat: React.FC<GeminiChatProps> = ({ imageUrl }) => {
   };
 
   // Ohjeistus
-  const getInstructions = () => `Analysoi ja kuvaile sanallisesti oheinen kuva. Kerro mitä trendejä, poikkeamia ja ennusteita siitä löytyy. Puhu suomea.`;
+  const getInstructions = () => (
+    `Olet ystävällinen Kempin tuotteiden markkinatutkija ja kysynnänennustuksen asiantuntija. Puhu suomea.\n\nAnalysoi aluksi kuvassa esitettyä dataa.\nKerro käyttäjälle kuvan tuotteista, tuoteryhmästä tai selvitä verkosta, minkälaisia lopputuotteita ryhmään kuuluu. Toimitettuasi analyysin käyttäjälle, kysy haluaako hän sinun tekevän seuraavat Google-syvähaut:\n\n(1) Omien ja kilpailijoiden alennuskampanjat, (2) Omien ja kilpailijoiden substituuttituotteiden tuotelanseeraukset, (3) Omien ja kilpailijoiden markkinointikampanjat sekä jakelijoiden ilmoitukset\n(4) Omien ja kilpailijoiden lehtiartikkelit ja (5) Kysyntään vaikuttavat makrotalousindikaattorit ja niiden muutokset\nKysy myös, haluaako käyttäjä linkit kaikkiin uutisiin, joilla saattaa olla vaikutusta ennusteeseen.\n\nKun makrotalousindikaattorit ja ennusteeseen vaikuttavat uutiset on käyty läpi, ehdota käyttäjälle, että voit antaa perustellut ennustekorjaukset JSON-muodossa.\n\nJSON:n tulee olla seuraavassa muodossa:\n\n{\n  "product_group": "Kemppi welder Power Sources",\n  "month": "2025-08",\n  "correction_percent": -2,\n  "explanation": "Esimerkki: Alkuperäisessä ennusteessa kysyntä laskee jyrkästi huipun jälkeen. Koska talouden ja teollisuuden elpymisen odotetaan jatkuvan tasaisemmin läpi vuoden 2025, ehdotan pieniä positiivisia korjauksia heijastamaan vakaampaa kehitystä ja estämään liian jyrkkää pudotusta ennusteessa."\n}\n\nJSON:issa on käytettävä tarkasti oikeaa product group -koodia, esim. "10905 ACDC THREE-PHASE".\n\nKorjaukset tulee rajata ajanjaksolle 04/2025 – 03/2026, ja niitä tulee antaa vain niille kuukausille, joiden osalta uskot korjauksen olevan perusteltu.`
+  );
 
   // Aloita uusi chat-sessio
   const handleStartSession = async () => {
@@ -164,12 +168,18 @@ const GeminiChat: React.FC<GeminiChatProps> = ({ imageUrl }) => {
         {messages.map((msg, idx) => (
           <div key={idx} className={`mb-2 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
             {msg.parts.map((part: any, pidx: number) => (
-              <span key={pidx} className={`inline-block px-3 py-2 rounded-lg ${msg.role === 'user' ? 'bg-[#4ADE80] text-white' : 'bg-gray-200 text-gray-800'}`}>
-                {part.text}
+              <span key={pidx} className={`inline-block px-3 py-2 rounded-lg max-w-full break-words ${msg.role === 'user' ? 'bg-[#4ADE80] text-white' : 'bg-gray-200 text-gray-800'}`}>
+                <ReactMarkdown>{part.text}</ReactMarkdown>
               </span>
             ))}
           </div>
         ))}
+        {isLoading && (
+          <div className="flex items-center gap-2 text-gray-500 text-sm mt-2 animate-pulse">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Odottaa vastausta...
+          </div>
+        )}
       </div>
       <div className="flex gap-2">
         <input

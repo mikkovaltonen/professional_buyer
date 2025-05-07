@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Bot, Send } from 'lucide-react';
+import { Bot, Send, Loader2 } from 'lucide-react';
 import { createResponse, initializeChat, clearChatSession } from '@/api/chat';
 import ReactMarkdown from 'react-markdown';
 
@@ -15,13 +15,23 @@ interface ChatInterfaceProps {
   selectedProduct?: string;
   selectedImageUrl?: string;
   onMessageUpdate?: (content: string) => void;
+  shouldInitialize?: boolean;
+  classGroups?: string[];
 }
 
-const ChatInterface: React.FC<ChatInterfaceProps> = ({ className, selectedProduct, selectedImageUrl, onMessageUpdate }) => {
+const ChatInterface: React.FC<ChatInterfaceProps> = ({ 
+  className, 
+  selectedProduct, 
+  selectedImageUrl, 
+  onMessageUpdate,
+  shouldInitialize = false,
+  classGroups = []
+}) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -31,24 +41,20 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ className, selectedProduc
     scrollToBottom();
   }, [messages]);
 
-  // Initialize chat when component mounts and selectedProduct changes
+  // Initialize chat only when shouldInitialize is true
   useEffect(() => {
-    console.log('🔄 Product selection changed:', selectedProduct);
-    console.log('🖼️ Selected image URL:', selectedImageUrl);
-    
     const initChat = async () => {
-      if (selectedProduct && selectedImageUrl) {
+      if (shouldInitialize && !isInitialized && selectedProduct && selectedImageUrl) {
         console.log('🚀 Starting chat initialization for product:', selectedProduct);
+        console.log('🖼️ Selected image URL:', selectedImageUrl);
         setIsLoading(true);
         
-        // Clear previous session
-        clearChatSession();
-        
         try {
-          const response = await initializeChat(selectedProduct, selectedImageUrl);
+          const response = await initializeChat(selectedProduct, selectedImageUrl, classGroups);
           console.log('✅ Chat initialized with response:', response);
           if (response) {
             setMessages([{ role: 'assistant', content: response }]);
+            setIsInitialized(true);
           }
         } catch (error) {
           console.error('❌ Error initializing chat:', error);
@@ -59,13 +65,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ className, selectedProduc
         } finally {
           setIsLoading(false);
         }
-      } else {
-        console.log('⚠️ No product or image selected, skipping initialization');
       }
     };
 
     initChat();
-  }, [selectedProduct, selectedImageUrl]);
+  }, [shouldInitialize, selectedProduct, selectedImageUrl, isInitialized, classGroups]);
 
   const handleSendMessage = async () => {
     if (!input.trim()) return;
@@ -113,6 +117,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ className, selectedProduc
       }
     }
   }, [messages, onMessageUpdate]);
+
+  // Funktio chatin tyhjentämiseen
+  const handleClearChat = () => {
+    clearChatSession();
+    setMessages([]);
+  };
 
   // Component cleanup
   useEffect(() => {
@@ -172,10 +182,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ className, selectedProduc
           </div>
         ))}
         {isLoading && (
-          <div className="flex justify-start">
-            <div className="bg-gray-100 rounded-lg p-3 text-gray-900">
-              <Bot className="h-4 w-4 animate-pulse" />
-            </div>
+          <div className="flex items-center gap-2 text-gray-500 mt-2 animate-pulse">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            <span>Prosessoin dataa...</span>
           </div>
         )}
         <div ref={messagesEndRef} />

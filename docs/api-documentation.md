@@ -2,24 +2,6 @@
 
 ## Tiedostojen käsittely
 
-### save-json.ts
-Tallentaa ennustekorjaukset JSON-muodossa.
-
-```typescript
-export async function saveJson(jsonData: TimeSeriesData[], filePath: string): Promise<void>
-```
-
-#### Parametrit
-- `jsonData`: TimeSeriesData[] - Tallennettava data
-- `filePath`: string - Tiedoston polku
-
-#### Palautusarvo
-- `Promise<void>`
-
-#### Virheet
-- `Error`: Jos tiedostopolku on virheellinen
-- `Error`: Jos tallennus epäonnistuu
-
 ### apply-corrections.ts
 Käsittelee ennustekorjaukset.
 

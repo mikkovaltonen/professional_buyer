@@ -85,6 +85,12 @@ npm run dev
 ### Tuotantoon vieminen
 Sovellus on konfiguroitu käyttämään Vercel-palvelua tuotantoon viemiseen:
 
+1. Linkitä projekti Verceliin:
+```bash
+vercel link
+```
+
+2. Vie sovellus tuotantoon:
 ```bash
 vercel --prod --force
 ```

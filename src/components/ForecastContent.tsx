@@ -269,6 +269,37 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
     }
   };
 
+  // Chart refresh callback for corrections
+  const handleCorrectionsApplied = async () => {
+    try {
+      setIsLoading(true);
+      const dataService = DataService.getInstance();
+      dataService.data = []; // Tyhjennä cache, jotta saadaan tuore data Firestoresta
+      await dataService.loadCSVData();
+      let data: any[] = [];
+      if (selectedProduct) {
+        data = dataService.getProductData(selectedProduct);
+      } else if (selectedGroup) {
+        data = dataService.getProductGroupData(selectedGroup);
+      } else if (selectedClass) {
+        data = dataService.getDataByClass(selectedClass);
+      } else {
+        data = dataService.getAllData();
+      }
+      const aggregatedData = aggregateData(data);
+      setChartData(aggregatedData);
+      // Päivitä myös kuva
+      const chartImageUrl = await generateChartImage(aggregatedData, selectedProduct || selectedGroup || selectedClass || 'Kaikki tuoteluokat');
+      setImageUrl(chartImageUrl);
+      toast.success('Graafi päivitetty korjausten jälkeen');
+    } catch (err) {
+      console.error('Error refreshing chart after corrections:', err);
+      toast.error('Graafin päivitys epäonnistui');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Product Selection Controls */}
@@ -408,7 +439,7 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
 
       {/* Chat wrapper */}
       <div className="bg-white shadow rounded-lg p-4 mt-0">
-        <GeminiChat imageUrl={imageUrl} chartLevel={chartLevel} />
+        <GeminiChat imageUrl={imageUrl} chartLevel={chartLevel} onCorrectionsApplied={handleCorrectionsApplied} />
       </div>
     </div>
   );

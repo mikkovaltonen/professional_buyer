@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { GoogleGenerativeAI, Part } from '@google/generative-ai';
 import { Loader2 } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
+import ApplyCorrectionsButton from './ApplyCorrectionsButton';
 
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
 const geminiModel = import.meta.env.VITE_GEMINI_MODEL || 'gemini-2.5-pro-preview-03-25';
@@ -11,9 +12,11 @@ const genAI = new GoogleGenerativeAI(apiKey);
 
 interface GeminiChatProps {
   imageUrl?: string | null;
+  chartLevel?: 'class' | 'group' | 'product';
+  onCorrectionsApplied?: () => void;
 }
 
-const GeminiChat: React.FC<GeminiChatProps> = ({ imageUrl }) => {
+const GeminiChat: React.FC<GeminiChatProps> = ({ imageUrl, chartLevel = 'group', onCorrectionsApplied }) => {
   const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -57,10 +60,41 @@ const GeminiChat: React.FC<GeminiChatProps> = ({ imageUrl }) => {
     });
   };
 
-  // Ohjeistus
-  const getInstructions = () => (
-    `Hei! Toimi aina muodollisesti ja kohteliaasti. Aloita muodollisella tervehdyksellä ja esittelyllä vain ensimmäisessä vastauksessa. Seuraavissa vastauksissa älä enää esittele itseäsi, vaan jatka suoraan analyysillä tai vastauksella. Esimerkiksi: 'Hei! Olen Kempin tuotteiden markkinatutkija ja kysynnänennustuksen asiantuntija. Analysoin mielelläni toimitetun datan ja autan seuraavissa vaiheissa.' Älä koskaan aloita epämuodollisesti, kuten 'Selvä juttu', 'Totta kai', 'Katsotaanpa', 'No niin', 'Tarkastellaanpa' tms. Vastaa aina suomeksi.\n\nAnalysoi aluksi kuvassa esitettyä dataa.\nKerro käyttäjälle kuvan tuotteista, tuoteryhmästä tai selvitä verkosta, minkälaisia lopputuotteita ryhmään kuuluu. Toimitettuasi analyysin käyttäjälle, kysy haluaako hän sinun tekevän seuraavat Google-syvähaut:\n\n(1) Omien ja kilpailijoiden alennuskampanjat, (2) Omien ja kilpailijoiden substituuttituotteiden tuotelanseeraukset, (3) Omien ja kilpailijoiden markkinointikampanjat sekä jakelijoiden ilmoitukset\n(4) Omien ja kilpailijoiden lehtiartikkelit ja (5) Kysyntään vaikuttavat makrotalousindikaattorit ja niiden muutokset\nKysy myös, haluaako käyttäjä linkit kaikkiin uutisiin, joilla saattaa olla vaikutusta ennusteeseen.\n\nJos mainitset uutisen, artikkelin tai lähteen, anna se aina markdown-linkkinä muodossa [otsikko](https://osoite).\n\nKun makrotalousindikaattorit ja ennusteeseen vaikuttavat uutiset on käyty läpi, ehdota käyttäjälle, että voit antaa perustellut ennustekorjaukset JSON-muodossa.\n\nJSON:n tulee olla seuraavassa muodossa:\n\n{\n  "product_group": "Kemppi welder Power Sources",\n  "month": "2025-08",\n  "correction_percent": -2,\n  "explanation": "Esimerkki: Alkuperäisessä ennusteessa kysyntä laskee jyrkästi huipun jälkeen. Koska talouden ja teollisuuden elpymisen odotetaan jatkuvan tasaisemmin läpi vuoden 2025, ehdotan pieniä positiivisia korjauksia heijastamaan vakaampaa kehitystä ja estämään liian jyrkkää pudotusta ennusteessa."\n}\n\nJSON:issa on käytettävä tarkasti oikeaa product group -koodia, esim. "10905 ACDC THREE-PHASE".\n\nKorjaukset tulee rajata ajanjaksolle 04/2025 – 03/2026, ja niitä tulee antaa vain niille kuukausille, joiden osalta uskot korjauksen olevan perusteltu.\n\nEsimerkkivastaus aloitukseen:\nHei! Olen Kempin tuotteiden markkinatutkija ja kysynnänennustuksen asiantuntija. Analysoin mielelläni toimitetun datan ja autan seuraavissa vaiheissa. Tässä analyysi toimitetusta datasta:`
-  );
+  // Dynaaminen ohjeistus kuvan tason mukaan
+  const getInstructions = () => {
+    const baseInstructions = `Hei! Toimi aina muodollisesti ja kohteliaasti. Aloita muodollisella tervehdyksellä ja esittelyllä vain ensimmäisessä vastauksessa. Seuraavissa vastauksissa älä enää esittele itseäsi, vaan jatka suoraan analyysillä tai vastauksella. Esimerkiksi: 'Hei! Olen Kempin tuotteiden markkinatutkija ja kysynnänennustuksen asiantuntija. Analysoin mielelläni toimitetun datan ja autan seuraavissa vaiheissa.' Älä koskaan aloita epämuodollisesti, kuten 'Selvä juttu', 'Totta kai', 'Katsotaanpa', 'No niin', 'Tarkastellaanpa' tms. Vastaa aina suomeksi.\n\nAnalysoi aluksi kuvassa esitettyä dataa.\nKerro käyttäjälle kuvan tuotteista, tuoteryhmästä tai selvitä verkosta, minkälaisia lopputuotteita ryhmään kuuluu. Toimitettuasi analyysin käyttäjälle, kysy haluaako hän sinun tekevän seuraavat Google-syvähaut:\n\n(1) Omien ja kilpailijoiden alennuskampanjat, (2) Omien ja kilpailijoiden substituuttituotteiden tuotelanseeraukset, (3) Omien ja kilpailijoiden markkinointikampanjat sekä jakelijoiden ilmoitukset\n(4) Omien ja kilpailijoiden lehtiartikkelit ja (5) Kysyntään vaikuttavat makrotalousindikaattorit ja niiden muutokset\nKysy myös, haluaako käyttäjä linkit kaikkiin uutisiin, joilla saattaa olla vaikutusta ennusteeseen.\n\nJos mainitset uutisen, artikkelin tai lähteen, anna se aina markdown-linkkinä muodossa [otsikko](https://osoite).\n\nKun makrotalousindikaattorit ja ennusteeseen vaikuttavat uutiset on käyty läpi, ehdota käyttäjälle, että voit antaa perustellut ennustekorjaukset JSON-muodossa.\n\n`;
+
+    const jsonInstructions = {
+      class: `JSON:n tulee olla seuraavassa muodossa:\n\n{
+  "prod_class": "Virtalähteet",
+  "month": "2025-08",
+  "correction_percent": -2,
+  "explanation": "Esimerkki: Alkuperäisessä ennusteessa kysyntä laskee jyrkästi huipun jälkeen. Koska talouden ja teollisuuden elpymisen odotetaan jatkuvan tasaisemmin läpi vuoden 2025, ehdotan pieniä positiivisia korjauksia heijastamaan vakaampaa kehitystä ja estämään liian jyrkkää pudotusta ennusteessa.",
+  "forecast_corrector": "forecasting@kemppi.com"
+}\n\nJos annetaan vain prod_class, korjaus kohdistetaan kaikkiin kyseisen luokan tuotteisiin.`,
+      group: `JSON:n tulee olla seuraavassa muodossa:\n\n{
+  "prod_class": "Virtalähteet",
+  "product_group": "10504 MINARCMIG SINGLE PHASE",
+  "month": "2025-08",
+  "correction_percent": -2,
+  "explanation": "Esimerkki: Alkuperäisessä ennusteessa kysyntä laskee jyrkästi huipun jälkeen. Koska talouden ja teollisuuden elpymisen odotetaan jatkuvan tasaisemmin läpi vuoden 2025, ehdotan pieniä positiivisia korjauksia heijastamaan vakaampaa kehitystä ja estämään liian jyrkkää pudotusta ennusteessa.",
+  "forecast_corrector": "forecasting@kemppi.com"
+}\n\nHuom: product_group tulee olla sama kuin datassa.`,
+      product: `JSON:n tulee olla seuraavassa muodossa:\n\n{
+  "prod_class": "Virtalähteet",
+  "product_group": "10504 MINARCMIG SINGLE PHASE",
+  "product_code": "61008200",
+  "month": "2025-08",
+  "correction_percent": -2,
+  "explanation": "Esimerkki: Alkuperäisessä ennusteessa kysyntä laskee jyrkästi huipun jälkeen. Koska talouden ja teollisuuden elpymisen odotetaan jatkuvan tasaisemmin läpi vuoden 2025, ehdotan pieniä positiivisia korjauksia heijastamaan vakaampaa kehitystä ja estämään liian jyrkkää pudotusta ennusteessa.",
+  "forecast_corrector": "forecasting@kemppi.com"
+}\n\nHuom: product_group tulee olla sama kuin datassa kyseiselle product_code:lle. Jos et tiedä arvoa, kysy käyttäjältä tai jätä korjaus pois.`
+    };
+
+    const endInstructions = `\n\nKorjaukset tulee rajata ajanjaksolle 04/2025 – 03/2026, ja niitä tulee antaa vain niille kuukausille, joiden osalta uskot korjauksen olevan perusteltu.\n\nEsimerkkivastaus aloitukseen:\nHei! Olen Kempin tuotteiden markkinatutkija ja kysynnänennustuksen asiantuntija. Analysoin mielelläni toimitetun datan ja autan seuraavissa vaiheissa. Tässä analyysi toimitetusta datasta:`;
+
+    return baseInstructions + jsonInstructions[chartLevel] + endInstructions;
+  };
 
   // Aloita uusi chat-sessio
   const handleStartSession = async () => {
@@ -163,6 +197,7 @@ const GeminiChat: React.FC<GeminiChatProps> = ({ imageUrl }) => {
         >
           Puhdista chat
         </button>
+        <ApplyCorrectionsButton chatContent={messages.map(m => m.parts?.map(p => p.text).join('\n')).join('\n\n')} onCorrectionsApplied={onCorrectionsApplied} />
       </div>
       <div className="h-[1200px] overflow-y-auto border rounded p-2 bg-gray-50 mb-4">
         {messages.length === 0 && <div className="text-gray-400 text-sm">Ei viestejä</div>}

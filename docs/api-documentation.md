@@ -20,24 +20,6 @@ export async function saveJson(jsonData: TimeSeriesData[], filePath: string): Pr
 - `Error`: Jos tiedostopolku on virheellinen
 - `Error`: Jos tallennus epäonnistuu
 
-### save-csv.ts
-Tallentaa ennustekorjaukset CSV-muodossa.
-
-```typescript
-export async function saveCsv(data: TimeSeriesData[], filePath: string): Promise<void>
-```
-
-#### Parametrit
-- `data`: TimeSeriesData[] - Tallennettava data
-- `filePath`: string - Tiedoston polku
-
-#### Palautusarvo
-- `Promise<void>`
-
-#### Virheet
-- `Error`: Jos tiedostopolku on virheellinen
-- `Error`: Jos tallennus epäonnistuu
-
 ### apply-corrections.ts
 Käsittelee ennustekorjaukset.
 

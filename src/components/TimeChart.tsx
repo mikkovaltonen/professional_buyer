@@ -19,6 +19,7 @@ interface TimeChartProps {
     new_forecast?: number | null;
     new_forecast_manually_adjusted?: number | null;
     explanation?: string;
+    last_manual_correction_date?: string;
   }[];
   title: string;
   subtitle?: string;
@@ -44,7 +45,7 @@ const TimeChart: React.FC<TimeChartProps> = ({ data, title, subtitle, showForeca
         'old_forecast_error': 'Ennustevirhe'
       };
 
-      // Find the data point for this date to get the explanation
+      // Find the data point for this date to get the explanation and correction date
       const dataPoint = data.find(d => d.date === label);
 
       return (
@@ -57,10 +58,19 @@ const TimeChart: React.FC<TimeChartProps> = ({ data, title, subtitle, showForeca
               </p>
             )
           ))}
-          {dataPoint?.explanation && (
-            <p className="mt-2 text-sm text-gray-600 border-t pt-2">
-              Selitys: {dataPoint.explanation}
-            </p>
+          {dataPoint?.new_forecast_manually_adjusted !== null && (
+            <>
+              {dataPoint?.explanation && (
+                <p className="mt-2 text-sm text-gray-600 border-t pt-2">
+                  <span className="font-semibold">Korjauskommentti:</span> {dataPoint.explanation}
+                </p>
+              )}
+              {dataPoint?.last_manual_correction_date && (
+                <p className="text-xs text-gray-500">
+                  <span className="font-semibold">Viimeisin korjauspäivä:</span> {new Date(dataPoint.last_manual_correction_date).toLocaleString('fi-FI')}
+                </p>
+              )}
+            </>
           )}
         </div>
       );

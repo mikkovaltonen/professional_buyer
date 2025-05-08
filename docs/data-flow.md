@@ -6,8 +6,8 @@ This document describes how data flows through the application, from Firestore t
 
 ```mermaid
 graph TD
-    A[Firestore Collection: sales_data_with_forecasts] --> B[DataService]
-    B --> C[ProductGroupForecastContent/ProductSelectionContent]
+    A[Firestore Collection: forecast] --> B[DataService]
+    B --> C[ForecastContent]
     C --> D[TimeChart Component]
     
     %% Separate Image Management Flow
@@ -78,7 +78,7 @@ graph TD
 [Raw Data in Firestore]
         |
         v
-[DataService.loadCSVData()]
+[DataService.loadForecastData()]
         |
         v
 [TimeSeriesData Interface]
@@ -149,11 +149,10 @@ graph TD
 
 **Source Files:**
 - `src/lib/dataService.ts`
-- `src/components/ProductGroupForecastContent.tsx`
-- `src/components/ProductSelectionContent.tsx`
+- `src/components/ForecastContent.tsx`
 
 **Flow:**
-1. Data is stored in Firestore collection `sales_data_with_forecasts`
+1. Data is stored in Firestore collection `forecast`
 2. `DataService` loads data using Firebase SDK
 3. Data is normalized to `TimeSeriesData` interface
 4. Components fetch data through `DataService.getInstance()`
@@ -161,7 +160,7 @@ graph TD
 **Key Methods:**
 ```typescript
 // DataService.ts
-public async loadCSVData(): Promise<TimeSeriesData[]>
+public async loadForecastData(): Promise<TimeSeriesData[]>
 public getProductGroupData(group: string): TimeSeriesData[]
 public getProductData(productCode: string): TimeSeriesData[]
 ```
@@ -270,7 +269,7 @@ interface ChartDataPoint {
 
 ### Database Schema (Firestore)
 
-#### Collection: sales_data_with_forecasts
+#### Collection: forecast
 ```typescript
 interface SalesDataDocument {
   // Required fields

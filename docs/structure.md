@@ -15,7 +15,6 @@
 
 ## API
 - `src/api/apply-corrections.ts` - Ennustekorjausten käsittely
-- `src/api/save-csv.ts` - CSV-tiedostojen tallennus
 - `src/api/save-json.ts` - JSON-tiedostojen tallennus
 
 ## Lib

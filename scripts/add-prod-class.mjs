@@ -45,7 +45,8 @@ async function addProdClass() {
         const docRef = doc(db, 'sales_data_with_forecasts', docSnapshot.id);
         await updateDoc(docRef, {
           prod_class: "Virtalähteet",
-          forecast_corrector: null
+          forecast_corrector: null,
+          last_manual_correction_date: null
         });
         successCount++;
         

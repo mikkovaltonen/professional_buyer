@@ -6,7 +6,6 @@ import ApplyCorrectionsButton from './ApplyCorrectionsButton';
 
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
 const geminiModel = import.meta.env.VITE_GEMINI_MODEL || 'gemini-2.5-pro-preview-03-25';
-const DEFAULT_IMAGE = '/default-forecast.png';
 
 const genAI = new GoogleGenerativeAI(apiKey);
 
@@ -14,9 +13,19 @@ interface GeminiChatProps {
   imageUrl?: string | null;
   chartLevel?: 'class' | 'group' | 'product';
   onCorrectionsApplied?: () => void;
+  selectedClass?: string | null;
+  selectedGroups?: string[];
+  selectedProducts?: { code: string; description: string }[];
 }
 
-const GeminiChat: React.FC<GeminiChatProps> = ({ imageUrl, chartLevel = 'group', onCorrectionsApplied }) => {
+const GeminiChat: React.FC<GeminiChatProps> = ({ 
+  imageUrl, 
+  chartLevel = 'group', 
+  onCorrectionsApplied,
+  selectedClass,
+  selectedGroups,
+  selectedProducts
+}) => {
   const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -64,36 +73,48 @@ const GeminiChat: React.FC<GeminiChatProps> = ({ imageUrl, chartLevel = 'group',
   const getInstructions = () => {
     const baseInstructions = `Hei! Toimi aina muodollisesti ja kohteliaasti. Aloita muodollisella tervehdyksellä ja esittelyllä vain ensimmäisessä vastauksessa. Seuraavissa vastauksissa älä enää esittele itseäsi, vaan jatka suoraan analyysillä tai vastauksella. Esimerkiksi: 'Hei! Olen Kempin tuotteiden markkinatutkija ja kysynnänennustuksen asiantuntija. Analysoin mielelläni toimitetun datan ja autan seuraavissa vaiheissa.' Älä koskaan aloita epämuodollisesti, kuten 'Selvä juttu', 'Totta kai', 'Katsotaanpa', 'No niin', 'Tarkastellaanpa' tms. Vastaa aina suomeksi.\n\nAnalysoi aluksi kuvassa esitettyä dataa.\nKerro käyttäjälle kuvan tuotteista, tuoteryhmästä tai selvitä verkosta, minkälaisia lopputuotteita ryhmään kuuluu. Toimitettuasi analyysin käyttäjälle, kysy haluaako hän sinun tekevän seuraavat Google-syvähaut:\n\n(1) Omien ja kilpailijoiden alennuskampanjat, (2) Omien ja kilpailijoiden substituuttituotteiden tuotelanseeraukset, (3) Omien ja kilpailijoiden markkinointikampanjat sekä jakelijoiden ilmoitukset\n(4) Omien ja kilpailijoiden lehtiartikkelit ja (5) Kysyntään vaikuttavat makrotalousindikaattorit ja niiden muutokset\nKysy myös, haluaako käyttäjä linkit kaikkiin uutisiin, joilla saattaa olla vaikutusta ennusteeseen.\n\nJos mainitset uutisen, artikkelin tai lähteen, anna se aina markdown-linkkinä muodossa [otsikko](https://osoite).\n\nKun makrotalousindikaattorit ja ennusteeseen vaikuttavat uutiset on käyty läpi, ehdota käyttäjälle, että voit antaa perustellut ennustekorjaukset JSON-muodossa.\n\n`;
 
+    let contextInstructions = '';
+    if (selectedProducts && selectedProducts.length > 0) {
+      contextInstructions = `\nValitut tuotteet: ${selectedProducts.map(p => `${p.code} - ${p.description}`).join(', ')}\n`;
+      if (selectedGroups && selectedGroups.length > 0) contextInstructions += `Tuoteryhmät: ${selectedGroups.join(', ')}\n`;
+      if (selectedClass) contextInstructions += `Tuoteluokka: ${selectedClass}\n`;
+    } else if (selectedGroups && selectedGroups.length > 0) {
+      contextInstructions = `\nValitut tuoteryhmät: ${selectedGroups.join(', ')}\n`;
+      if (selectedClass) contextInstructions += `Tuoteluokka: ${selectedClass}\n`;
+    } else if (selectedClass) {
+      contextInstructions = `\nValittu tuoteluokka: ${selectedClass}\n`;
+    }
+
     const jsonInstructions = {
       class: `JSON:n tulee olla seuraavassa muodossa:\n\n{
-  "prod_class": "Virtalähteet",
+  "prod_class": "${selectedClass || 'Virtalähteet'}",
   "month": "2025-08",
   "correction_percent": -2,
   "explanation": "Esimerkki: Alkuperäisessä ennusteessa kysyntä laskee jyrkästi huipun jälkeen. Koska talouden ja teollisuuden elpymisen odotetaan jatkuvan tasaisemmin läpi vuoden 2025, ehdotan pieniä positiivisia korjauksia heijastamaan vakaampaa kehitystä ja estämään liian jyrkkää pudotusta ennusteessa.",
   "forecast_corrector": "forecasting@kemppi.com"
 }\n\nJos annetaan vain prod_class, korjaus kohdistetaan kaikkiin kyseisen luokan tuotteisiin.`,
       group: `JSON:n tulee olla seuraavassa muodossa:\n\n{
-  "prod_class": "Virtalähteet",
-  "product_group": "10504 MINARCMIG SINGLE PHASE",
+  "prod_class": "${selectedClass || 'Virtalähteet'}",
+  "product_group": "${selectedGroups?.[0] || '10504 MINARCMIG SINGLE PHASE'}",
   "month": "2025-08",
   "correction_percent": -2,
   "explanation": "Esimerkki: Alkuperäisessä ennusteessa kysyntä laskee jyrkästi huipun jälkeen. Koska talouden ja teollisuuden elpymisen odotetaan jatkuvan tasaisemmin läpi vuoden 2025, ehdotan pieniä positiivisia korjauksia heijastamaan vakaampaa kehitystä ja estämään liian jyrkkää pudotusta ennusteessa.",
   "forecast_corrector": "forecasting@kemppi.com"
 }\n\nHuom: product_group tulee olla sama kuin datassa.`,
       product: `JSON:n tulee olla seuraavassa muodossa:\n\n{
-  "prod_class": "Virtalähteet",
-  "product_group": "10504 MINARCMIG SINGLE PHASE",
-  "product_code": "61008200",
+  "prod_class": "${selectedClass || 'Virtalähteet'}",
+  "product_group": "${selectedGroups?.[0] || '10504 MINARCMIG SINGLE PHASE'}",
+  "product_code": "${selectedProducts?.[0]?.code || '61008200'}",
   "month": "2025-08",
   "correction_percent": -2,
   "explanation": "Esimerkki: Alkuperäisessä ennusteessa kysyntä laskee jyrkästi huipun jälkeen. Koska talouden ja teollisuuden elpymisen odotetaan jatkuvan tasaisemmin läpi vuoden 2025, ehdotan pieniä positiivisia korjauksia heijastamaan vakaampaa kehitystä ja estämään liian jyrkkää pudotusta ennusteessa.",
   "forecast_corrector": "forecasting@kemppi.com"
-}\n\nHuom: product_group tulee olla sama kuin datassa kyseiselle product_code:lle. Jos et tiedä arvoa, kysy käyttäjältä tai jätä korjaus pois.`
+}\n\nHuom: product_group tulee olla sama kuin datassa kyseiselle product_code:lle.`
     };
 
     const endInstructions = `\n\nKorjaukset tulee rajata ajanjaksolle 04/2025 – 03/2026, ja niitä tulee antaa vain niille kuukausille, joiden osalta uskot korjauksen olevan perusteltu.\n\nEsimerkkivastaus aloitukseen:\nHei! Olen Kempin tuotteiden markkinatutkija ja kysynnänennustuksen asiantuntija. Analysoin mielelläni toimitetun datan ja autan seuraavissa vaiheissa. Tässä analyysi toimitetusta datasta:`;
 
-    return baseInstructions + jsonInstructions[chartLevel] + endInstructions;
+    return baseInstructions + contextInstructions + jsonInstructions[chartLevel] + endInstructions;
   };
 
   // Aloita uusi chat-sessio
@@ -184,9 +205,11 @@ const GeminiChat: React.FC<GeminiChatProps> = ({ imageUrl, chartLevel = 'group',
     <div className="border rounded-lg p-4 mt-8 bg-white shadow">
       <div className="flex gap-2 mb-4">
         <button
-          className="bg-[#4ADE80] hover:bg-[#22C55E] text-white px-4 py-2 rounded"
+          className={`px-4 py-2 rounded transition-colors duration-200 ${sessionActive || isLoading || !imageUrl || !selectedClass
+            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            : 'bg-[#4ADE80] hover:bg-[#22C55E] text-white'}`}
           onClick={handleStartSession}
-          disabled={sessionActive || isLoading || !imageUrl}
+          disabled={sessionActive || isLoading || !imageUrl || !selectedClass}
         >
           Aloita chat
         </button>

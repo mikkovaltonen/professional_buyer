@@ -1,4 +1,3 @@
-import Papa from 'papaparse';
 import { collection, getDocs, query, where, orderBy, updateDoc, doc, writeBatch } from 'firebase/firestore';
 import { db, auth } from './firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
@@ -19,6 +18,7 @@ export interface TimeSeriesData {
   correction_timestamp?: string | null;
   id?: string;
   forecast_corrector?: string;
+  last_manual_correction_date?: string | null;
 }
 
 export interface ForecastCorrection {
@@ -57,7 +57,7 @@ export class DataService {
     }
   }
 
-  public async loadCSVData(): Promise<TimeSeriesData[]> {
+  public async loadForecastData(): Promise<TimeSeriesData[]> {
     console.log('Loading forecast data...');
     if (this.data.length > 0) {
       console.log('Data already loaded, returning cached data');
@@ -215,7 +215,8 @@ export class DataService {
         old_forecast_error: null,
         correction_percent: latestAdjustment?.correction_percent || null,
         explanation: latestAdjustment?.explanation || null,
-        correction_timestamp: latestAdjustment?.correction_timestamp || null
+        correction_timestamp: latestAdjustment?.correction_timestamp || null,
+        last_manual_correction_date: null
       };
     });
 
@@ -238,7 +239,7 @@ export class DataService {
     try {
       if (this.data.length === 0) {
         console.log('No data loaded, loading data first...');
-        await this.loadCSVData();
+        await this.loadForecastData();
       }
       console.log('Data loaded, rows:', this.data.length);
       console.log('Current auth state:', auth.currentUser ? 'Logged in' : 'Not logged in');
@@ -323,7 +324,8 @@ export class DataService {
                 explanation: correction.explanation,
                 correction_percent: correction.correction_percent,
                 correction_timestamp: new Date().toISOString(),
-                forecast_corrector: correction.forecast_corrector || "forecasting@kemppi.com"
+                forecast_corrector: correction.forecast_corrector || "forecasting@kemppi.com",
+                last_manual_correction_date: new Date().toISOString()
               });
               console.log(`Added document ${row.id} to batch`);
               row.new_forecast_manually_adjusted = correctedForecast;
@@ -331,6 +333,7 @@ export class DataService {
               row.correction_percent = correction.correction_percent;
               row.correction_timestamp = new Date().toISOString();
               row.forecast_corrector = correction.forecast_corrector || "forecasting@kemppi.com";
+              row.last_manual_correction_date = new Date().toISOString();
               updateCount++;
             } catch (updateError) {
               console.error(`Error preparing update for document ${row.id}:`, updateError);
@@ -398,6 +401,7 @@ export function normalizeTimeSeriesData(row: any): TimeSeriesData {
     new_forecast_manually_adjusted: row.new_forecast_manually_adjusted,
     correction_timestamp: row.correction_timestamp,
     id: row.id, // Include the document ID
-    forecast_corrector: row.forecast_corrector
+    forecast_corrector: row.forecast_corrector,
+    last_manual_correction_date: row.last_manual_correction_date
   };
 } 

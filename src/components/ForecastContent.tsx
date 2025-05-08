@@ -62,7 +62,7 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
       try {
         setIsLoading(true);
         const dataService = DataService.getInstance();
-        await dataService.loadCSVData();
+        await dataService.loadForecastData();
         const classes = dataService.getUniqueProductClasses();
         console.log('Loaded product classes:', classes);
         setProductClasses(classes.map(String));
@@ -71,6 +71,9 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
         const allData = dataService.getAllData();
         const aggregatedData = aggregateData(allData);
         setChartData(aggregatedData);
+        // Generate initial chart image
+        const chartImageUrl = await generateChartImage(aggregatedData, 'Kaikki tuoteluokat');
+        setImageUrl(chartImageUrl);
       } catch (err) {
         console.error('Error loading data:', err);
         toast.error('Failed to load data. Please try again.');
@@ -275,7 +278,7 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
       setIsLoading(true);
       const dataService = DataService.getInstance();
       dataService.data = []; // Tyhjennä cache, jotta saadaan tuore data Firestoresta
-      await dataService.loadCSVData();
+      await dataService.loadForecastData();
       let data: any[] = [];
       if (selectedProduct) {
         data = dataService.getProductData(selectedProduct);
@@ -439,7 +442,26 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
 
       {/* Chat wrapper */}
       <div className="bg-white shadow rounded-lg p-4 mt-0">
-        <GeminiChat imageUrl={imageUrl} chartLevel={chartLevel} onCorrectionsApplied={handleCorrectionsApplied} />
+        <GeminiChat 
+          imageUrl={imageUrl} 
+          chartLevel={chartLevel} 
+          onCorrectionsApplied={handleCorrectionsApplied}
+          selectedClass={selectedClass}
+          selectedGroups={
+            selectedGroup
+              ? [selectedGroup]
+              : !selectedProduct && productGroups.length > 0
+                ? productGroups
+                : []
+          }
+          selectedProducts={
+            selectedProduct
+              ? products.filter(p => p.code === selectedProduct)
+              : selectedGroup
+                ? products
+                : []
+          }
+        />
       </div>
     </div>
   );

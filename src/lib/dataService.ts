@@ -285,14 +285,18 @@ export class DataService {
       for (const row of this.data) {
         let key: string | undefined;
         for (const [correctionKey, correction] of correctionMap.entries()) {
-          if (correction.product_group && 
+          // If product_code is specified, only match by product_code
+          if (correction.product_code) {
+            if (row["Product code"] === correction.product_code && 
+                row.Year_Month === correction.month) {
+              key = correctionKey;
+              break;
+            }
+          } 
+          // If only product_group is specified, match by product_group
+          else if (correction.product_group && 
               normalizeString(row["Product Group"]) === normalizeString(correction.product_group) && 
               row.Year_Month === correction.month) {
-            key = correctionKey;
-            break;
-          } else if (correction.product_code && 
-                    row["Product code"] === correction.product_code && 
-                    row.Year_Month === correction.month) {
             key = correctionKey;
             break;
           }
@@ -370,10 +374,6 @@ export class DataService {
       });
       throw error;
     }
-  }
-
-  public exportCorrectedData(): string {
-    return Papa.unparse(this.data);
   }
 
   public getAllData(): TimeSeriesData[] {

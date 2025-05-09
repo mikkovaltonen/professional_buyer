@@ -1,67 +1,219 @@
 # API-dokumentaatio
 
-## Tiedostojen käsittely
+## Yleiskatsaus
 
-### apply-corrections.ts
-Käsittelee ennustekorjaukset.
+Tämä dokumentaatio kuvaa ennustejärjestelmän API-endpointit sekä niiden teknisen että funktionaalisen toteutuksen. API on toteutettu Vite-palvelimen middleware-tasolla ja käyttää muistissa olevaa dataa kehitysympäristössä.
 
-```typescript
-export async function applyCorrections(corrections: CorrectionData[]): Promise<void>
+## API Endpointit
+
+### 1. Ennustedatan hakeminen
+```http
+GET /api/forecast-data
 ```
 
-#### Parametrit
-- `corrections`: CorrectionData[] - Korjausdata
+#### Tekninen toteutus
+- Endpoint on toteutettu Vite-palvelimen middleware-tasolla
+- Palauttaa muistissa olevan ennustedatan JSON-muodossa
+- Sisältää CORS-headerit
 
-#### Palautusarvo
-- `Promise<void>`
+#### Vastaus
+```json
+[
+  {
+    "date": "2024-03-01",
+    "quantity": 100.5,
+    "old_forecast": 95.0,
+    "new_forecast": 98.2,
+    "new_forecast_manually_adjusted": 98.2,
+    "old_forecast_error": 0,
+    "correction_percent": 3.2,
+    "explanation": "Adjusted based on market trends",
+    "correction_timestamp": "2024-03-15T10:00:00Z"
+  }
+]
+```
 
-#### Virheet
-- `Error`: Jos korjaukset ovat virheellisiä
-- `Error`: Jos käsittely epäonnistuu
+### 2. Ennustedatan tallentaminen
+```http
+POST /api/forecast-data
+```
+
+#### Tekninen toteutus
+- Hyväksyy JSON-muotoisen datan
+- Validoi syötteen olevan taulukko
+- Tallentaa datan muistiin
+- Sisältää virheenkäsittelyn
+
+#### Pyyntö
+```json
+[
+  {
+    "date": "2024-03-01",
+    "quantity": 100.5,
+    "old_forecast": 95.0,
+    "new_forecast": 98.2,
+    "new_forecast_manually_adjusted": 98.2,
+    "old_forecast_error": 0,
+    "correction_percent": 3.2,
+    "explanation": "Adjusted based on market trends",
+    "correction_timestamp": "2024-03-15T10:00:00Z"
+  }
+]
+```
+
+#### Vastaus
+```json
+{
+  "success": true
+}
+```
+
+### 3. Ennustekorjausten tallentaminen
+```http
+POST /api/save-forecast
+```
+
+#### Tekninen toteutus
+- Hyväksyy JSON-muotoisen korjausdatan
+- Validoi syötteen sisältävän adjustments-taulukon
+- Tallentaa korjaukset muistiin aikaleimalla
+- Sisältää virheenkäsittelyn ja lokituksen
+
+#### Pyyntö
+```json
+{
+  "adjustments": [
+    {
+      "date": "2024-03-01",
+      "new_forecast_manually_adjusted": 98.2,
+      "correction_percent": 3.2,
+      "explanation": "Adjusted based on market trends",
+      "correction_timestamp": "2024-03-15T10:00:00Z"
+    }
+  ]
+}
+```
+
+#### Vastaus
+```json
+{
+  "success": true
+}
+```
+
+### 4. Ennustekorjausten hakeminen
+```http
+GET /api/forecast-adjustments
+```
+
+#### Tekninen toteutus
+- Palauttaa muistissa olevat korjaukset ja niiden aikaleiman
+- Sisältää CORS-headerit
+
+#### Vastaus
+```json
+{
+  "adjustments": [
+    {
+      "date": "2024-03-01",
+      "new_forecast_manually_adjusted": 98.2,
+      "correction_percent": 3.2,
+      "explanation": "Adjusted based on market trends",
+      "correction_timestamp": "2024-03-15T10:00:00Z"
+    }
+  ],
+  "timestamp": "2024-03-15T10:00:00Z"
+}
+```
 
 ## Datarakenteet
 
 ### TimeSeriesData
 ```typescript
 interface TimeSeriesData {
-  date: string;
-  quantity: number;
-  old_forecast: number;
-  new_forecast: number;
-  new_forecast_manually_adjusted: number;
-  old_forecast_error: number;
-  correction_percent: number;
-  explanation: string;
-  correction_timestamp: string;
+  date: string;                    // Päivämäärä YYYY-MM-DD muodossa
+  quantity: number;                // Todellinen määrä
+  old_forecast: number;            // Vanha ennuste
+  new_forecast: number;            // Uusi ennuste
+  new_forecast_manually_adjusted: number;  // Manuaalisesti korjattu ennuste
+  old_forecast_error: number;      // Ennustevirhe
+  correction_percent: number;      // Korjausprosentti
+  explanation: string;             // Selitys korjaukselle
+  correction_timestamp: string;    // Korjauksen aikaleima
 }
 ```
 
 ### CorrectionData
 ```typescript
 interface CorrectionData {
-  date: string;
-  new_forecast_manually_adjusted: number;
-  correction_percent: number;
-  explanation: string;
-  correction_timestamp: string;
+  date: string;                    // Päivämäärä YYYY-MM-DD muodossa
+  new_forecast_manually_adjusted: number;  // Manuaalisesti korjattu ennuste
+  correction_percent: number;      // Korjausprosentti
+  explanation: string;             // Selitys korjaukselle
+  correction_timestamp: string;    // Korjauksen aikaleima
 }
 ```
 
 ## Virheenkäsittely
 
-### Tiedostojen käsittely
-- Tarkista tiedoston olemassaolo
-- Validoi tiedoston muoto
-- Käsittele lukuvirheet
-- Ilmoita virheet käyttäjälle
+### HTTP-vastauskoodit
+- 200: Onnistunut pyyntö
+- 400: Virheellinen pyyntö
+- 500: Palvelimen virhe
 
-### Datan validointi
-- Tarkista pakolliset kentät
+### Virheiden muoto
+```json
+{
+  "error": "Virheilmoitus",
+  "details": "Yksityiskohtainen virheilmoitus"
+}
+```
+
+### Validointi
+- Tarkistaa syötteiden oikeellisuuden
 - Validoi datatyypit
-- Tarkista päivämäärien muoto
-- Ilmoita virheet käyttäjälle
+- Tarkistaa pakolliset kentät
+- Validoi päivämäärien muodon
 
-### API-virheet
-- Käsittele verkkoyhteyden virheet
-- Ilmoita API-virheet käyttäjälle
-- Yritä uudelleen tarvittaessa 
+## CORS-määrittelyt
+Kaikki endpointit sisältävät seuraavat CORS-headerit:
+```
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Methods: GET, POST, OPTIONS
+Access-Control-Allow-Headers: Content-Type
+```
+
+## Kehitysympäristö vs. Tuotanto
+- Kehitysympäristössä data tallennetaan muistiin
+- Tuotantoympäristössä käytetään MariaDB-tietokantaa
+- Tuotantoympäristön API-määrittelyt löytyvät `docs/maria_db_api-specifications.md`
+
+## Esimerkkejä käytöstä
+
+### Ennustedatan hakeminen
+```typescript
+const response = await fetch('/api/forecast-data');
+const data = await response.json();
+```
+
+### Ennustekorjausten tallentaminen
+```typescript
+const response = await fetch('/api/save-forecast', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    adjustments: [
+      {
+        date: "2024-03-01",
+        new_forecast_manually_adjusted: 98.2,
+        correction_percent: 3.2,
+        explanation: "Adjusted based on market trends",
+        correction_timestamp: new Date().toISOString()
+      }
+    ]
+  })
+});
+const result = await response.json();
+```

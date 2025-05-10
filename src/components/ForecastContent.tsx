@@ -14,6 +14,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import GeminiChat from "@/components/GeminiChat";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import ForecastErrorChart from "./ForecastErrorChart";
 
 interface ForecastContentProps {
   selectedProduct: string | null;
@@ -56,6 +58,8 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
   const [selectedProductSubclass, setSelectedProductSubclass] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [chartLevel, setChartLevel] = useState<'class' | 'group' | 'product'>('class');
+  const [activeTab, setActiveTab] = useState<'history' | 'error'>('history');
+  const [rawData, setRawData] = useState<any[]>([]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -69,6 +73,7 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
         
         // Load initial aggregated data
         const allData = dataService.getAllData();
+        setRawData(allData);
         const aggregatedData = aggregateData(allData);
         setChartData(aggregatedData);
         // Generate initial chart image
@@ -162,6 +167,7 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
       // If no class selected, show aggregated data
       const dataService = DataService.getInstance();
       const allData = dataService.getAllData();
+      setRawData(allData);
       const aggregatedData = aggregateData(allData);
       setChartData(aggregatedData);
       // Luo kuva koko datasta
@@ -174,6 +180,7 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
       const dataService = DataService.getInstance();
       // Hae ja aggregoi valitun tuoteluokan data
       const classData = dataService.getDataByClass(productClass);
+      setRawData(classData);
       const aggregatedData = aggregateData(classData);
       setChartData(aggregatedData);
       // Luo kuva valitun luokan datasta
@@ -196,6 +203,7 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
       // If no group selected, show class aggregated data
       const dataService = DataService.getInstance();
       const classData = dataService.getDataByClass(selectedClass);
+      setRawData(classData);
       const aggregatedData = aggregateData(classData);
       setChartData(aggregatedData);
       // Luo kuva valitun luokan datasta
@@ -212,6 +220,7 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
       const productDescriptions = groupProducts.map(p => `${p.code} ${p.description}`);
       // Show group aggregated data (so that forecast error is included)
       const groupData = dataService.getProductGroupData(group);
+      setRawData(groupData);
       const aggregatedData = aggregateData(groupData);
       setChartData(aggregatedData);
       // Luo kuva valitun ryhmän datasta
@@ -230,6 +239,7 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
       // If no product selected, show group aggregated data (so that forecast error is included)
       const dataService = DataService.getInstance();
       const groupData = dataService.getProductGroupData(selectedGroup);
+      setRawData(groupData);
       const aggregatedData = aggregateData(groupData);
       setChartData(aggregatedData);
       return;
@@ -242,6 +252,7 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
       }
       const dataService = DataService.getInstance();
       const productData = dataService.getProductData(productCode);
+      setRawData(productData);
       
       const transformedData = productData
         .sort((a, b) => new Date(a.Year_Month).getTime() - new Date(b.Year_Month).getTime())
@@ -289,6 +300,7 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
       } else {
         data = dataService.getAllData();
       }
+      setRawData(data);
       const aggregatedData = aggregateData(data);
       setChartData(aggregatedData);
       // Päivitä myös kuva
@@ -301,6 +313,41 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Laske ennustevirhedata (kpl ja %)
+  const calculateForecastErrorData = (data: any[]): { date: string, meanAbsError: number, percentBelow20: number }[] => {
+    // Suodata pois rivit, joissa sekä Quantity että old_forecast ovat null/undefined/0
+    const filtered = data.filter(row => {
+      const q = row.Quantity;
+      const f = row.old_forecast;
+      // Jos molemmat null/undefined/0, jätetään pois
+      if ((q === null || q === undefined || q === 0) && (f === null || f === undefined || f === 0)) return false;
+      return true;
+    });
+    // Ryhmitellään päivämäärän mukaan
+    const dates = [...new Set(filtered.map(row => row.Year_Month || row.date))];
+    let result = dates.map(date => {
+      // Etsi kaikki rivit tälle päivälle
+      const rows = filtered.filter(row => (row.Year_Month || row.date) === date);
+      // Lasketaan vain rivit, joilla on sekä toteutunut että ennuste
+      const validRows = rows.filter(row => row.Quantity !== null && row.old_forecast !== null && row.Quantity !== undefined && row.old_forecast !== undefined && row.Quantity !== 0 && row.old_forecast !== 0);
+      const absErrors = validRows.map(row => Math.abs(row.Quantity - row.old_forecast));
+      const meanAbsError = absErrors.length > 0 ? absErrors.reduce((a, b) => a + b, 0) / absErrors.length : 0;
+      const percentBelow20 = validRows.length > 0 ? 100 * validRows.filter(row => Math.abs(row.Quantity - row.old_forecast) / (row.Quantity === 0 ? 1 : Math.abs(row.Quantity)) < 0.2).length / validRows.length : 0;
+      if (validRows.length === 0) return null;
+      return {
+        date,
+        meanAbsError,
+        percentBelow20
+      };
+    }).filter(Boolean);
+    // Järjestä aikajärjestykseen ja ota vain viimeiset 36 kuukautta
+    result = result.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    if (result.length > 36) {
+      result = result.slice(result.length - 36);
+    }
+    return result;
   };
 
   return (
@@ -402,40 +449,83 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
         </CardContent>
       </Card>
 
-      {/* Chart Display */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center">
-              <BarChart className="h-5 w-5 text-[#4ADE80] mr-2" />
-              Kysynnän historia ja ennusteet
-            </div>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <TimeChart 
-            data={chartData}
-            title={
-              selectedProduct
-                ? products.find(p => p.code === selectedProduct)?.description || 'Tuotteen kysyntä'
-                : selectedGroup
-                  ? selectedGroup
-                  : selectedClass
-                    ? selectedClass
-                    : 'Kaikki tuoteluokat'
-            }
-            subtitle={
-              selectedProduct
-                ? 'Tuotetaso'
-                : selectedGroup
-                  ? `Tuoteryhmätaso - ${products.map(p => `${p.code} ${p.description}`).join(', ')}`
-                  : selectedClass
-                    ? 'Tuoteluokkataso'
-                    : 'Kaikki tuoteluokat'
-            }
-          />
-        </CardContent>
-      </Card>
+      {/* Tabs for chart views */}
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'history' | 'error')} className="w-full">
+        <TabsList>
+          <TabsTrigger value="history">Kysynnän historia ja ennuste</TabsTrigger>
+          <TabsTrigger value="error">Ennustevirhe</TabsTrigger>
+        </TabsList>
+        <TabsContent value="history">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <BarChart className="h-5 w-5 text-[#4ADE80] mr-2" />
+                  Kysynnän historia ja ennusteet
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <TimeChart 
+                data={chartData}
+                title={
+                  selectedProduct
+                    ? products.find(p => p.code === selectedProduct)?.description || 'Tuotteen kysyntä'
+                    : selectedGroup
+                      ? selectedGroup
+                      : selectedClass
+                        ? selectedClass
+                        : 'Kaikki tuoteluokat'
+                }
+                subtitle={
+                  selectedProduct
+                    ? 'Tuotetaso'
+                    : selectedGroup
+                      ? `Tuoteryhmätaso - ${products.map(p => `${p.code} ${p.description}`).join(', ')}`
+                      : selectedClass
+                        ? 'Tuoteluokkataso'
+                        : 'Kaikki tuoteluokat'
+                }
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="error">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <BarChart className="h-5 w-5 text-[#ef4444] mr-2" />
+                  Ennustevirhe
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ForecastErrorChart 
+                data={calculateForecastErrorData(rawData)}
+                title={
+                  selectedProduct
+                    ? products.find(p => p.code === selectedProduct)?.description || 'Tuotteen ennustevirhe'
+                    : selectedGroup
+                      ? selectedGroup
+                      : selectedClass
+                        ? selectedClass
+                        : 'Kaikki tuoteluokat'
+                }
+                subtitle={
+                  selectedProduct
+                    ? 'Tuotetaso'
+                    : selectedGroup
+                      ? `Tuoteryhmätaso - ${products.map(p => `${p.code} ${p.description}`).join(', ')}`
+                      : selectedClass
+                        ? 'Tuoteluokkataso'
+                        : 'Kaikki tuoteluokat'
+                }
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Väli ja harmaa yläreunus chatin ja graafin väliin */}
       <div className="my-20 border-t border-gray-200" />
@@ -443,8 +533,8 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
       {/* Chat wrapper */}
       <div className="bg-white shadow rounded-lg p-4 mt-0">
         <GeminiChat 
-          imageUrl={imageUrl} 
-          chartLevel={chartLevel} 
+          imageUrl={imageUrl}
+          chartLevel={chartLevel}
           onCorrectionsApplied={handleCorrectionsApplied}
           selectedClass={selectedClass}
           selectedGroups={

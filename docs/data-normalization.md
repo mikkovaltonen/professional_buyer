@@ -1,63 +1,72 @@
-# Data Normalization Layer
+# Datan normalisointi
 
-## Purpose
-The data normalization layer decouples external data source field names from the internal application logic. It ensures that any incoming data format is converted to the canonical `TimeSeriesData` interface used throughout the app.
+Tämä dokumentti kuvaa, miten ulkoisesta datasta tulevat kentät normalisoidaan sovelluksen sisäiseen muotoon.
 
-## Why Normalize?
-- Supports multiple or legacy data formats.
-- Centralizes mapping logic for easier maintenance.
-- Reduces risk of breaking the app when data sources change.
+## Kenttien mappaus
 
-## Field Mapping Table
-| External Field         | Internal Field                  | Notes |
-|-----------------------|--------------------------------|-------|
-| `year_month`          | `Year_Month`                   |       |
-| `prodgroup`           | `Product Group`                |       |
-| `prodcode`            | `Product code`                 |       |
-| `product_description` | `Product description`          |       |
-| `qty`                 | `Quantity`                     |       |
-| `new_forecast`        | `new_forecast`                 | Maps to orange dotted "Uusi ennuste" line in chart |
-| `new_forecast_adj`    | `new_forecast_manually_adjusted`| Maps to red "Korjattu ennuste" line in chart |
-| `old_forecast`        | `old_forecast`                 | Maps to green dotted "Vanha ennuste" line in chart |
-| `old_forecast_error`  | `old_forecast_error`          | Maps to red dotted "Ennustevirhe" line in chart |
-| `correction_percent`  | `correction_percent`          | Percentage adjustment for manual corrections |
-| `explanation`         | `explanation`                 | Text explanation for manual corrections |
-| `correction_timestamp`| `correction_timestamp`        | When the correction was made |
+| Ulkoinen kenttä | Sisäinen kenttä | Huomio |
+|----------------|----------------|---------|
+| `year_month`   | `Year_Month`   | Päivämäärä YYYY-MM-DD muodossa |
+| `prodgroup`    | `Product Group` | Tuoteryhmän nimi |
+| `prodcode`     | `Product code` | Tuotekoodi |
+| `product_description` | `Product description` | Tuotteen kuvaus |
+| `prod_class`   | `prod_class`   | Tuoteluokka |
+| `qty`          | `Quantity`     | Toteutunut kysyntä |
+| `new_forecast` | `new_forecast` | Tilastollinen ennuste |
+| `new_forecast_adj` | `new_forecast_manually_adjusted` | Manuaalisesti korjattu ennuste |
+| `old_forecast` | `old_forecast` | Vanha ennuste |
+| `old_forecast_error` | `old_forecast_error` | Ennustevirhe |
+| `correction_percent` | `correction_percent` | Korjausprosentti |
+| `explanation`  | `explanation`  | Korjauksen selitys |
+| `correction_timestamp` | `correction_timestamp` | Korjauksen aikaleima |
+| `forecast_corrector` | `forecast_corrector` | Korjauksen tekijä |
+| `last_manual_correction_date` | `last_manual_correction_date` | Viimeisin manuaalinen korjaus |
 
-## Chart Line Mappings
+## Graafien datan käsittely
 
 ### Kysynnän historia ja ennusteet
-| Line Color | Line Name | Data Field |
-|------------|-----------|------------|
-| Blue (#4338ca) | Toteutunut | `Quantity` |
-| Green dotted (#10b981) | Vanha ennuste | `old_forecast` |
-| Orange dotted (#f59e0b) | Uusi ennuste | `new_forecast` |
-| Red (#dc2626) | Korjattu ennuste | `new_forecast_manually_adjusted` |
-| Red dotted (#ef4444) | Ennustevirhe | `old_forecast_error` |
+- Näyttää kaikki kuukaudet, joissa on dataa
+- Null-arvoja ei näytetä graafissa
+- Korjattu ennuste näytetään vain jos kaikilla tuoteryhmillä on arvo
+- Datan järjestys tapahtuu aikajärjestykseen
 
 ### Ennustevirhe-analyysi
-| Line Color | Line Name | Data Field | Calculation |
-|------------|-----------|------------|-------------|
-| Blue (#2563eb) | Keskim. abs. virhe | `meanAbsError` | Average of |actual - forecast| for all products |
-| Orange dotted (#f59e0b) | % alle 20% virhe | `percentBelow20` | Percentage of products with error < 20% |
+- Näyttää viimeisimmät 36 kuukautta
+- Suodattaa pois rivit, joissa sekä toteutunut kysyntä että ennuste ovat null/undefined/0
+- Virheiden laskenta:
+  - Keskiarvoinen absoluuttinen virhe (MAE) = |toteutunut kysyntä - vanha ennuste|
+  - Prosenttiosuus tuotteista, joiden virhe on alle 20%
+- Laskenta tehdään vain kun molemmat arvot ovat olemassa
 
-#### Ennustevirheen laskenta
-1. **Keskimääräinen absoluuttinen virhe**
-   - Lasketaan kaikille tuotteille, joilla on sekä toteutunut kysyntä että ennuste
-   - Kaava: |toteutunut kysyntä - vanha ennuste|
-   - Näytetään yksiköissä (kpl)
-   - Auttaa tunnistamaan ennusteen tarkkuuden kehitystä
+## Datan normalisointi
 
-2. **Prosenttiosuus tuotteista, joilla virhe < 20%**
-   - Lasketaan kuinka suuri osa tuotteista on ennustettu hyvin
-   - Hyvä ennuste = virhe < 20% toteutuneesta kysynnästä
-   - Arvo vaihtelee 0-100% välillä
-   - Auttaa arvioimaan ennustemallin kokonaistarkkuutta
+Datan normalisointi tapahtuu `normalizeTimeSeriesData`-funktiossa, joka:
+1. Muuntaa ulkoiset kentät sisäiseen muotoon
+2. Käsittelee null- ja undefined-arvot
+3. Varmistaa oikean datatyypin
+4. Lisää puuttuvat kentät oletusarvoilla
 
-## How to Update the Mapping
-1. Edit the normalization function in `src/lib/dataService.ts` (see `normalizeTimeSeriesData`).
-2. Update the mapping table above to reflect any changes.
-3. Add or update unit tests for new or changed fields.
+## Graafien viivojen mappaus
 
-## Example Usage
-When loading data, the app will call the normalization function to ensure all data matches the `TimeSeriesData` interface, regardless of the original field names. 
+### Kysynnän historia ja ennusteet
+| Viiva | Nimi | Datakenttä | Laskenta |
+|-------|------|------------|-----------|
+| Sininen | Toteutunut kysyntä | `Quantity` | Suora arvo |
+| Punainen | Vanha ennuste | `old_forecast` | Suora arvo |
+| Vihreä | Tilastollinen ennuste | `new_forecast` | Suora arvo |
+| Oranssi | Korjattu ennuste | `new_forecast_manually_adjusted` | Suora arvo |
+| Harmaa | Ennustevirhe | `old_forecast_error` | Suora arvo |
+
+### Ennustevirhe-analyysi
+| Viiva | Nimi | Datakenttä | Laskenta |
+|-------|------|------------|-----------|
+| Sininen | Keskiarvoinen absoluuttinen virhe | `meanAbsError` | |toteutunut kysyntä - vanha ennuste| |
+| Oranssi | Virhe alle 20% | `percentBelow20` | (rivit joilla virhe < 20%) / (kaikki rivit) * 100 |
+
+## Datan päivitys
+
+Jos datan rakenne muuttuu, päivitä:
+1. Tämä mappaustaulukko
+2. `normalizeTimeSeriesData`-funktio
+3. Graafien viivojen mappaus
+4. Testit 

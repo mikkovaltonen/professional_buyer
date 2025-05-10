@@ -128,46 +128,47 @@ Lisätietoja ja tukea saat osoitteesta [https://wisestein.fi/yhteystiedot](https
 - See [docs/data-normalization.md](docs/data-normalization.md) for details on the data normalization layer and field mapping.
 
 ## Datarakenne
-Sovellus käsittelee seuraavia datakenttiä:
 
-- `Quantity`: Toteutunut kysyntä (sininen viiva)
-- `old_forecast`: Vanha ennuste (vihreä katkoviiva)
-- `new_forecast`: Tilastollinen ennuste (oranssi katkoviiva)
-- `new_forecast_manually_adjusted`: Korjattu ennuste (punainen viiva)
-- `old_forecast_error`: Ennustevirhe (punainen katkoviiva)
+Sovellus käsittelee seuraavia datakenttiä:
+- `Quantity`: Toteutunut kysyntä
+- `old_forecast`: Vanha ennuste
+- `new_forecast`: Uusi tilastollinen ennuste
+- `new_forecast_manually_adjusted`: Manuaalisesti korjattu ennuste
+- `old_forecast_error`: Ennustevirhe
 - `correction_percent`: Korjausprosentti
-- `explanation`: Korjauksen selitys (näkyy kuvaajan tooltipissä)
+- `explanation`: Korjauksen selitys
 - `correction_timestamp`: Korjauksen aikaleima
 
 ## Visualisointi
 
-### Kysynnän historia ja ennusteet
 Sovellus näyttää kaksi erillistä graafia:
 
-1. **Kysynnän historia ja ennusteet**
-   - Toteutunut kysyntä (sininen viiva)
-   - Vanha ennuste (vihreä katkoviiva)
-   - Tilastollinen ennuste (oranssi katkoviiva)
-   - Korjattu ennuste (punainen viiva)
-   - Ennustevirhe (punainen katkoviiva)
+### 1. Kysynnän historia ja ennusteet
+- Näyttää kaikki kuukaudet, joissa on dataa valitulle tuotteelle/tuoteryhmälle/tuoteluokalle
+- Sisältää seuraavat datapisteet:
+  - Toteutunut kysyntä (sininen)
+  - Vanha ennuste (punainen)
+  - Tilastollinen ennuste (vihreä)
+  - Korjattu ennuste (oranssi)
+  - Ennustevirhe (harmaa)
+- Null-arvoja ei näytetä graafissa
+- Korjattu ennuste näytetään vain jos kaikilla tuoteryhmillä on arvo
 
-2. **Ennustevirhe-analyysi**
-   - Keskimääräinen absoluuttinen virhe (kpl) - sininen viiva
-     - Lasketaan kaikille tuotteille, joilla on sekä toteutunut kysyntä että ennuste
-     - Kaava: |toteutunut kysyntä - vanha ennuste|
-   - Prosenttiosuus tuotteista, joilla virhe < 20% - oranssi katkoviiva
-     - Mittaa kuinka suuri osa tuotteista on ennustettu hyvin
-     - Arvo vaihtelee 0-100% välillä
-   - Näyttää dataa viimeiseltä 36 kuukaudelta
-   - Auttaa ennusteen tarkkuuden seurannassa ja ongelmakohtien tunnistamisessa
+### 2. Ennustevirhe-analyysi
+- Näyttää viimeisimmät 36 kuukautta
+- Sisältää kaksi metriikkaa:
+  - Keskiarvoinen absoluuttinen virhe (MAE)
+  - Prosenttiosuus tuotteista, joiden virhe on alle 20%
+- Suodattaa pois rivit, joissa sekä toteutunut kysyntä että ennuste ovat null/undefined/0
+- Virheiden laskenta tehdään vain kun molemmat arvot ovat olemassa
+- Auttaa arvioimaan ennusteen tarkkuutta viime aikoina
 
 ## Tietokanta ja API
 
-### MariaDB-siirtymä
-Sovellus on siirtymässä Google Firestoresta MariaDB-tietokantaan. Tämä siirtymä parantaa:
-- Datan suorituskykyä
-- Tietojen kestävyyttä
-- Skaalautuvuutta
-- Kustannustehokkuutta
+Sovellus on siirtymässä Google Firestoresta MariaDB:hen. Tämä siirtymä tuo mukanaan:
+- Parempi datan suorituskyky
+- Kestävämpi tietojen tallennus
+- Skaalautuvampi ratkaisu
+- Kustannustehokkaampi toteutus
 
-MariaDB API:n tekniset tiedot löytyvät `docs/maria_db_api-specifications.md`-tiedostosta.
+Tekniset tiedot MariaDB API:sta löytyvät tiedostosta `docs/maria_db_api-specifications.md`.

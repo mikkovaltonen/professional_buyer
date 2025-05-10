@@ -20,8 +20,8 @@ export const generateChartImage = (
 
     // Create a canvas element
     const canvas = document.createElement('canvas');
-    canvas.width = 400;
-    canvas.height = 200;
+    canvas.width = 800;
+    canvas.height = 400;
     const ctx = canvas.getContext('2d')!;
 
     // Set white background
@@ -157,6 +157,113 @@ export const generateChartImage = (
     });
 
     // Palauta base64-data-url JPEG-muodossa (laatu 0.7)
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+    resolve(dataUrl);
+  });
+};
+
+export const generateErrorChartImage = (
+  errorData: { date: string; meanAbsError: number; percentBelow20: number }[],
+  title: string
+): Promise<string> => {
+  return new Promise((resolve) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 800;
+    canvas.height = 400;
+    const ctx = canvas.getContext('2d')!;
+
+    // White background
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Title
+    ctx.fillStyle = 'black';
+    ctx.font = 'bold 18px Arial';
+    ctx.fillText(title, 40, 40);
+
+    // Data ranges
+    const allAbs = errorData.map(d => d.meanAbsError);
+    const allPct = errorData.map(d => d.percentBelow20);
+    const maxAbs = Math.max(...allAbs);
+    const minAbs = Math.min(...allAbs);
+    const maxPct = 100;
+    const minPct = 0;
+
+    // Axes
+    ctx.strokeStyle = '#666';
+    ctx.beginPath();
+    ctx.moveTo(60, 350); ctx.lineTo(750, 350); // x-axis
+    ctx.moveTo(60, 350); ctx.lineTo(60, 60);   // y-axis (left)
+    ctx.moveTo(750, 350); ctx.lineTo(750, 60); // y-axis (right)
+    ctx.stroke();
+
+    // Draw meanAbsError (left y-axis, blue)
+    ctx.beginPath();
+    ctx.strokeStyle = '#2563eb';
+    ctx.setLineDash([]);
+    errorData.forEach((d, i) => {
+      const x = 60 + ((750 - 60) * i) / (errorData.length - 1);
+      const y = 350 - ((350 - 60) * (d.meanAbsError - minAbs) / ((maxAbs - minAbs) || 1));
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+
+    // Draw percentBelow20 (right y-axis, orange, dashed)
+    ctx.beginPath();
+    ctx.strokeStyle = '#f59e0b';
+    ctx.setLineDash([5, 5]);
+    errorData.forEach((d, i) => {
+      const x = 60 + ((750 - 60) * i) / (errorData.length - 1);
+      const y = 350 - ((350 - 60) * (d.percentBelow20 - minPct) / ((maxPct - minPct) || 1));
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Date labels (x-axis)
+    ctx.fillStyle = 'black';
+    ctx.font = '12px Arial';
+    const dateStep = Math.ceil(errorData.length / 6);
+    errorData.forEach((d, i) => {
+      if (i % dateStep === 0) {
+        const x = 60 + ((750 - 60) * i) / (errorData.length - 1);
+        const date = new Date(d.date);
+        const label = `${date.getMonth() + 1}/${date.getFullYear()}`;
+        ctx.fillText(label, x - 20, 370);
+      }
+    });
+
+    // Value labels (left y-axis)
+    ctx.font = '12px Arial';
+    const absStep = (maxAbs - minAbs) / 5;
+    for (let i = 0; i <= 5; i++) {
+      const value = minAbs + i * absStep;
+      const y = 350 - ((350 - 60) * i) / 5;
+      ctx.fillText(Math.round(value).toString(), 20, y + 5);
+    }
+    // Value labels (right y-axis, percent)
+    for (let i = 0; i <= 5; i++) {
+      const value = minPct + i * (maxPct - minPct) / 5;
+      const y = 350 - ((350 - 60) * i) / 5;
+      ctx.fillText(Math.round(value).toString() + '%', 760, y + 5);
+    }
+
+    // Legend
+    ctx.font = '14px Arial';
+    ctx.fillStyle = '#2563eb';
+    ctx.fillRect(600, 60, 16, 4);
+    ctx.fillStyle = 'black';
+    ctx.fillText('Keskim. abs. virhe (kpl)', 620, 68);
+    ctx.strokeStyle = '#f59e0b';
+    ctx.setLineDash([5, 5]);
+    ctx.beginPath();
+    ctx.moveTo(600, 80); ctx.lineTo(616, 80);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = 'black';
+    ctx.fillText('% tuotteista virhe < 20%', 620, 88);
+
+    // Export as JPEG
     const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
     resolve(dataUrl);
   });

@@ -499,3 +499,64 @@ date,quantity,old_forecast,new_forecast,new_forecast_manually_adjusted,old_forec
 - Käsittele verkkoyhteyden virheet
 - Ilmoita API-virheet käyttäjälle
 - Yritä uudelleen tarvittaessa 
+
+## Image Processing and API Integration
+
+### Image Generation Flow
+```
+[Chart Data] --> [Canvas/Chart.js] --> [Image Generation] --> [Format Conversion] --> [Base64 Encoding]
+     |                |                      |                      |                      |
+     v                v                      v                      v                      v
+[Raw Values] --> [Visualization] --> [Quality Settings] --> [JPEG/PNG] --> [API Compatible Format]
+```
+
+### Image Quality Considerations
+1. User View:
+   - Original chart rendering
+   - Full resolution
+   - Interactive elements
+   - Real-time updates
+
+2. API View:
+   - JPEG format (0.7 quality)
+   - Base64 encoded
+   - Fixed dimensions
+   - Static representation
+
+### Potential Differences
+1. Format Conversion:
+   - Original → JPEG conversion may affect quality
+   - Base64 encoding adds overhead
+   - Compression may affect text clarity
+
+2. Processing Steps:
+   - Canvas rendering
+   - Format conversion
+   - Quality adjustment
+   - Base64 encoding
+
+### Best Practices
+1. Image Generation:
+   - Use consistent dimensions
+   - Maintain text readability
+   - Consider API size limits
+   - Monitor quality impact
+
+2. API Integration:
+   - Validate image format
+   - Check size limits
+   - Handle conversion errors
+   - Log processing steps
+
+### Monitoring and Debugging
+1. Image Processing:
+   - Log conversion steps
+   - Track quality metrics
+   - Monitor size changes
+   - Validate output format
+
+2. API Integration:
+   - Track API responses
+   - Monitor error rates
+   - Validate image recognition
+   - Log processing times

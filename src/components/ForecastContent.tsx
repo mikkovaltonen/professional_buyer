@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import GeminiChat from "@/components/GeminiChat";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { generateErrorChartImage } from "@/lib/chartUtils";
 import ForecastErrorChart from "./ForecastErrorChart";
 
 interface ForecastContentProps {
@@ -60,6 +61,7 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
   const [chartLevel, setChartLevel] = useState<'class' | 'group' | 'product'>('class');
   const [activeTab, setActiveTab] = useState<'history' | 'error'>('history');
   const [rawData, setRawData] = useState<any[]>([]);
+  const [errorImageUrl, setErrorImageUrl] = useState<string | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -350,6 +352,28 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
     return result;
   };
 
+  useEffect(() => {
+    // Generoi error-kuva kun rawData päivittyy
+    const generateErrorImage = async () => {
+      const errorData = calculateForecastErrorData(rawData);
+      const title =
+        selectedProduct
+          ? products.find(p => p.code === selectedProduct)?.description || 'Tuotteen ennustevirhe'
+          : selectedGroup
+            ? selectedGroup
+            : selectedClass
+              ? selectedClass
+              : 'Kaikki tuoteluokat';
+      // Käytä uutta funktiota
+      const image = await generateErrorChartImage(errorData, title);
+      setErrorImageUrl(image);
+    };
+    if (rawData.length > 0) {
+      generateErrorImage();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rawData, selectedProduct, selectedGroup, selectedClass, products]);
+
   return (
     <div className="space-y-4">
       {/* Product Selection Controls */}
@@ -534,6 +558,7 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
       <div className="bg-white shadow rounded-lg p-4 mt-0">
         <GeminiChat 
           imageUrl={imageUrl}
+          errorImageUrl={errorImageUrl}
           chartLevel={chartLevel}
           onCorrectionsApplied={handleCorrectionsApplied}
           selectedClass={selectedClass}

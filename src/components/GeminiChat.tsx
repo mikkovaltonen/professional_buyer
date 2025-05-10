@@ -11,6 +11,7 @@ const genAI = new GoogleGenerativeAI(apiKey);
 
 interface GeminiChatProps {
   imageUrl?: string | null;
+  errorImageUrl?: string | null;
   chartLevel?: 'class' | 'group' | 'product';
   onCorrectionsApplied?: () => void;
   selectedClass?: string | null;
@@ -20,6 +21,7 @@ interface GeminiChatProps {
 
 const GeminiChat: React.FC<GeminiChatProps> = ({ 
   imageUrl, 
+  errorImageUrl,
   chartLevel = 'group', 
   onCorrectionsApplied,
   selectedClass,
@@ -37,7 +39,7 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
     if (!imagePath) throw new Error('imageUrl puuttuu!');
     if (imagePath.startsWith('data:image/')) {
       // Jos jo base64, palauta suoraan
-      return imagePath.split(',')[1];
+      return imagePath; // Return the full data URL
     }
     if (imagePath.startsWith('blob:')) {
       // Blob-url pitää lukea fetchillä ja FileReaderilla
@@ -46,9 +48,7 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onloadend = () => {
-          const base64String = reader.result as string;
-          const base64Data = base64String.split(',')[1];
-          resolve(base64Data);
+          resolve(reader.result as string);
         };
         reader.onerror = reject;
         reader.readAsDataURL(blob);
@@ -60,9 +60,7 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onloadend = () => {
-        const base64String = reader.result as string;
-        const base64Data = base64String.split(',')[1];
-        resolve(base64Data);
+        resolve(reader.result as string);
       };
       reader.onerror = reject;
       reader.readAsDataURL(blob);
@@ -71,7 +69,12 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
 
   // Dynaaminen ohjeistus kuvan tason mukaan
   const getInstructions = () => {
-    const baseInstructions = `Hei! Toimi aina muodollisesti ja kohteliaasti. Aloita muodollisella tervehdyksellä ja esittelyllä vain ensimmäisessä vastauksessa. Seuraavissa vastauksissa älä enää esittele itseäsi, vaan jatka suoraan analyysillä tai vastauksella. Esimerkiksi: 'Hei! Olen Kempin tuotteiden markkinatutkija ja kysynnänennustuksen asiantuntija. Analysoin mielelläni toimitetun datan ja autan seuraavissa vaiheissa.' Älä koskaan aloita epämuodollisesti, kuten 'Selvä juttu', 'Totta kai', 'Katsotaanpa', 'No niin', 'Tarkastellaanpa' tms. Vastaa aina suomeksi.\n\nAnalysoi aluksi kuvassa esitettyä dataa. Kuvaajassa:\n- Sininen viiva: Toteutunut kysyntä\n- Oranssi katkoviiva: Tilastollinen ennuste\n- Punainen viiva: Korjattu ennuste\n- Punainen katkoviiva: Ennustevirhe\n\nKerro käyttäjälle kuvan tuotteista, tuoteryhmästä tai selvitä verkosta, minkälaisia lopputuotteita ryhmään kuuluu. Toimitettuasi analyysin käyttäjälle, kysy haluaako hän sinun tekevän seuraavat Google-syvähaut:\n\n(1) Omien ja kilpailijoiden alennuskampanjat, (2) Omien ja kilpailijoiden substituuttituotteiden tuotelanseeraukset, (3) Omien ja kilpailijoiden markkinointikampanjat sekä jakelijoiden ilmoitukset\n(4) Omien ja kilpailijoiden lehtiartikkelit ja (5) Kysyntään vaikuttavat makrotalousindikaattorit ja niiden muutokset\nKysy myös, haluaako käyttäjä linkit kaikkiin uutisiin, joilla saattaa olla vaikutusta ennusteeseen.\n\nJos mainitset uutisen, artikkelin tai lähteen, anna se aina markdown-linkkinä muodossa [otsikko](https://osoite).\n\nKun makrotalousindikaattorit ja ennusteeseen vaikuttavat uutiset on käyty läpi, ehdota käyttäjälle, että voit antaa perustellut ennustekorjaukset JSON-muodossa.\n\n`;
+    const baseInstructions = `Hei! Toimi aina muodollisesti ja kohteliaasti.
+     Aloita muodollisella tervehdyksellä ja esittelyllä vain ensimmäisessä vastauksessa. 
+     Seuraavissa vastauksissa älä enää esittele itseäsi, vaan jatka suoraan analyysillä tai vastauksella.
+      Esimerkiksi: 'Hei! Olen Kempin tuotteiden markkinatutkija ja kysynnänennustuksen asiantuntija. Analysoin mielelläni toimitetun datan ja autan seuraavissa vaiheissa.' Älä koskaan aloita epämuodollisesti, kuten 'Selvä juttu', 'Totta kai', 'Katsotaanpa', 'No niin', 'Tarkastellaanpa' tms.
+       Vastaa aina suomeksi.\n\nAnalysoi aluksi toimitetut kuvaajat:\n\nKuvaaja 1: Kysynnän historia ja ennusteet.\n- Sininen viiva: Toteutunut kysyntä\n- Oranssi katkoviiva: Tilastollinen ennuste\n- Punainen viiva: Korjattu ennuste\n- Punainen katkoviiva: Ennustevirhe\n\nKuvaaja 2: Ennustevirhe.\n- Sininen viiva: Keskimääräinen absoluuttinen ennustevirhe (kpl)\n- Oranssi viiva: % tuotteista, joilla ennustevirhe on alle 20%\n\nKerro käyttäjälle kuvan tuotteista, tuoteryhmästä tai selvitä verkosta, minkälaisia lopputuotteita ryhmään kuuluu. 
+       Anaalyysissäi ota kantaa kysnynnän ennustettavuuteen, näyttääkö tilastollinen ennuste optimistiselta vai pessimistiseltä ja onko ennustevirhe trendi pienenvä vai kasvava. Toimitettuasi analyysin käyttäjälle, kysy haluaako hän sinun tekevän seuraavat Google-syvähaut:\n\n(1) Omien ja kilpailijoiden alennuskampanjat, (2) Omien ja kilpailijoiden substituuttituotteiden tuotelanseeraukset, (3) Omien ja kilpailijoiden markkinointikampanjat sekä jakelijoiden ilmoitukset\n(4) Omien ja kilpailijoiden lehtiartikkelit ja (5) Kysyntään vaikuttavat makrotalousindikaattorit ja niiden muutokset\nKysy myös, haluaako käyttäjä linkit kaikkiin uutisiin, joilla saattaa olla vaikutusta ennusteeseen.\n\nJos mainitset uutisen, artikkelin tai lähteen, anna se aina markdown-linkkinä muodossa [otsikko](https://osoite).\n\nKun makrotalousindikaattorit ja ennusteeseen vaikuttavat uutiset on käyty läpi, ehdota käyttäjälle, että voit antaa perustellut ennustekorjaukset JSON-muodossa.\n\n`;
 
     let contextInstructions = '';
     if (selectedProducts && selectedProducts.length > 0) {
@@ -125,31 +128,41 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
     setInput('');
     inputRef.current?.focus();
     setIsLoading(true);
+    let imageDataUrl = '';
+    let errorImageDataUrl = '';
+    let initialMessage: any[] = [];
     try {
-      // Käytetään imageUrl:ää, oletuskuvaa ei enää ole
-      const imgPath = imageUrl;
-      if (!imgPath) throw new Error('imageUrl puuttuu chatin aloituksessa!');
-      console.log('GeminiChat: Käytettävä imgPath', imgPath);
-      if (typeof imgPath === 'string') {
-        if (imgPath.startsWith('data:image/')) {
-          console.log('GeminiChat: imgPath on base64 dataurl, pituus:', imgPath.length, 'alku:', imgPath.slice(0, 100));
-        } else {
-          console.log('GeminiChat: imgPath on url/polku:', imgPath);
-        }
-      } else {
-        console.log('GeminiChat: imgPath EI OLE string:', imgPath);
+      // Ladataan kuva data URL muotoon
+      if (!imageUrl) throw new Error('imageUrl puuttuu chatin aloituksessa!');
+      imageDataUrl = await loadImageAsBase64(imageUrl);
+      if (errorImageUrl) {
+        errorImageDataUrl = await loadImageAsBase64(errorImageUrl);
       }
-      const imageBase64 = await loadImageAsBase64(imgPath);
-      console.log('GeminiChat: imageBase64 pituus:', imageBase64.length, 'alku:', imageBase64.slice(0, 100));
-      console.log('GeminiChat: Kuva lähetetty Gemini API:lle, timestamp:', new Date().toISOString());
+      console.log('imageUrl:', imageUrl);
+      console.log('imageDataUrl length:', imageDataUrl.length);
+      console.log('imageDataUrl start:', imageDataUrl.slice(0, 100));
+      console.log('imageDataUrl end:', imageDataUrl.slice(-100));
+      if (errorImageDataUrl) {
+        console.log('errorImageUrl:', errorImageUrl);
+        console.log('errorImageDataUrl length:', errorImageDataUrl.length);
+        console.log('errorImageDataUrl start:', errorImageDataUrl.slice(0, 100));
+        console.log('errorImageDataUrl end:', errorImageDataUrl.slice(-100));
+      }
+      // Extract base64 data from data URL
+      const base64Data = imageDataUrl.split(',')[1];
+      const errorBase64Data = errorImageDataUrl ? errorImageDataUrl.split(',')[1] : null;
       const model = genAI.getGenerativeModel({
         model: geminiModel,
         tools: [ { googleSearch: {} } as any ]
       });
-      const initialMessage = [
+      initialMessage = [
         { text: getInstructions() } as Part,
-        { inlineData: { data: imageBase64, mimeType: 'image/png' } } as Part
+        { inlineData: { data: base64Data, mimeType: 'image/jpeg' } } as Part
       ];
+      if (errorBase64Data) {
+        initialMessage.push({ inlineData: { data: errorBase64Data, mimeType: 'image/jpeg' } } as Part);
+      }
+      console.log('initialMessage:', initialMessage);
       const result = await model.generateContent(initialMessage);
       const response = await result.response;
       const fullResponse = response.text();
@@ -164,6 +177,15 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
           console.error('Gemini API:n virheviesti:', data);
         });
       }
+      if ((error as any)?.response?.text) {
+        (error as any).response.text().then((txt: string) => {
+          console.error('Gemini API:n response.text:', txt);
+        });
+      }
+      // Logita myös initialMessage ja base64
+      console.error('InitialMessage debug:', {
+        imageUrl, imageDataUrlLength: imageDataUrl.length, imageDataUrlStart: imageDataUrl.slice(0, 100), imageDataUrlEnd: imageDataUrl.slice(-100), initialMessage
+      });
       setMessages([{ role: 'model', parts: [{ text: 'Virhe Gemini API:ssa.' }] }]);
     } finally {
       setIsLoading(false);
@@ -225,11 +247,11 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
       <div className="h-[1200px] overflow-y-auto border rounded p-2 bg-gray-50 mb-4">
         {messages.length === 0 && <div className="text-gray-400 text-sm">Ei viestejä</div>}
         {messages
-          // Piilota initialisointiprompti: älä näytä ensimmäistä user-viestiä, jos se sisältää vain ohjeistuksen ja/tai kuvan
+          // Piilota initialisointiprompti: älä näytä ensimmäistä user-viestiä, jos se sisältää vain ohjeistuksen ja/tai kuvat
           .filter((msg, idx) => {
             if (idx !== 0) return true;
             // Jos ensimmäinen viesti on user ja parts sisältää vain ohjeistuksen ja/tai kuvan, piilota se
-            if (msg.role === 'user' && Array.isArray(msg.parts) && msg.parts.length <= 2 && msg.parts.some(p => typeof p.text === 'string' && p.text.includes('Kempin tuotteiden markkinatutkija'))) {
+            if (msg.role === 'user' && Array.isArray(msg.parts) && msg.parts.length <= 3 && msg.parts.some(p => typeof p.text === 'string' && p.text.includes('Hei! Toimi aina muodollisesti'))) {
               return false;
             }
             return true;

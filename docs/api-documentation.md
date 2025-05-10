@@ -2,7 +2,19 @@
 
 ## Yleiskatsaus
 
-Tämä dokumentaatio kuvaa ennustejärjestelmän API-endpointit sekä niiden teknisen että funktionaalisen toteutuksen. API on toteutettu Vite-palvelimen middleware-tasolla ja käyttää muistissa olevaa dataa kehitysympäristössä.
+Tämä dokumentaatio kuvaa ennustejärjestelmän API-endpointit sekä niiden teknisen että funktionaalisen toteutuksen. API on siirtymässä Google Firestoresta MariaDB-tietokantaan. Tämä siirtymä on käynnissä ja dokumentaatio kuvaa molemmat toteutukset.
+
+## Tietokantasiirtymä
+
+### Nykyinen tila (Firestore)
+- API on toteutettu Vite-palvelimen middleware-tasolla
+- Datan tallennus tapahtuu Firestore-tietokantaan
+- Kehitysympäristössä käytetään muistissa olevaa dataa
+
+### Siirtymävaihe (MariaDB)
+- API siirtyy MariaDB-tietokantaan
+- Tarkemmat tekniset tiedot löytyvät `docs/maria_db_api-specifications.md`
+- Siirtymä tapahtuu vaiheittain, jotta järjestelmän toiminta säilyy keskeytyksettä
 
 ## API Endpointit
 
@@ -192,12 +204,22 @@ Access-Control-Allow-Headers: Content-Type
 
 ### Ennustedatan hakeminen
 ```typescript
+// Firestore (nykyinen)
 const response = await fetch('/api/forecast-data');
+const data = await response.json();
+
+// MariaDB (tuleva)
+const response = await fetch('/api/forecast', {
+  headers: {
+    'Authorization': `Bearer ${token}`
+  }
+});
 const data = await response.json();
 ```
 
 ### Ennustekorjausten tallentaminen
 ```typescript
+// Firestore (nykyinen)
 const response = await fetch('/api/save-forecast', {
   method: 'POST',
   headers: {
@@ -215,5 +237,21 @@ const response = await fetch('/api/save-forecast', {
     ]
   })
 });
-const result = await response.json();
+
+// MariaDB (tuleva)
+const response = await fetch('/api/forecast', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`
+  },
+  body: JSON.stringify({
+    Year_Month: "2024-03-01",
+    "Product code": "PROD_001",
+    new_forecast_manually_adjusted: 98.2,
+    correction_percent: 3.2,
+    explanation: "Adjusted based on market trends",
+    correction_timestamp: new Date().toISOString()
+  })
+});
 ```

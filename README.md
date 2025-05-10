@@ -127,7 +127,7 @@ Lisätietoja ja tukea saat osoitteesta [https://wisestein.fi/yhteystiedot](https
 
 - See [docs/data-normalization.md](docs/data-normalization.md) for details on the data normalization layer and field mapping.
 
-### Datarakenne
+## Datarakenne
 Sovellus käsittelee seuraavia datakenttiä:
 
 - `Quantity`: Toteutunut kysyntä (sininen viiva)
@@ -138,3 +138,36 @@ Sovellus käsittelee seuraavia datakenttiä:
 - `correction_percent`: Korjausprosentti
 - `explanation`: Korjauksen selitys (näkyy kuvaajan tooltipissä)
 - `correction_timestamp`: Korjauksen aikaleima
+
+## Visualisointi
+
+### Kysynnän historia ja ennusteet
+Sovellus näyttää kaksi erillistä graafia:
+
+1. **Kysynnän historia ja ennusteet**
+   - Toteutunut kysyntä (sininen viiva)
+   - Vanha ennuste (vihreä katkoviiva)
+   - Tilastollinen ennuste (oranssi katkoviiva)
+   - Korjattu ennuste (punainen viiva)
+   - Ennustevirhe (punainen katkoviiva)
+
+2. **Ennustevirhe-analyysi**
+   - Keskimääräinen absoluuttinen virhe (kpl) - sininen viiva
+     - Lasketaan kaikille tuotteille, joilla on sekä toteutunut kysyntä että ennuste
+     - Kaava: |toteutunut kysyntä - vanha ennuste|
+   - Prosenttiosuus tuotteista, joilla virhe < 20% - oranssi katkoviiva
+     - Mittaa kuinka suuri osa tuotteista on ennustettu hyvin
+     - Arvo vaihtelee 0-100% välillä
+   - Näyttää dataa viimeiseltä 36 kuukaudelta
+   - Auttaa ennusteen tarkkuuden seurannassa ja ongelmakohtien tunnistamisessa
+
+## Tietokanta ja API
+
+### MariaDB-siirtymä
+Sovellus on siirtymässä Google Firestoresta MariaDB-tietokantaan. Tämä siirtymä parantaa:
+- Datan suorituskykyä
+- Tietojen kestävyyttä
+- Skaalautuvuutta
+- Kustannustehokkuutta
+
+MariaDB API:n tekniset tiedot löytyvät `docs/maria_db_api-specifications.md`-tiedostosta.

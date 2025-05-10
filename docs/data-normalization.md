@@ -25,6 +25,8 @@ The data normalization layer decouples external data source field names from the
 | `correction_timestamp`| `correction_timestamp`        | When the correction was made |
 
 ## Chart Line Mappings
+
+### Kysynnän historia ja ennusteet
 | Line Color | Line Name | Data Field |
 |------------|-----------|------------|
 | Blue (#4338ca) | Toteutunut | `Quantity` |
@@ -32,6 +34,25 @@ The data normalization layer decouples external data source field names from the
 | Orange dotted (#f59e0b) | Uusi ennuste | `new_forecast` |
 | Red (#dc2626) | Korjattu ennuste | `new_forecast_manually_adjusted` |
 | Red dotted (#ef4444) | Ennustevirhe | `old_forecast_error` |
+
+### Ennustevirhe-analyysi
+| Line Color | Line Name | Data Field | Calculation |
+|------------|-----------|------------|-------------|
+| Blue (#2563eb) | Keskim. abs. virhe | `meanAbsError` | Average of |actual - forecast| for all products |
+| Orange dotted (#f59e0b) | % alle 20% virhe | `percentBelow20` | Percentage of products with error < 20% |
+
+#### Ennustevirheen laskenta
+1. **Keskimääräinen absoluuttinen virhe**
+   - Lasketaan kaikille tuotteille, joilla on sekä toteutunut kysyntä että ennuste
+   - Kaava: |toteutunut kysyntä - vanha ennuste|
+   - Näytetään yksiköissä (kpl)
+   - Auttaa tunnistamaan ennusteen tarkkuuden kehitystä
+
+2. **Prosenttiosuus tuotteista, joilla virhe < 20%**
+   - Lasketaan kuinka suuri osa tuotteista on ennustettu hyvin
+   - Hyvä ennuste = virhe < 20% toteutuneesta kysynnästä
+   - Arvo vaihtelee 0-100% välillä
+   - Auttaa arvioimaan ennustemallin kokonaistarkkuutta
 
 ## How to Update the Mapping
 1. Edit the normalization function in `src/lib/dataService.ts` (see `normalizeTimeSeriesData`).

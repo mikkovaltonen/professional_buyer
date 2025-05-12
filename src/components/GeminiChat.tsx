@@ -115,7 +115,9 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
 }\n\nHuom: product_group tulee olla sama kuin datassa kyseiselle product_code:lle.`
     };
 
-    const endInstructions = `\n\nKorjaukset tulee rajata ajanjaksolle 04/2025 – 03/2026, ja niitä tulee antaa vain niille kuukausille, joiden osalta uskot korjauksen olevan perusteltu.\n\nEsimerkkivastaus aloitukseen:\nHei! Olen Kempin tuotteiden markkinatutkija ja kysynnänennustuksen asiantuntija. Analysoin mielelläni toimitetun datan ja autan seuraavissa vaiheissa. Tässä analyysi toimitetusta datasta:`;
+    const endInstructions = `\n\nKorjaukset tulee rajata vain sille aikavälille jolle valokuvassa on "Tilastollinen ennuste" - dataa (Keltainen käyrä), ja niitä tulee antaa vain niille kuukausille, joiden osalta uskot korjauksen olevan perusteltu. 
+    Jos annat käyttäjälle linkkejä, niin varmista omalla teastauksella että linkit toimivat oikein.
+     Kun annat linkin, kirjoita aina perään lyhyt johtopäätös, kuinka uutinen vaikuttaa kysyntään. `;
 
     return baseInstructions + contextInstructions + jsonInstructions[chartLevel] + endInstructions;
   };

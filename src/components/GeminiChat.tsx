@@ -325,10 +325,8 @@ Kuvaaja 2: Ennustevirhe.
     setIsLoading(true);
     try {
       const userMessageText = input;
-      const instructionForSources = "\n\n(HUOM: Käytä Google-hakua vastauksesi tukena ja VIITTAA LÖYTÄMIISI LÄHTEISIIN API:n maadoitusominaisuuden kautta, erityisesti groundingMetadata.groundingChunks-objektin avulla.)";
-      const combinedInput = userMessageText + instructionForSources;
 
-      const userMessage = { role: 'user' as const, parts: [{ text: combinedInput } as Part] };
+      const userMessage = { role: 'user' as const, parts: [{ text: userMessageText } as Part] };
       const newMessages = [...messages, userMessage];
       setMessages(newMessages);
       setInput('');

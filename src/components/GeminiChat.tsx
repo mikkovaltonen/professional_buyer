@@ -29,31 +29,57 @@ const processTextWithCitations = (text: string, sources: CitationSource[] | unde
     return { processedText: text, sourceMap: new Map() };
   }
 
+  const sortedSources = [...sources]
+    .filter(s => s.startIndex !== undefined && s.endIndex !== undefined)
+    .sort((a, b) => { // Sort by startIndex, then by endIndex descending (to process larger segments first if starts are same)
+      if (a.startIndex! !== b.startIndex!) {
+        return a.startIndex! - b.startIndex!;
+      }
+      return b.endIndex! - a.endIndex!;
+    });
+
   let processedText = '';
   let lastIndex = 0;
   const sourceMap = new Map<number, CitationSource>();
   let citationCounter = 1;
 
-  const sortedSources = [...sources]
-    .filter(s => s.endIndex !== undefined && s.startIndex !== undefined)
-    .sort((a, b) => (a.endIndex!) - (b.endIndex!));
+  for (const source of sortedSources) {
+    const currentStartIndex = source.startIndex!;
+    const currentEndIndex = source.endIndex!;
 
-  sortedSources.forEach(source => {
-    const endIndex = source.endIndex!;
-    const startIndex = source.startIndex!;
-
-    if (startIndex >= lastIndex && endIndex > startIndex && endIndex <= text.length) {
-      processedText += text.substring(lastIndex, startIndex);
-      const originalSegment = text.substring(startIndex, endIndex);
-      const marker = source.uri ? ` [${citationCounter}](${source.uri})` : ` [${citationCounter}]`;
-      processedText += originalSegment + marker;
-      sourceMap.set(citationCounter, source);
-      citationCounter++;
-      lastIndex = endIndex;
+    if (currentStartIndex < lastIndex) {
+      // Skip if this segment's start is before where we last processed.
+      // This can happen with overlapping sources if a larger one was processed first.
+      console.warn("Skipping overlapping or out-of-order source:", source);
+      continue;
     }
-  });
 
-  processedText += text.substring(lastIndex);
+    processedText += text.substring(lastIndex, currentStartIndex);
+
+    let trueWordEndIndex = currentEndIndex;
+    let scanPos = currentEndIndex;
+    // Scan forward from currentEndIndex (exclusive start for scan) to find the actual word boundary.
+    // The regex includes common punctuation and brackets as delimiters.
+    while(scanPos < text.length && !/[\s.,!?;:()[\]{}]/.test(text[scanPos])) {
+        scanPos++;
+    }
+    trueWordEndIndex = scanPos;
+    
+    const textToShowWithMarker = text.substring(currentStartIndex, trueWordEndIndex);
+    processedText += textToShowWithMarker;
+
+    const marker = source.uri ? ` [${citationCounter}](${source.uri})` : ` [${citationCounter}]`;
+    processedText += marker;
+
+    sourceMap.set(citationCounter, source);
+    citationCounter++;
+    lastIndex = trueWordEndIndex;
+  }
+
+  if (lastIndex < text.length) {
+    processedText += text.substring(lastIndex);
+  }
+
   return { processedText, sourceMap };
 };
 
@@ -118,13 +144,14 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
   // Dynaaminen ohjeistus kuvan tason mukaan
   const getInstructions = () => {
     const baseInstructions = `Hei! Olen sinun henkilökohtainen kysynnänennusteavustajasi. Tehtäväni on auttaa sinua, myynnin ennustajaa, analysoimaan dataa ja tekemään perusteltuja ennustekorjauksia.
-     Aloita aina yllä olevalla esittelyllä vain ja ainoastaan ensimmäisessä viestissäsi. ÄLÄ käytä mitään tervehdystä (kuten 'Hyvä asiakas', 'Hei taas', 'Arvoisa ennustaja' tms.) tai esittelyä enää tämän jälkeen, vaan siirry suoraan asiaan.
-     Kommunikoi asiallisesti ja ammattimaisesti, mutta vältä liiallista muodollisuutta tai asiakaspalveluhenkistä kieltä myöhemmissä vastauksissa. Sinä olet asiantuntija-avustaja, et asiakaspalvelija.
-     Älä koskaan aloita epämuodollisesti, kuten 'Selvä juttu', 'Totta kai', 'Katsotaanpa', 'No niin', 'Tarkastellaanpa' tms.
-       Vastaa aina suomeksi.\n\nAnalysoi aluksi toimitetut kuvaajat. Kerro käyttäjälle kuvan tuotteista, tuoteryhmästä tai selvitä verkosta (ja mainitse löytämäsi lähteet), minkälaisia lopputuotteita ryhmään kuuluu. 
+     Aloita aina yllä olevalla esittelyllä vain ja ainoastaan ensimmäisessä viestissäsi. Vastaa aina suomeksi.\n\nAnalysoi aluksi toimitetut kuvaajat. Kerro käyttäjälle kuvan tuotteista, tuoteryhmästä tai selvitä verkosta (ja mainitse löytämäsi lähteet), minkälaisia lopputuotteita ryhmään kuuluu. 
        Analyysissäsi ota kantaa kysynnän ennustettavuuteen, näyttääkö tilastollinen ennuste optimistiselta vai pessimistiseltä ja onko ennustevirhe trendi pienenevä vai kasvava.\n\nAnalysoituasi kuvaajat, kerro käyttäjälle, että voit syventää analyysia tekemällä Google-haut seuraavista aiheista, ja VIITTAA LÖYTÄMIISI LÄHTEISIIN API:n maadoitusominaisuuden kautta:
 +(HUOM: On erittäin tärkeää, että palautat tarkat lähdeviitteet groundingMetadata.groundingChunks-objektin kautta, jotta voin näyttää ne käyttäjälle.)
- (1) Omien ja kilpailijoiden alennuskampanjat, (2) Omien ja kilpailijoiden substituuttituotteiden tuotelanseeraukset, (3) Omien ja kilpailijoiden markkinointikampanjat sekä jakelijoiden ilmoitukset, (4) Omien ja kilpailijoiden lehtiartikkelit ja (5) Kysyntään vaikuttavat makrotalousindikaattorit ja niiden muutokset.\nPyydä käyttäjää vahvistamaan, että hän haluaa sinun jatkavan näillä hauilla.\n\nKun makrotalousindikaattorit ja ennusteeseen vaikuttavat uutiset on käyty läpi (ja lähteisiin on viitattu), ehdota käyttäjälle, että voit antaa perustellut ennustekorjaukset JSON-muodossa.\n\nKuvaajien selitteet:
+ (1) Omien ja kilpailijoiden alennuskampanjat, (2) Omien ja kilpailijoiden substituuttituotteiden tuotelanseeraukset, (3) Omien ja kilpailijoiden markkinointikampanjat sekä jakelijoiden ilmoitukset, (4) Omien ja kilpailijoiden lehtiartikkelit ja (5) Kysyntään vaikuttavat makrotalousindikaattorit ja niiden muutokset.\nPyydä käyttäjää vahvistamaan, että hän haluaa sinun jatkavan näillä hauilla.\n\nKun makrotalousindikaattorit ja ennusteeseen vaikuttavat uutiset on käyty läpi (ja lähteisiin on viitattu), ehdota käyttäjälle, että voit antaa perustellut ennustekorjaukset JSON-muodossa.
+ 
+ Tutkimus tulee tehdä vain sille aikavälille jolle valokuvassa on "Tilastollinen ennuste" - dataa (Keltainen käyrä). Älä esitä siis lähteenä yli 6kk vanhoja uutisia tai tutkimuksia makrotaloudesta. 
+ 
+ \n\nKuvaajien selitteet:
 Kuvaaja 1: Kysynnän historia ja ennusteet.
 - Sininen viiva: Toteutunut kysyntä
 - Oranssi katkoviiva: Tilastollinen ennuste

@@ -27,11 +27,15 @@ export interface ForecastCorrection {
 export class DataService {
   private static instance: DataService;
   private data: TimeSeriesData[] = [];
-  private baseUrl = '/api';
+  private baseUrl: string;
   private authToken: string;
 
   private constructor() {
     this.authToken = 'fm91Lp8IhmZfIAFhwmx2Gb2fhDJZmsV4XaRDPse5zWfwYpURMcKJI7kS7QLbiiU5';
+    // Use direct API URL in production, proxy in development
+    this.baseUrl = import.meta.env.PROD 
+      ? 'https://scmbp.com/REST/v1/genaibase/kemppi_Kemppi_100_FG_sales_m_assistant_input_forecasts_separated'
+      : '/api';
   }
 
   public static getInstance(): DataService {

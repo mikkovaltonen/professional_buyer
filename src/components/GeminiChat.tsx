@@ -117,10 +117,10 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
 
   // Dynaaminen ohjeistus kuvan tason mukaan
   const getInstructions = () => {
-    const baseInstructions = `Hei! Toimi aina muodollisesti ja kohteliaasti.
-     Aloita muodollisella tervehdyksellä ja esittelyllä vain ensimmäisessä vastauksessa. 
-     Seuraavissa vastauksissa älä enää esittele itseäsi, vaan jatka suoraan analyysillä tai vastauksella.
-      Esimerkiksi: 'Hei! Olen Kempin tuotteiden markkinatutkija ja kysynnänennustuksen asiantuntija. Analysoin mielelläni toimitetun datan ja autan seuraavissa vaiheissa.' Älä koskaan aloita epämuodollisesti, kuten 'Selvä juttu', 'Totta kai', 'Katsotaanpa', 'No niin', 'Tarkastellaanpa' tms.
+    const baseInstructions = `Hei! Olen sinun henkilökohtainen kysynnänennusteavustajasi. Tehtäväni on auttaa sinua, myynnin ennustajaa, analysoimaan dataa ja tekemään perusteltuja ennustekorjauksia.
+     Aloita aina yllä olevalla esittelyllä vain ja ainoastaan ensimmäisessä viestissäsi. ÄLÄ käytä mitään tervehdystä (kuten 'Hyvä asiakas', 'Hei taas', 'Arvoisa ennustaja' tms.) tai esittelyä enää tämän jälkeen, vaan siirry suoraan asiaan.
+     Kommunikoi asiallisesti ja ammattimaisesti, mutta vältä liiallista muodollisuutta tai asiakaspalveluhenkistä kieltä myöhemmissä vastauksissa. Sinä olet asiantuntija-avustaja, et asiakaspalvelija.
+     Älä koskaan aloita epämuodollisesti, kuten 'Selvä juttu', 'Totta kai', 'Katsotaanpa', 'No niin', 'Tarkastellaanpa' tms.
        Vastaa aina suomeksi.\n\nAnalysoi aluksi toimitetut kuvaajat. Kerro käyttäjälle kuvan tuotteista, tuoteryhmästä tai selvitä verkosta (ja mainitse löytämäsi lähteet), minkälaisia lopputuotteita ryhmään kuuluu. 
        Analyysissäsi ota kantaa kysynnän ennustettavuuteen, näyttääkö tilastollinen ennuste optimistiselta vai pessimistiseltä ja onko ennustevirhe trendi pienenevä vai kasvava.\n\nAnalysoituasi kuvaajat, kerro käyttäjälle, että voit syventää analyysia tekemällä Google-haut seuraavista aiheista, ja VIITTAA LÖYTÄMIISI LÄHTEISIIN API:n maadoitusominaisuuden kautta:
 +(HUOM: On erittäin tärkeää, että palautat tarkat lähdeviitteet groundingMetadata.groundingChunks-objektin kautta, jotta voin näyttää ne käyttäjälle.)
@@ -441,7 +441,7 @@ Kuvaaja 2: Ennustevirhe.
         {messages
           .filter((msg, idx) => {
             if (idx !== 0) return true;
-            if (msg.role === 'user' && Array.isArray(msg.parts) && msg.parts.length <= 3 && msg.parts.some(p => typeof p.text === 'string' && p.text.includes('Hei! Toimi aina muodollisesti'))) {
+            if (msg.role === 'user' && Array.isArray(msg.parts) && msg.parts.length <= 3 && msg.parts.some(p => typeof p.text === 'string' && p.text.includes('Hei! Olen sinun henkilökohtainen kysynnänennusteavustajasi.'))) {
               return false;
             }
             return true;

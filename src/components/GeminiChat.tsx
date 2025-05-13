@@ -9,6 +9,54 @@ const geminiModel = import.meta.env.VITE_GEMINI_MODEL || 'gemini-2.5-pro-preview
 
 const genAI = new GoogleGenerativeAI(apiKey);
 
+interface CitationSource {
+  startIndex?: number;
+  endIndex?: number;
+  uri?: string;
+  license?: string;
+}
+
+interface Message {
+  role: 'user' | 'model';
+  parts: Part[];
+  citationMetadata?: {
+    citationSources: CitationSource[];
+  };
+}
+
+const processTextWithCitations = (text: string, sources: CitationSource[] | undefined): { processedText: string; sourceMap: Map<number, CitationSource> } => {
+  if (!sources || sources.length === 0) {
+    return { processedText: text, sourceMap: new Map() };
+  }
+
+  let processedText = '';
+  let lastIndex = 0;
+  const sourceMap = new Map<number, CitationSource>();
+  let citationCounter = 1;
+
+  const sortedSources = [...sources]
+    .filter(s => s.endIndex !== undefined && s.startIndex !== undefined)
+    .sort((a, b) => (a.endIndex!) - (b.endIndex!));
+
+  sortedSources.forEach(source => {
+    const endIndex = source.endIndex!;
+    const startIndex = source.startIndex!;
+
+    if (startIndex >= lastIndex && endIndex > startIndex && endIndex <= text.length) {
+      processedText += text.substring(lastIndex, startIndex);
+      const originalSegment = text.substring(startIndex, endIndex);
+      const marker = source.uri ? ` [${citationCounter}](${source.uri})` : ` [${citationCounter}]`;
+      processedText += originalSegment + marker;
+      sourceMap.set(citationCounter, source);
+      citationCounter++;
+      lastIndex = endIndex;
+    }
+  });
+
+  processedText += text.substring(lastIndex);
+  return { processedText, sourceMap };
+};
+
 interface GeminiChatProps {
   imageUrl?: string | null;
   errorImageUrl?: string | null;
@@ -28,7 +76,7 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
   selectedGroups,
   selectedProducts
 }) => {
-  const [messages, setMessages] = useState<any[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [sessionActive, setSessionActive] = useState(false);
@@ -73,8 +121,18 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
      Aloita muodollisella tervehdyksellä ja esittelyllä vain ensimmäisessä vastauksessa. 
      Seuraavissa vastauksissa älä enää esittele itseäsi, vaan jatka suoraan analyysillä tai vastauksella.
       Esimerkiksi: 'Hei! Olen Kempin tuotteiden markkinatutkija ja kysynnänennustuksen asiantuntija. Analysoin mielelläni toimitetun datan ja autan seuraavissa vaiheissa.' Älä koskaan aloita epämuodollisesti, kuten 'Selvä juttu', 'Totta kai', 'Katsotaanpa', 'No niin', 'Tarkastellaanpa' tms.
-       Vastaa aina suomeksi.\n\nAnalysoi aluksi toimitetut kuvaajat:\n\nKuvaaja 1: Kysynnän historia ja ennusteet.\n- Sininen viiva: Toteutunut kysyntä\n- Oranssi katkoviiva: Tilastollinen ennuste\n- Punainen viiva: Korjattu ennuste\n- Punainen katkoviiva: Ennustevirhe\n\nKuvaaja 2: Ennustevirhe.\n- Sininen viiva: Keskimääräinen absoluuttinen ennustevirhe (kpl)\n- Oranssi viiva: % tuotteista, joilla ennustevirhe on alle 20%\n\nKerro käyttäjälle kuvan tuotteista, tuoteryhmästä tai selvitä verkosta, minkälaisia lopputuotteita ryhmään kuuluu. 
-       Anaalyysissäi ota kantaa kysnynnän ennustettavuuteen, näyttääkö tilastollinen ennuste optimistiselta vai pessimistiseltä ja onko ennustevirhe trendi pienenvä vai kasvava. Toimitettuasi analyysin käyttäjälle, kysy haluaako hän sinun tekevän seuraavat Google-syvähaut:\n\n(1) Omien ja kilpailijoiden alennuskampanjat, (2) Omien ja kilpailijoiden substituuttituotteiden tuotelanseeraukset, (3) Omien ja kilpailijoiden markkinointikampanjat sekä jakelijoiden ilmoitukset\n(4) Omien ja kilpailijoiden lehtiartikkelit ja (5) Kysyntään vaikuttavat makrotalousindikaattorit ja niiden muutokset\nKysy myös, haluaako käyttäjä linkit kaikkiin uutisiin, joilla saattaa olla vaikutusta ennusteeseen.\n\nJos mainitset uutisen, artikkelin tai lähteen, anna se aina markdown-linkkinä muodossa [otsikko](https://osoite).\n\nKun makrotalousindikaattorit ja ennusteeseen vaikuttavat uutiset on käyty läpi, ehdota käyttäjälle, että voit antaa perustellut ennustekorjaukset JSON-muodossa.\n\n`;
+       Vastaa aina suomeksi.\n\nAnalysoi aluksi toimitetut kuvaajat. Kerro käyttäjälle kuvan tuotteista, tuoteryhmästä tai selvitä verkosta (ja mainitse löytämäsi lähteet), minkälaisia lopputuotteita ryhmään kuuluu. 
+       Analyysissäsi ota kantaa kysynnän ennustettavuuteen, näyttääkö tilastollinen ennuste optimistiselta vai pessimistiseltä ja onko ennustevirhe trendi pienenevä vai kasvava.\n\nAnalysoituasi kuvaajat, kerro käyttäjälle, että voit syventää analyysia tekemällä Google-haut seuraavista aiheista, ja VIITTAA LÖYTÄMIISI LÄHTEISIIN API:n maadoitusominaisuuden kautta:
++(HUOM: On erittäin tärkeää, että palautat tarkat lähdeviitteet groundingMetadata.groundingChunks-objektin kautta, jotta voin näyttää ne käyttäjälle.)
+ (1) Omien ja kilpailijoiden alennuskampanjat, (2) Omien ja kilpailijoiden substituuttituotteiden tuotelanseeraukset, (3) Omien ja kilpailijoiden markkinointikampanjat sekä jakelijoiden ilmoitukset, (4) Omien ja kilpailijoiden lehtiartikkelit ja (5) Kysyntään vaikuttavat makrotalousindikaattorit ja niiden muutokset.\nPyydä käyttäjää vahvistamaan, että hän haluaa sinun jatkavan näillä hauilla.\n\nKun makrotalousindikaattorit ja ennusteeseen vaikuttavat uutiset on käyty läpi (ja lähteisiin on viitattu), ehdota käyttäjälle, että voit antaa perustellut ennustekorjaukset JSON-muodossa.\n\nKuvaajien selitteet:
+Kuvaaja 1: Kysynnän historia ja ennusteet.
+- Sininen viiva: Toteutunut kysyntä
+- Oranssi katkoviiva: Tilastollinen ennuste
+- Punainen viiva: Korjattu ennuste
+- Punainen katkoviiva: Ennustevirhe
+Kuvaaja 2: Ennustevirhe.
+- Sininen viiva: Keskimääräinen absoluuttinen ennustevirhe (kpl)
+- Oranssi viiva: % tuotteista, joilla ennustevirhe on alle 20%\n\n`;
 
     let contextInstructions = '';
     if (selectedProducts && selectedProducts.length > 0) {
@@ -116,15 +174,13 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
     };
 
     const endInstructions = `\n\nKorjaukset tulee rajata vain sille aikavälille jolle valokuvassa on "Tilastollinen ennuste" - dataa (Keltainen käyrä), ja niitä tulee antaa vain niille kuukausille, joiden osalta uskot korjauksen olevan perusteltu. 
-    Jos annat käyttäjälle linkkejä, niin varmista omalla teastauksella että linkit toimivat oikein.
-     Kun annat linkin, kirjoita aina perään lyhyt johtopäätös, kuinka uutinen vaikuttaa kysyntään. `;
+ `;
 
     return baseInstructions + contextInstructions + jsonInstructions[chartLevel] + endInstructions;
   };
 
   // Aloita uusi chat-sessio
   const handleStartSession = async () => {
-    console.log('Aloita chat painettu');
     setMessages([]);
     setSessionActive(true);
     setInput('');
@@ -140,21 +196,14 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
       if (errorImageUrl) {
         errorImageDataUrl = await loadImageAsBase64(errorImageUrl);
       }
-      console.log('imageUrl:', imageUrl);
-      console.log('imageDataUrl length:', imageDataUrl.length);
-      console.log('imageDataUrl start:', imageDataUrl.slice(0, 100));
-      console.log('imageDataUrl end:', imageDataUrl.slice(-100));
-      if (errorImageDataUrl) {
-        console.log('errorImageUrl:', errorImageUrl);
-        console.log('errorImageDataUrl length:', errorImageDataUrl.length);
-        console.log('errorImageDataUrl start:', errorImageDataUrl.slice(0, 100));
-        console.log('errorImageDataUrl end:', errorImageDataUrl.slice(-100));
-      }
-      // Extract base64 data from data URL
+
       const base64Data = imageDataUrl.split(',')[1];
       const errorBase64Data = errorImageDataUrl ? errorImageDataUrl.split(',')[1] : null;
       const model = genAI.getGenerativeModel({
         model: geminiModel,
+        generationConfig: {
+          temperature: 0.2
+        },
         tools: [ { googleSearch: {} } as any ]
       });
       initialMessage = [
@@ -164,14 +213,87 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
       if (errorBase64Data) {
         initialMessage.push({ inlineData: { data: errorBase64Data, mimeType: 'image/jpeg' } } as Part);
       }
-      console.log('initialMessage:', initialMessage);
       const result = await model.generateContent(initialMessage);
       const response = await result.response;
-      const fullResponse = response.text();
-      setMessages([
-        { role: 'user', parts: initialMessage },
-        { role: 'model', parts: [{ text: fullResponse } as Part] }
-      ]);
+      
+      if (response && response.candidates && response.candidates.length > 0) {
+        const candidate = response.candidates[0];
+        console.log('Candidate (handleStartSession):', JSON.stringify(candidate, null, 2));
+        const content = candidate.content;
+        let processedCitationMetadata: { citationSources: CitationSource[] } | undefined = undefined;
+
+        if (candidate.citationMetadata && candidate.citationMetadata.citationSources) {
+          // Use existing citationMetadata if available
+          processedCitationMetadata = candidate.citationMetadata as { citationSources: CitationSource[] };
+          console.log('Using direct citationMetadata (handleStartSession):', processedCitationMetadata);
+        } else if (candidate.groundingMetadata && candidate.groundingMetadata.groundingSupports) { // Check for groundingSupports first
+          const supports = candidate.groundingMetadata.groundingSupports;
+          const allChunks = candidate.groundingMetadata.groundingChunks; // This might be undefined
+
+          if (allChunks && allChunks.length > 0) {
+            // Scenario 1: We have groundingChunks (preferred)
+            console.log('Found groundingMetadata with chunks, processing (handleStartSession):', candidate.groundingMetadata);
+            const sources: CitationSource[] = supports.map((support: any) => {
+              if (support.segment && support.groundingChunkIndices && support.groundingChunkIndices.length > 0) {
+                const firstChunkIndex = support.groundingChunkIndices[0];
+                if (firstChunkIndex >= 0 && firstChunkIndex < allChunks.length) {
+                  const chunk = allChunks[firstChunkIndex] as any;
+                  const uri = chunk?.web?.uri;
+                  if (uri) {
+                    const sourceObj = { startIndex: support.segment.startIndex, endIndex: support.segment.endIndex, uri: uri };
+                    console.log('Successfully created CitationSource from chunk:', sourceObj);
+                    return sourceObj;
+                  } else {
+                    console.warn('Could not find URI in grounding chunk at index:', firstChunkIndex, 'Full chunk structure:', JSON.stringify(chunk, null, 2));
+                  }
+                }
+              }
+              return null;
+            }).filter((source: CitationSource | null): source is CitationSource => source !== null);
+            if (sources.length > 0) processedCitationMetadata = { citationSources: sources };
+
+          } else {
+            // Scenario 2: We only have groundingSupports, try to find URI directly in support objects
+            console.log('Found groundingMetadata with supports but no/empty chunks, trying direct URIs from supports (handleStartSession):', supports);
+            const sources: CitationSource[] = supports.map((support: any) => {
+              if (support.segment) {
+                // Attempt to find URI directly in support object - paths are speculative
+                const uri = support.uri || support.web?.uri || support.webAccess?.uri || support.retrieval?.uri;
+                if (uri) {
+                  const sourceObj = { startIndex: support.segment.startIndex, endIndex: support.segment.endIndex, uri: uri };
+                  console.log('Successfully created CitationSource directly from support:', sourceObj);
+                  return sourceObj;
+                } else {
+                  console.warn('Could not find URI directly in support object. Support structure:', JSON.stringify(support, null, 2));
+                }
+              }
+              return null;
+            }).filter((source: CitationSource | null): source is CitationSource => source !== null);
+            if (sources.length > 0) processedCitationMetadata = { citationSources: sources };
+          }
+
+          if (processedCitationMetadata) {
+            console.log('Processed citationMetadata from groundingMetadata (handleStartSession):', processedCitationMetadata);
+          } else {
+            console.log('Could not derive citation sources from groundingMetadata (handleStartSession).');
+          }
+        }
+
+        setMessages([
+          { role: 'user' as const, parts: initialMessage },
+          { 
+            role: 'model' as const,
+            parts: content.parts,
+            citationMetadata: processedCitationMetadata
+          }
+        ]);
+      } else {
+        const fallbackText = response?.text() ?? 'Vastauksen käsittely epäonnistui.';
+        setMessages([
+          { role: 'user' as const, parts: initialMessage },
+          { role: 'model' as const, parts: [{ text: fallbackText }] }
+        ]);
+      }
     } catch (error) {
       console.error('Virhe Gemini API:ssa:', error);
       if (error instanceof Error && (error as any).response) {
@@ -184,11 +306,7 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
           console.error('Gemini API:n response.text:', txt);
         });
       }
-      // Logita myös initialMessage ja base64
-      console.error('InitialMessage debug:', {
-        imageUrl, imageDataUrlLength: imageDataUrl.length, imageDataUrlStart: imageDataUrl.slice(0, 100), imageDataUrlEnd: imageDataUrl.slice(-100), initialMessage
-      });
-      setMessages([{ role: 'model', parts: [{ text: 'Virhe Gemini API:ssa.' }] }]);
+      setMessages([{ role: 'model' as const, parts: [{ text: 'Virhe Gemini API:ssa.' }] }]);
     } finally {
       setIsLoading(false);
     }
@@ -206,20 +324,94 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
     if (!input.trim() || !sessionActive) return;
     setIsLoading(true);
     try {
-      const userMessage = { role: 'user', parts: [{ text: input } as Part] };
+      const userMessageText = input;
+      const instructionForSources = "\n\n(HUOM: Käytä Google-hakua vastauksesi tukena ja VIITTAA LÖYTÄMIISI LÄHTEISIIN API:n maadoitusominaisuuden kautta, erityisesti groundingMetadata.groundingChunks-objektin avulla.)";
+      const combinedInput = userMessageText + instructionForSources;
+
+      const userMessage = { role: 'user' as const, parts: [{ text: combinedInput } as Part] };
       const newMessages = [...messages, userMessage];
       setMessages(newMessages);
       setInput('');
       const model = genAI.getGenerativeModel({
         model: geminiModel,
+        generationConfig: {
+          temperature: 0.2
+        },
         tools: [ { googleSearch: {} } as any ]
       });
       const result = await model.generateContent(newMessages.flatMap(msg => msg.parts));
       const response = await result.response;
-      const fullResponse = response.text();
-      setMessages([...newMessages, { role: 'model', parts: [{ text: fullResponse } as Part] }]);
+
+      if (response && response.candidates && response.candidates.length > 0) {
+        const candidate = response.candidates[0];
+        console.log('Candidate (handleSend):', JSON.stringify(candidate, null, 2));
+        const content = candidate.content;
+        let processedCitationMetadata: { citationSources: CitationSource[] } | undefined = undefined;
+
+        // Yritä ensin käyttää suoraa citationMetadata-kenttää, jos se on olemassa
+        if (candidate.citationMetadata && candidate.citationMetadata.citationSources) {
+          processedCitationMetadata = candidate.citationMetadata as { citationSources: CitationSource[] };
+          console.log('Using direct citationMetadata (handleSend):', processedCitationMetadata);
+        } 
+        // Jos ei, yritä prosessoida groundingMetadata, kuten handleStartSession-funktiossa
+        else if (candidate.groundingMetadata && candidate.groundingMetadata.groundingSupports) {
+          const supports = candidate.groundingMetadata.groundingSupports;
+          const allChunks = candidate.groundingMetadata.groundingChunks;
+
+          if (allChunks && allChunks.length > 0) {
+            console.log('Found groundingMetadata with chunks, processing (handleSend):', candidate.groundingMetadata);
+            const sources: CitationSource[] = supports.map((support: any) => {
+              if (support.segment && support.groundingChunkIndices && support.groundingChunkIndices.length > 0) {
+                const firstChunkIndex = support.groundingChunkIndices[0];
+                if (firstChunkIndex >= 0 && firstChunkIndex < allChunks.length) {
+                  const chunk = allChunks[firstChunkIndex] as any;
+                  const uri = chunk?.web?.uri;
+                  if (uri) {
+                    return { startIndex: support.segment.startIndex, endIndex: support.segment.endIndex, uri: uri };
+                  } else {
+                     console.warn('Could not find URI in grounding chunk (handleSend) at index:', firstChunkIndex, 'Full chunk structure:', JSON.stringify(chunk, null, 2));
+                  }
+                }
+              }
+              return null;
+            }).filter((source: CitationSource | null): source is CitationSource => source !== null);
+            if (sources.length > 0) processedCitationMetadata = { citationSources: sources };
+          } else {
+            console.log('Found groundingMetadata with supports but no/empty chunks, trying direct URIs from supports (handleSend):', supports);
+            const sources: CitationSource[] = supports.map((support: any) => {
+              if (support.segment) {
+                const uri = support.uri || support.web?.uri || support.webAccess?.uri || support.retrieval?.uri;
+                if (uri) {
+                  return { startIndex: support.segment.startIndex, endIndex: support.segment.endIndex, uri: uri };
+                } else {
+                  console.warn('Could not find URI directly in support object (handleSend). Support structure:', JSON.stringify(support, null, 2));
+                }
+              }
+              return null;
+            }).filter((source: CitationSource | null): source is CitationSource => source !== null);
+            if (sources.length > 0) processedCitationMetadata = { citationSources: sources };
+          }
+
+          if (processedCitationMetadata) {
+            console.log('Processed citationMetadata from groundingMetadata (handleSend):', processedCitationMetadata);
+          } else {
+            console.log('Could not derive citation sources from groundingMetadata (handleSend).');
+          }
+        } else {
+            console.log('No citationMetadata or actionable groundingMetadata found (handleSend).');
+        }
+
+        setMessages([...newMessages, { 
+          role: 'model' as const,
+          parts: content.parts,
+          citationMetadata: processedCitationMetadata // Käytä prosessoitua metadataa
+        }]);
+      } else {
+        const fallbackText = response?.text() ?? 'Vastauksen käsittely epäonnistui.';
+        setMessages([...newMessages, { role: 'model' as const, parts: [{ text: fallbackText }] }]);
+      }
     } catch (error) {
-      setMessages(prev => [...prev, { role: 'model', parts: [{ text: 'Virhe Gemini API:ssa.' }] }]);
+      setMessages(prev => [...prev, { role: 'model' as const, parts: [{ text: 'Virhe Gemini API:ssa.' }] }]);
     } finally {
       setIsLoading(false);
     }
@@ -249,10 +441,8 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
       <div className="h-[1200px] overflow-y-auto border rounded p-2 bg-gray-50 mb-4">
         {messages.length === 0 && <div className="text-gray-400 text-sm">Ei viestejä</div>}
         {messages
-          // Piilota initialisointiprompti: älä näytä ensimmäistä user-viestiä, jos se sisältää vain ohjeistuksen ja/tai kuvat
           .filter((msg, idx) => {
             if (idx !== 0) return true;
-            // Jos ensimmäinen viesti on user ja parts sisältää vain ohjeistuksen ja/tai kuvan, piilota se
             if (msg.role === 'user' && Array.isArray(msg.parts) && msg.parts.length <= 3 && msg.parts.some(p => typeof p.text === 'string' && p.text.includes('Hei! Toimi aina muodollisesti'))) {
               return false;
             }
@@ -260,34 +450,55 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
           })
           .map((msg, idx) => (
             <div key={idx} className={`mb-2 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
-              {msg.parts.map((part: any, pidx: number) => (
-                <span key={pidx} className={`inline-block px-3 py-2 rounded-lg max-w-full break-words whitespace-pre-wrap ${msg.role === 'user' ? 'bg-[#4ADE80] text-white' : 'bg-gray-200 text-gray-800'}`}>
-                  <ReactMarkdown
-                    components={{
-                      a: ({ node, ...props }) => (
-                      <a {...props} className="text-blue-600 hover:text-blue-800 underline" target="_blank" rel="noopener noreferrer" />
-                    ),
-                    ul: ({ node, ...props }) => (
-                      <ul {...props} className="list-disc pl-6" />
-                    ),
-                    li: ({ node, ...props }) => (
-                      <li {...props} className="mb-0 leading-tight" />
-                    ),
-                    p: ({ node, ...props }) => (
-                      <p {...props} className="mb-2" />
-                    ),
-                    strong: ({ node, ...props }) => (
-                      <strong {...props} className="font-bold" />
-                    ),
-                    em: ({ node, ...props }) => (
-                      <em {...props} className="italic" />
-                    )
-                  }}
-                  >
+              {msg.role === 'user' ? (
+                msg.parts.map((part: any, pidx: number) => (
+                  <span key={pidx} className="inline-block px-3 py-2 rounded-lg max-w-full break-words whitespace-pre-wrap bg-[#4ADE80] text-white">
                     {part.text}
-                  </ReactMarkdown>
-                </span>
-              ))}
+                  </span>
+                ))
+              ) : (
+                <>
+                  <span className="inline-block px-3 py-2 rounded-lg max-w-full break-words whitespace-pre-wrap bg-gray-200 text-gray-800">
+                    {(() => {
+                      const modelText = msg.parts.map(p => p.text || '').join('');
+                      const citationResult = processTextWithCitations(modelText, msg.citationMetadata?.citationSources);
+                      console.log('Rendering Model Message:', {
+                        originalText: modelText.length > 100 ? modelText.substring(0, 100) + '...' : modelText,
+                        citationMetadata: msg.citationMetadata,
+                        processedText: citationResult.processedText.length > 100 ? citationResult.processedText.substring(0, 100) + '...' : citationResult.processedText,
+                        fullProcessedTextForDebug: citationResult.processedText,
+                        sourceMap: citationResult.sourceMap
+                      });
+                      return (
+                        <ReactMarkdown
+                          components={{
+                            a: ({ node, ...props }) => (
+                              <a {...props} className="text-blue-600 hover:text-blue-800 underline" target="_blank" rel="noopener noreferrer">{props.children}</a>
+                            ),
+                            ul: ({ node, ...props }) => (
+                              <ul {...props} className="list-disc pl-6" />
+                            ),
+                            li: ({ node, ...props }) => (
+                              <li {...props} className="mb-0 leading-tight" />
+                            ),
+                            p: ({ node, ...props }) => (
+                              <p {...props} className="mb-2" />
+                            ),
+                            strong: ({ node, ...props }) => (
+                              <strong {...props} className="font-bold" />
+                            ),
+                            em: ({ node, ...props }) => (
+                              <em {...props} className="italic" />
+                            )
+                          }}
+                        >
+                          {citationResult.processedText}
+                        </ReactMarkdown>
+                      );
+                    })()}
+                  </span>
+                </>
+              )}
             </div>
           ))}
         {isLoading && (

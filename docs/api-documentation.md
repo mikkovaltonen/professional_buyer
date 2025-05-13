@@ -1,257 +1,114 @@
-# API-dokumentaatio
+# REST API Documentation
 
-## Yleiskatsaus
-
-Tämä dokumentaatio kuvaa ennustejärjestelmän API-endpointit sekä niiden teknisen että funktionaalisen toteutuksen. API on siirtymässä Google Firestoresta MariaDB-tietokantaan. Tämä siirtymä on käynnissä ja dokumentaatio kuvaa molemmat toteutukset.
-
-## Tietokantasiirtymä
-
-### Nykyinen tila (Firestore)
-- API on toteutettu Vite-palvelimen middleware-tasolla
-- Datan tallennus tapahtuu Firestore-tietokantaan
-- Kehitysympäristössä käytetään muistissa olevaa dataa
-
-### Siirtymävaihe (MariaDB)
-- API siirtyy MariaDB-tietokantaan
-- Tarkemmat tekniset tiedot löytyvät `docs/maria_db_api-specifications.md`
-- Siirtymä tapahtuu vaiheittain, jotta järjestelmän toiminta säilyy keskeytyksettä
-
-## API Endpointit
-
-### 1. Ennustedatan hakeminen
-```http
-GET /api/forecast-data
+## Base URL
+```
+https://scmbp.com/REST/v1/genaibase/kemppi_Kemppi_100_FG_sales_m_assistant_input_forecasts_separated
 ```
 
-#### Tekninen toteutus
-- Endpoint on toteutettu Vite-palvelimen middleware-tasolla
-- Palauttaa muistissa olevan ennustedatan JSON-muodossa
-- Sisältää CORS-headerit
-
-#### Vastaus
-```json
-[
-  {
-    "date": "2024-03-01",
-    "quantity": 100.5,
-    "old_forecast": 95.0,
-    "new_forecast": 98.2,
-    "new_forecast_manually_adjusted": 98.2,
-    "old_forecast_error": 0,
-    "correction_percent": 3.2,
-    "explanation": "Adjusted based on market trends",
-    "correction_timestamp": "2024-03-15T10:00:00Z"
-  }
-]
+## Authentication
+API requires Bearer token authentication:
+```
+Authorization: Bearer fm91Lp8IhmZfIAFhwmx2Gb2fhDJZmsV4XaRDPse5zWfwYpURMcKJI7kS7QLbiiU5
 ```
 
-### 2. Ennustedatan tallentaminen
-```http
-POST /api/forecast-data
-```
+## Data Structure
 
-#### Tekninen toteutus
-- Hyväksyy JSON-muotoisen datan
-- Validoi syötteen olevan taulukko
-- Tallentaa datan muistiin
-- Sisältää virheenkäsittelyn
-
-#### Pyyntö
-```json
-[
-  {
-    "date": "2024-03-01",
-    "quantity": 100.5,
-    "old_forecast": 95.0,
-    "new_forecast": 98.2,
-    "new_forecast_manually_adjusted": 98.2,
-    "old_forecast_error": 0,
-    "correction_percent": 3.2,
-    "explanation": "Adjusted based on market trends",
-    "correction_timestamp": "2024-03-15T10:00:00Z"
-  }
-]
-```
-
-#### Vastaus
-```json
-{
-  "success": true
-}
-```
-
-### 3. Ennustekorjausten tallentaminen
-```http
-POST /api/save-forecast
-```
-
-#### Tekninen toteutus
-- Hyväksyy JSON-muotoisen korjausdatan
-- Validoi syötteen sisältävän adjustments-taulukon
-- Tallentaa korjaukset muistiin aikaleimalla
-- Sisältää virheenkäsittelyn ja lokituksen
-
-#### Pyyntö
-```json
-{
-  "adjustments": [
-    {
-      "date": "2024-03-01",
-      "new_forecast_manually_adjusted": 98.2,
-      "correction_percent": 3.2,
-      "explanation": "Adjusted based on market trends",
-      "correction_timestamp": "2024-03-15T10:00:00Z"
-    }
-  ]
-}
-```
-
-#### Vastaus
-```json
-{
-  "success": true
-}
-```
-
-### 4. Ennustekorjausten hakeminen
-```http
-GET /api/forecast-adjustments
-```
-
-#### Tekninen toteutus
-- Palauttaa muistissa olevat korjaukset ja niiden aikaleiman
-- Sisältää CORS-headerit
-
-#### Vastaus
-```json
-{
-  "adjustments": [
-    {
-      "date": "2024-03-01",
-      "new_forecast_manually_adjusted": 98.2,
-      "correction_percent": 3.2,
-      "explanation": "Adjusted based on market trends",
-      "correction_timestamp": "2024-03-15T10:00:00Z"
-    }
-  ],
-  "timestamp": "2024-03-15T10:00:00Z"
-}
-```
-
-## Datarakenteet
-
-### TimeSeriesData
+### TimeSeriesData Interface
 ```typescript
 interface TimeSeriesData {
-  date: string;                    // Päivämäärä YYYY-MM-DD muodossa
-  quantity: number;                // Todellinen määrä
-  old_forecast: number;            // Vanha ennuste
-  new_forecast: number;            // Uusi ennuste
-  new_forecast_manually_adjusted: number;  // Manuaalisesti korjattu ennuste
-  old_forecast_error: number;      // Ennustevirhe
-  correction_percent: number;      // Korjausprosentti
-  explanation: string;             // Selitys korjaukselle
-  correction_timestamp: string;    // Korjauksen aikaleima
+  Year_Month: string;                    // Aikaleima (YYYY-MM)
+  prod_class: string;                    // Tuoteluokka
+  prodgroup: string;                     // Tuoteryhmä
+  prodcode: string;                      // Tuotekoodi
+  proddesc1: string;                     // Tuotteen kuvaus
+  Quantity: number | null;               // Toteutunut määrä
+  new_forecast: number | null;           // Uusi ennuste
+  old_forecast: number | null;           // Vanha ennuste
+  old_forecast_error: number | null;     // Vanha ennustevirhe
+  correction_percent: number | null;     // Korjausprosentti
+  explanation: string | null;            // Korjauksen selitys
+  new_forecast_manually_adjusted: number | null;  // Manuaalisesti korjattu ennuste
+  correction_timestamp: string | null;   // Korjauksen aikaleima
 }
 ```
 
-### CorrectionData
-```typescript
-interface CorrectionData {
-  date: string;                    // Päivämäärä YYYY-MM-DD muodossa
-  new_forecast_manually_adjusted: number;  // Manuaalisesti korjattu ennuste
-  correction_percent: number;      // Korjausprosentti
-  explanation: string;             // Selitys korjaukselle
-  correction_timestamp: string;    // Korjauksen aikaleima
+## Endpoints
+
+### GET / - Hae data
+Hakee ennustedataa. Tukee WHERE-ehtoja rajaamaan hakutuloksia.
+
+#### Query Parameters
+- `where[field]=value` - Rajaa tuloksia kentän arvon perusteella
+  - Esim. `where[prodcode]=3119770` hakee vain tietyn tuotekoodin tiedot
+
+#### Example Request
+```powershell
+$headers = @{
+    'Authorization' = 'Bearer fm91Lp8IhmZfIAFhwmx2Gb2fhDJZmsV4XaRDPse5zWfwYpURMcKJI7kS7QLbiiU5'
 }
+Invoke-RestMethod -Uri 'https://scmbp.com/REST/v1/genaibase/kemppi_Kemppi_100_FG_sales_m_assistant_input_forecasts_separated?where[prodcode]=3119770' -Headers $headers -Method Get
 ```
 
-## Virheenkäsittely
-
-### HTTP-vastauskoodit
-- 200: Onnistunut pyyntö
-- 400: Virheellinen pyyntö
-- 500: Palvelimen virhe
-
-### Virheiden muoto
+#### Example Response
 ```json
-{
-  "error": "Virheilmoitus",
-  "details": "Yksityiskohtainen virheilmoitus"
+[
+  {
+    "Year_Month": "2024-04",
+    "prod_class": "1104 LS-laitteet",
+    "prodgroup": "15307 X8 WIRE FEEDERS",
+    "prodcode": "X8900501501",
+    "proddesc1": "X8 SUPERSNAKE GT02XW 15M CHILI",
+    "Quantity": 0,
+    "new_forecast": null,
+    "old_forecast": 0.0649,
+    "old_forecast_error": -0.0649,
+    "correction_percent": null,
+    "explanation": null,
+    "new_forecast_manually_adjusted": null,
+    "correction_timestamp": null
+  }
+]
+```
+
+### POST / - Päivitä data
+Päivittää ennustedataa. Päivitykset tehdään WHERE-ehtojen perusteella.
+
+#### Request Body
+```typescript
+interface ForecastCorrection {
+  product_group?: string;    // Tuoteryhmä
+  product_code?: string;     // Tuotekoodi
+  month: string;             // Kuukausi (YYYY-MM)
+  correction_percent: number; // Korjausprosentti
+  explanation: string;       // Korjauksen selitys
+  forecast_corrector?: string; // Korjauksen tehnyt henkilö
+  prod_class?: string;       // Tuoteluokka
 }
 ```
 
-### Validointi
-- Tarkistaa syötteiden oikeellisuuden
-- Validoi datatyypit
-- Tarkistaa pakolliset kentät
-- Validoi päivämäärien muodon
+#### Example Request
+```powershell
+$headers = @{
+    'Authorization' = 'Bearer fm91Lp8IhmZfIAFhwmx2Gb2fhDJZmsV4XaRDPse5zWfwYpURMcKJI7kS7QLbiiU5'
+    'Content-Type' = 'application/json'
+}
+$body = @{
+    prod_class = "1104 LS-laitteet"
+    product_group = "15307 X8 WIRE FEEDERS"
+    product_code = "X8900501501"
+    month = "2025-08"
+    correction_percent = -2
+    explanation = "Korjaus perustuu markkinatrendeihin"
+    forecast_corrector = "forecasting@kemppi.com"
+} | ConvertTo-Json
 
-## CORS-määrittelyt
-Kaikki endpointit sisältävät seuraavat CORS-headerit:
-```
-Access-Control-Allow-Origin: *
-Access-Control-Allow-Methods: GET, POST, OPTIONS
-Access-Control-Allow-Headers: Content-Type
-```
-
-## Kehitysympäristö vs. Tuotanto
-- Kehitysympäristössä data tallennetaan muistiin
-- Tuotantoympäristössä käytetään MariaDB-tietokantaa
-- Tuotantoympäristön API-määrittelyt löytyvät `docs/maria_db_api-specifications.md`
-
-## Esimerkkejä käytöstä
-
-### Ennustedatan hakeminen
-```typescript
-// Firestore (nykyinen)
-const response = await fetch('/api/forecast-data');
-const data = await response.json();
-
-// MariaDB (tuleva)
-const response = await fetch('/api/forecast', {
-  headers: {
-    'Authorization': `Bearer ${token}`
-  }
-});
-const data = await response.json();
+Invoke-RestMethod -Uri 'https://scmbp.com/REST/v1/genaibase/kemppi_Kemppi_100_FG_sales_m_assistant_input_forecasts_separated' -Headers $headers -Method Post -Body $body
 ```
 
-### Ennustekorjausten tallentaminen
-```typescript
-// Firestore (nykyinen)
-const response = await fetch('/api/save-forecast', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify({
-    adjustments: [
-      {
-        date: "2024-03-01",
-        new_forecast_manually_adjusted: 98.2,
-        correction_percent: 3.2,
-        explanation: "Adjusted based on market trends",
-        correction_timestamp: new Date().toISOString()
-      }
-    ]
-  })
-});
-
-// MariaDB (tuleva)
-const response = await fetch('/api/forecast', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token}`
-  },
-  body: JSON.stringify({
-    Year_Month: "2024-03-01",
-    "Product code": "PROD_001",
-    new_forecast_manually_adjusted: 98.2,
-    correction_percent: 3.2,
-    explanation: "Adjusted based on market trends",
-    correction_timestamp: new Date().toISOString()
-  })
-});
-```
+## Huomioitavaa
+1. Tietokannan riveillä ei ole uniikkia ID:tä/UUID:tä
+2. Päivitykset tehdään WHERE-ehtojen perusteella
+3. Kaikki kentät eivät ole pakollisia päivityksessä
+4. Aikaleima (Year_Month) on muodossa YYYY-MM
+5. Määrät (Quantity, forecasts) ovat desimaalilukuja
+6. Virheet (old_forecast_error) lasketaan automaattisesti

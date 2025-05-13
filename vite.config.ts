@@ -39,18 +39,21 @@ export default defineConfig({
           }
 
           if (req.url === '/api/forecast-data' && req.method === 'POST') {
+            let data: any; // Define data here to be accessible in catch
             try {
               const chunks = [];
               for await (const chunk of req) {
                 chunks.push(chunk);
               }
-              const data = JSON.parse(Buffer.concat(chunks).toString());
+              data = JSON.parse(Buffer.concat(chunks).toString());
               
-              if (!Array.isArray(data)) {
-                throw new Error('Invalid request data: array expected');
+              if (Array.isArray(data)) {
+                console.log(`[vite.config.ts] /api/forecast-data: Preparing to save ${data.length} items to forecastData.`);
+              } else {
+                console.warn(`[vite.config.ts] /api/forecast-data: Received data is not an array, type: ${typeof data}. Full data:`, data);
               }
-
               forecastData = data;
+              console.log(`[vite.config.ts] /api/forecast-data: Successfully saved ${forecastData.length} items.`);
               
               res.writeHead(200, { 
                 'Content-Type': 'application/json',
@@ -59,7 +62,7 @@ export default defineConfig({
               res.end(JSON.stringify({ success: true }));
               return;
             } catch (error) {
-              console.error('Error saving forecast data:', error);
+              console.error('[vite.config.ts] /api/forecast-data: Error saving forecast data:', error instanceof Error ? error.message : error, 'Input data snapshot:', data ? JSON.stringify(data).substring(0, 200) + '...' : 'undefined');
               res.writeHead(500, { 
                 'Content-Type': 'application/json',
                 'Access-Control-Allow-Origin': '*'
@@ -74,27 +77,44 @@ export default defineConfig({
 
           // Handle forecast adjustments requests
           if (req.url === '/api/save-forecast' && req.method === 'POST') {
-            console.log('Received save-forecast request');
+            console.log('[vite.config.ts] /api/save-forecast: Received save-forecast request.');
+            let rawData: string | undefined; // Define rawData here
+            let data: any; // Define data here
             try {
               const chunks = [];
               for await (const chunk of req) {
                 chunks.push(chunk);
               }
-              const rawData = Buffer.concat(chunks).toString();
-              console.log('Received raw data:', rawData);
+              rawData = Buffer.concat(chunks).toString();
+              console.log('[vite.config.ts] /api/save-forecast: Received raw data length:', rawData.length);
               
-              const data = JSON.parse(rawData);
-              console.log('Parsed request data:', data);
+              data = JSON.parse(rawData);
+              if (data && data.adjustments && Array.isArray(data.adjustments)) {
+                console.log(`[vite.config.ts] /api/save-forecast: Parsed request data. Adjustments count: ${data.adjustments.length}. Timestamp from data: ${data.timestamp}`);
+              } else {
+                console.warn('[vite.config.ts] /api/save-forecast: Parsed request data is not in expected format (missing adjustments array). Data:', data);
+              }
 
               if (!data.adjustments || !Array.isArray(data.adjustments)) {
-                throw new Error('Invalid request data: adjustments array is required');
+                console.error('[vite.config.ts] /api/save-forecast: Invalid request data: adjustments array is required. Received:', data);
+                res.writeHead(400, { 
+                  'Content-Type': 'application/json',
+                  'Access-Control-Allow-Origin': '*'
+                });
+                res.end(JSON.stringify({ 
+                  error: 'Invalid request data: adjustments array is required',
+                  details: 'Received data is not an array'
+                }));
+                return;
               }
 
               // Store in memory
+              const oldAdjustmentsCount = forecastAdjustments.adjustments.length;
               forecastAdjustments = {
                 adjustments: data.adjustments,
-                timestamp: new Date().toISOString()
+                timestamp: data.timestamp || new Date().toISOString()
               };
+              console.log(`[vite.config.ts] /api/save-forecast: Forecast adjustments updated. Previous count: ${oldAdjustmentsCount}, New count: ${forecastAdjustments.adjustments.length}. New timestamp: ${forecastAdjustments.timestamp}`);
               
               res.writeHead(200, { 
                 'Content-Type': 'application/json',
@@ -102,11 +122,11 @@ export default defineConfig({
                 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
                 'Access-Control-Allow-Headers': 'Content-Type'
               });
-              res.end(JSON.stringify({ success: true }));
-              console.log('Save forecast request completed successfully');
+              res.end(JSON.stringify({ success: true, message: `Saved ${forecastAdjustments.adjustments.length} adjustments.` }));
+              console.log('[vite.config.ts] /api/save-forecast: Save forecast request completed successfully.');
               return;
             } catch (error) {
-              console.error('Error saving forecast:', error);
+              console.error('[vite.config.ts] /api/save-forecast: Error saving forecast adjustments:', error instanceof Error ? error.message : error, 'Input data snapshot:', data ? JSON.stringify(data).substring(0, 200) + '...' : 'undefined', 'Raw data snapshot:', rawData ? rawData.substring(0, 200) + '...' : 'undefined');
               res.writeHead(500, { 
                 'Content-Type': 'application/json',
                 'Access-Control-Allow-Origin': '*',
@@ -146,5 +166,18 @@ export default defineConfig({
     port: 8080,
     open: true,
     strictPort: true,
+    proxy: {
+      '/api': {
+        target: 'https://scmbp.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, '/REST/v1/genaibase/kemppi_Kemppi_100_FG_sales_m_assistant_input_forecasts_separated'),
+        secure: false,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+        }
+      }
+    }
   },
 });

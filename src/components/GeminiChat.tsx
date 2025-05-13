@@ -28,38 +28,29 @@ const processTextWithCitations = (text: string, sources: CitationSource[] | unde
   if (!sources || sources.length === 0) {
     return { processedText: text, sourceMap: new Map() };
   }
-
   const sortedSources = [...sources]
     .filter(s => s.startIndex !== undefined && s.endIndex !== undefined)
-    .sort((a, b) => { // Sort by startIndex, then by endIndex descending (to process larger segments first if starts are same)
+    .sort((a, b) => { 
       if (a.startIndex! !== b.startIndex!) {
         return a.startIndex! - b.startIndex!;
       }
       return b.endIndex! - a.endIndex!;
     });
-
   let processedText = '';
   let lastIndex = 0;
   const sourceMap = new Map<number, CitationSource>();
   let citationCounter = 1;
-
   for (const source of sortedSources) {
     const currentStartIndex = source.startIndex!;
     const currentEndIndex = source.endIndex!;
-
     if (currentStartIndex < lastIndex) {
-      // Skip if this segment's start is before where we last processed.
-      // This can happen with overlapping sources if a larger one was processed first.
-      console.warn("Skipping overlapping or out-of-order source:", source);
+      console.warn("[GeminiChat] processTextWithCitations: Skipping overlapping or out-of-order source:", source);
       continue;
     }
-
     processedText += text.substring(lastIndex, currentStartIndex);
 
     let trueWordEndIndex = currentEndIndex;
     let scanPos = currentEndIndex;
-    // Scan forward from currentEndIndex (exclusive start for scan) to find the actual word boundary.
-    // The regex includes common punctuation and brackets as delimiters.
     while(scanPos < text.length && !/[\s.,!?;:()[\]{}]/.test(text[scanPos])) {
         scanPos++;
     }
@@ -108,15 +99,12 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
   const [sessionActive, setSessionActive] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Lataa kuva base64-muotoon
   const loadImageAsBase64 = async (imagePath: string): Promise<string> => {
     if (!imagePath) throw new Error('imageUrl puuttuu!');
     if (imagePath.startsWith('data:image/')) {
-      // Jos jo base64, palauta suoraan
-      return imagePath; // Return the full data URL
+      return imagePath;
     }
     if (imagePath.startsWith('blob:')) {
-      // Blob-url pitää lukea fetchillä ja FileReaderilla
       const response = await fetch(imagePath);
       const blob = await response.blob();
       return new Promise((resolve, reject) => {
@@ -128,7 +116,6 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
         reader.readAsDataURL(blob);
       });
     }
-    // Oletetaan että imagePath on tiedostopolku
     const response = await fetch(imagePath);
     const blob = await response.blob();
     return new Promise((resolve, reject) => {
@@ -141,7 +128,6 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
     });
   };
 
-  // Dynaaminen ohjeistus kuvan tason mukaan
   const getInstructions = () => {
     const baseInstructions = `Hei! Olen sinun henkilökohtainen kysynnänennusteavustajasi. Tehtäväni on auttaa sinua, myynnin ennustajaa, analysoimaan dataa ja tekemään perusteltuja ennustekorjauksia.
      Aloita aina yllä olevalla esittelyllä vain ja ainoastaan ensimmäisessä viestissäsi. Vastaa aina suomeksi.\n\nAnalysoi aluksi toimitetut kuvaajat. Kerro käyttäjälle kuvan tuotteista, tuoteryhmästä tai selvitä verkosta (ja mainitse löytämäsi lähteet), minkälaisia lopputuotteita ryhmään kuuluu. 
@@ -206,8 +192,8 @@ Kuvaaja 2: Ennustevirhe.
     return baseInstructions + contextInstructions + jsonInstructions[chartLevel] + endInstructions;
   };
 
-  // Aloita uusi chat-sessio
   const handleStartSession = async () => {
+    console.log("[GeminiChat] handleStartSession: Attempting to start new session.");
     setMessages([]);
     setSessionActive(true);
     setInput('');
@@ -215,230 +201,216 @@ Kuvaaja 2: Ennustevirhe.
     setIsLoading(true);
     let imageDataUrl = '';
     let errorImageDataUrl = '';
-    let initialMessage: any[] = [];
+    let initialMessageParts: Part[] = [];
     try {
-      // Ladataan kuva data URL muotoon
-      if (!imageUrl) throw new Error('imageUrl puuttuu chatin aloituksessa!');
+      if (!imageUrl) {
+        console.error("[GeminiChat] handleStartSession: imageUrl is missing when trying to start session!");
+        throw new Error('imageUrl puuttuu chatin aloituksessa!');
+      }
       imageDataUrl = await loadImageAsBase64(imageUrl);
+      console.log("[GeminiChat] handleStartSession: Main image loaded as base64.");
       if (errorImageUrl) {
         errorImageDataUrl = await loadImageAsBase64(errorImageUrl);
+        console.log("[GeminiChat] handleStartSession: Error image loaded as base64.");
       }
-
       const base64Data = imageDataUrl.split(',')[1];
       const errorBase64Data = errorImageDataUrl ? errorImageDataUrl.split(',')[1] : null;
       const model = genAI.getGenerativeModel({
         model: geminiModel,
-        generationConfig: {
-          temperature: 0.2
-        },
+        generationConfig: { temperature: 0.2 },
         tools: [ { googleSearch: {} } as any ]
       });
-      initialMessage = [
+      initialMessageParts = [
         { text: getInstructions() } as Part,
         { inlineData: { data: base64Data, mimeType: 'image/jpeg' } } as Part
       ];
       if (errorBase64Data) {
-        initialMessage.push({ inlineData: { data: errorBase64Data, mimeType: 'image/jpeg' } } as Part);
+        initialMessageParts.push({ inlineData: { data: errorBase64Data, mimeType: 'image/jpeg' } } as Part);
       }
-      const result = await model.generateContent(initialMessage);
-      const response = await result.response;
-      
+      console.log("[GeminiChat] handleStartSession: Sending initial message to Gemini model.");
+      const result = await model.generateContent({ contents: [{ role: 'user', parts: initialMessageParts }] });
+      const response = result.response;
       if (response && response.candidates && response.candidates.length > 0) {
         const candidate = response.candidates[0];
-        console.log('Candidate (handleStartSession):', JSON.stringify(candidate, null, 2));
         const content = candidate.content;
         let processedCitationMetadata: { citationSources: CitationSource[] } | undefined = undefined;
 
-        if (candidate.citationMetadata && candidate.citationMetadata.citationSources) {
-          // Use existing citationMetadata if available
-          processedCitationMetadata = candidate.citationMetadata as { citationSources: CitationSource[] };
-          console.log('Using direct citationMetadata (handleStartSession):', processedCitationMetadata);
-        } else if (candidate.groundingMetadata && candidate.groundingMetadata.groundingSupports) { // Check for groundingSupports first
+        if (candidate.citationMetadata && candidate.citationMetadata.citationSources && candidate.citationMetadata.citationSources.length > 0) {
+            processedCitationMetadata = candidate.citationMetadata;
+        } else if (candidate.groundingMetadata) {
+            const sources: CitationSource[] = [];
           const supports = candidate.groundingMetadata.groundingSupports;
-          const allChunks = candidate.groundingMetadata.groundingChunks; // This might be undefined
+            const allChunks = candidate.groundingMetadata.groundingChunks;
 
-          if (allChunks && allChunks.length > 0) {
-            // Scenario 1: We have groundingChunks (preferred)
-            console.log('Found groundingMetadata with chunks, processing (handleStartSession):', candidate.groundingMetadata);
-            const sources: CitationSource[] = supports.map((support: any) => {
-              if (support.segment && support.groundingChunkIndices && support.groundingChunkIndices.length > 0) {
+            if (supports && Array.isArray(supports)) {
+                supports.forEach((support: any) => {
+                    if (support.segment && support.groundingChunkIndices && Array.isArray(support.groundingChunkIndices) && support.groundingChunkIndices.length > 0) {
                 const firstChunkIndex = support.groundingChunkIndices[0];
-                if (firstChunkIndex >= 0 && firstChunkIndex < allChunks.length) {
+                        if (allChunks && Array.isArray(allChunks) && firstChunkIndex >= 0 && firstChunkIndex < allChunks.length) {
                   const chunk = allChunks[firstChunkIndex] as any;
-                  const uri = chunk?.web?.uri;
+                            const uri = chunk?.web?.uri || chunk?.uri;
                   if (uri) {
-                    const sourceObj = { startIndex: support.segment.startIndex, endIndex: support.segment.endIndex, uri: uri };
-                    console.log('Successfully created CitationSource from chunk:', sourceObj);
-                    return sourceObj;
+                                sources.push({ 
+                                    startIndex: parseInt(support.segment.startIndex || '0', 10), 
+                                    endIndex: parseInt(support.segment.endIndex || '0', 10), 
+                                    uri: uri,
+                                    license: chunk?.license 
+                                });
                   } else {
-                    console.warn('Could not find URI in grounding chunk at index:', firstChunkIndex, 'Full chunk structure:', JSON.stringify(chunk, null, 2));
-                  }
-                }
+                                console.warn('[GeminiChat] handleStartSession: Could not find URI in grounding chunk at index:', firstChunkIndex, 'Full chunk structure:', JSON.stringify(chunk, null, 2));
               }
-              return null;
-            }).filter((source: CitationSource | null): source is CitationSource => source !== null);
-            if (sources.length > 0) processedCitationMetadata = { citationSources: sources };
-
           } else {
-            // Scenario 2: We only have groundingSupports, try to find URI directly in support objects
-            console.log('Found groundingMetadata with supports but no/empty chunks, trying direct URIs from supports (handleStartSession):', supports);
-            const sources: CitationSource[] = supports.map((support: any) => {
-              if (support.segment) {
-                // Attempt to find URI directly in support object - paths are speculative
-                const uri = support.uri || support.web?.uri || support.webAccess?.uri || support.retrieval?.uri;
-                if (uri) {
-                  const sourceObj = { startIndex: support.segment.startIndex, endIndex: support.segment.endIndex, uri: uri };
-                  console.log('Successfully created CitationSource directly from support:', sourceObj);
-                  return sourceObj;
-                } else {
-                  console.warn('Could not find URI directly in support object. Support structure:', JSON.stringify(support, null, 2));
-                }
-              }
-              return null;
-            }).filter((source: CitationSource | null): source is CitationSource => source !== null);
-            if (sources.length > 0) processedCitationMetadata = { citationSources: sources };
-          }
-
-          if (processedCitationMetadata) {
-            console.log('Processed citationMetadata from groundingMetadata (handleStartSession):', processedCitationMetadata);
+                             console.warn('[GeminiChat] handleStartSession: Invalid firstChunkIndex or allChunks not available/array for support:', support);
+                        }
+                    } else if (support.uri) { 
+                        sources.push({ uri: support.uri, license: support.license });
+                    }
+                });
+            }
+            if (sources.length > 0) {
+                processedCitationMetadata = { citationSources: sources };
+            } else if (candidate.groundingMetadata.webSearchQueries && candidate.groundingMetadata.webSearchQueries.length > 0) {
+                 console.warn("[GeminiChat] handleStartSession: Found webSearchQueries in groundingMetadata, but could not derive specific citation sources from supports/chunks. Grounding may be general.");
           } else {
-            console.log('Could not derive citation sources from groundingMetadata (handleStartSession).');
-          }
+            }
+        } else {
         }
-
-        setMessages([
-          { role: 'user' as const, parts: initialMessage },
-          { 
-            role: 'model' as const,
-            parts: content.parts,
-            citationMetadata: processedCitationMetadata
-          }
-        ]);
+        setMessages(prev => [...prev, { role: 'model', parts: content?.parts || [{text: "Sain tyhjän vastauksen."}], citationMetadata: processedCitationMetadata }]);
       } else {
-        const fallbackText = response?.text() ?? 'Vastauksen käsittely epäonnistui.';
-        setMessages([
-          { role: 'user' as const, parts: initialMessage },
-          { role: 'model' as const, parts: [{ text: fallbackText }] }
-        ]);
+        console.warn("[GeminiChat] handleStartSession: No valid candidates in Gemini response.");
+        setMessages(prev => [...prev, { role: 'model', parts: [{text: "En saanut vastausta mallilta."}] }]);
       }
-    } catch (error) {
-      console.error('Virhe Gemini API:ssa:', error);
-      if (error instanceof Error && (error as any).response) {
-        (error as any).response.json().then((data: any) => {
-          console.error('Gemini API:n virheviesti:', data);
-        });
+    } catch (error: any) {
+      console.error(`[GeminiChat] handleStartSession: Error calling Gemini API:`, error.message || error, { status: error.status, details: error.details });
+      let errorMessage = "Virhe haettaessa vastausta avustajalta.";
+      if (error.response && typeof error.response.text === 'function') {
+        try {
+          const txt = await error.response.text();
+          const data = JSON.parse(txt);
+          if (data && data.error && data.error.message) {
+            errorMessage = `API Virhe: ${data.error.message}`;
+          }
+        } catch (parseError) {
+          console.error("[GeminiChat] handleStartSession: Error parsing Gemini API error response text:", parseError);
+        }
       }
-      if ((error as any)?.response?.text) {
-        (error as any).response.text().then((txt: string) => {
-          console.error('Gemini API:n response.text:', txt);
-        });
-      }
-      setMessages([{ role: 'model' as const, parts: [{ text: 'Virhe Gemini API:ssa.' }] }]);
+      setMessages(prev => [...prev, { role: 'model', parts: [{text: errorMessage}] }]);
     } finally {
       setIsLoading(false);
+      console.log("[GeminiChat] handleStartSession: Session start attempt finished.");
     }
   };
 
-  // Puhdista chat-sessio
   const handleClearSession = () => {
+    console.log("[GeminiChat] handleClearSession: Clearing chat session.");
     setMessages([]);
-    setSessionActive(false);
     setInput('');
+    setSessionActive(false);
+    setIsLoading(false); 
   };
 
-  // Lähetä viesti Gemini API:lle
   const handleSend = async () => {
-    if (!input.trim() || !sessionActive) return;
+    if (!input.trim()) return;
+    console.log("[GeminiChat] handleSend: Sending message.");
+    const currentInput = input;
+    const userMessage: Message = { role: 'user', parts: [{ text: currentInput }] };
+    setMessages(prev => [...prev, userMessage]);
+    setInput('');
     setIsLoading(true);
     try {
-      const userMessageText = input;
-
-      const userMessage = { role: 'user' as const, parts: [{ text: userMessageText } as Part] };
-      const newMessages = [...messages, userMessage];
-      setMessages(newMessages);
-      setInput('');
       const model = genAI.getGenerativeModel({
         model: geminiModel,
-        generationConfig: {
-          temperature: 0.2
-        },
+        generationConfig: { temperature: 0.2 },
         tools: [ { googleSearch: {} } as any ]
       });
-      const result = await model.generateContent(newMessages.flatMap(msg => msg.parts));
-      const response = await result.response;
+      
+      // Convert message history to the correct format
+      const history = messages.map(msg => ({
+        role: msg.role,
+        parts: msg.parts
+      }));
+      
+      // Add the current message
+      const result = await model.generateContent({
+        contents: [
+          ...history,
+          { role: 'user', parts: [{ text: currentInput }] }
+        ]
+      });
+      
+      const response = result.response;
 
       if (response && response.candidates && response.candidates.length > 0) {
         const candidate = response.candidates[0];
-        console.log('Candidate (handleSend):', JSON.stringify(candidate, null, 2));
         const content = candidate.content;
         let processedCitationMetadata: { citationSources: CitationSource[] } | undefined = undefined;
 
-        // Yritä ensin käyttää suoraa citationMetadata-kenttää, jos se on olemassa
-        if (candidate.citationMetadata && candidate.citationMetadata.citationSources) {
-          processedCitationMetadata = candidate.citationMetadata as { citationSources: CitationSource[] };
-          console.log('Using direct citationMetadata (handleSend):', processedCitationMetadata);
-        } 
-        // Jos ei, yritä prosessoida groundingMetadata, kuten handleStartSession-funktiossa
-        else if (candidate.groundingMetadata && candidate.groundingMetadata.groundingSupports) {
-          const supports = candidate.groundingMetadata.groundingSupports;
-          const allChunks = candidate.groundingMetadata.groundingChunks;
+        if (candidate.citationMetadata && candidate.citationMetadata.citationSources && candidate.citationMetadata.citationSources.length > 0) {
+            processedCitationMetadata = candidate.citationMetadata;
+        } else if (candidate.groundingMetadata) {
+            const sources: CitationSource[] = [];
+            const supports = candidate.groundingMetadata.groundingSupports;
+            const allChunks = candidate.groundingMetadata.groundingChunks;
 
-          if (allChunks && allChunks.length > 0) {
-            console.log('Found groundingMetadata with chunks, processing (handleSend):', candidate.groundingMetadata);
-            const sources: CitationSource[] = supports.map((support: any) => {
-              if (support.segment && support.groundingChunkIndices && support.groundingChunkIndices.length > 0) {
-                const firstChunkIndex = support.groundingChunkIndices[0];
-                if (firstChunkIndex >= 0 && firstChunkIndex < allChunks.length) {
-                  const chunk = allChunks[firstChunkIndex] as any;
-                  const uri = chunk?.web?.uri;
-                  if (uri) {
-                    return { startIndex: support.segment.startIndex, endIndex: support.segment.endIndex, uri: uri };
-                  } else {
-                     console.warn('Could not find URI in grounding chunk (handleSend) at index:', firstChunkIndex, 'Full chunk structure:', JSON.stringify(chunk, null, 2));
-                  }
-                }
-              }
-              return null;
-            }).filter((source: CitationSource | null): source is CitationSource => source !== null);
-            if (sources.length > 0) processedCitationMetadata = { citationSources: sources };
-          } else {
-            console.log('Found groundingMetadata with supports but no/empty chunks, trying direct URIs from supports (handleSend):', supports);
-            const sources: CitationSource[] = supports.map((support: any) => {
-              if (support.segment) {
-                const uri = support.uri || support.web?.uri || support.webAccess?.uri || support.retrieval?.uri;
-                if (uri) {
-                  return { startIndex: support.segment.startIndex, endIndex: support.segment.endIndex, uri: uri };
-                } else {
-                  console.warn('Could not find URI directly in support object (handleSend). Support structure:', JSON.stringify(support, null, 2));
-                }
-              }
-              return null;
-            }).filter((source: CitationSource | null): source is CitationSource => source !== null);
-            if (sources.length > 0) processedCitationMetadata = { citationSources: sources };
-          }
-
-          if (processedCitationMetadata) {
-            console.log('Processed citationMetadata from groundingMetadata (handleSend):', processedCitationMetadata);
-          } else {
-            console.log('Could not derive citation sources from groundingMetadata (handleSend).');
-          }
-        } else {
-            console.log('No citationMetadata or actionable groundingMetadata found (handleSend).');
+            if (supports && Array.isArray(supports)) {
+                supports.forEach(support => {
+                    if (support.segment && support.groundingChunkIndices && Array.isArray(support.groundingChunkIndices) && support.groundingChunkIndices.length > 0) {
+                        const firstChunkIndex = support.groundingChunkIndices[0];
+                        if (allChunks && Array.isArray(allChunks) && firstChunkIndex >= 0 && firstChunkIndex < allChunks.length) {
+                            const chunk = allChunks[firstChunkIndex] as any;
+                            const uri = chunk?.web?.uri || chunk?.uri;
+                            if (uri) {
+                                sources.push({ 
+                                    startIndex: parseInt(support.segment.startIndex || '0', 10), 
+                                    endIndex: parseInt(support.segment.endIndex || '0', 10), 
+                                    uri: uri,
+                                    license: chunk?.license 
+                                });
+                            } else {
+                                console.warn('[GeminiChat] handleSend: Could not find URI in grounding chunk at index:', firstChunkIndex, 'Full chunk structure:', JSON.stringify(chunk, null, 2));
+                            }
+                        } else {
+                            console.warn('[GeminiChat] handleSend: Invalid firstChunkIndex or allChunks not available/array for support:', support);
+                        }
+                    } else if (support.uri) { 
+                        sources.push({ uri: support.uri, license: support.license });
+                    }
+                });
+            }
+            if (sources.length > 0) {
+                processedCitationMetadata = { citationSources: sources };
+            } else if (candidate.groundingMetadata.webSearchQueries && candidate.groundingMetadata.webSearchQueries.length > 0) {
+                console.warn("[GeminiChat] handleSend: Found webSearchQueries in groundingMetadata, but could not derive specific citation sources from supports/chunks. Grounding may be general.");
+            }
         }
-
-        setMessages([...newMessages, { 
-          role: 'model' as const,
-          parts: content.parts,
-          citationMetadata: processedCitationMetadata // Käytä prosessoitua metadataa
+        
+        setMessages(prev => [...prev, { 
+          role: 'model', 
+          parts: content?.parts || [{text: "Sain tyhjän vastauksen."}], 
+          citationMetadata: processedCitationMetadata 
         }]);
       } else {
-        const fallbackText = response?.text() ?? 'Vastauksen käsittely epäonnistui.';
-        setMessages([...newMessages, { role: 'model' as const, parts: [{ text: fallbackText }] }]);
+        console.warn("[GeminiChat] handleSend: No valid candidates in Gemini response.");
+        setMessages(prev => [...prev, { role: 'model', parts: [{text: "En saanut vastausta mallilta."}] }]);
       }
-    } catch (error) {
-      setMessages(prev => [...prev, { role: 'model' as const, parts: [{ text: 'Virhe Gemini API:ssa.' }] }]);
+    } catch (error: any) {
+      console.error(`[GeminiChat] handleSend: Error calling Gemini API:`, error.message || error, { status: error.status, details: error.details });
+      let errorMessage = "Virhe lähetettäessä viestiä avustajalle.";
+      if (error.response && typeof error.response.text === 'function') {
+        try {
+          const txt = await error.response.text();
+          const data = JSON.parse(txt);
+          if (data && data.error && data.error.message) {
+            errorMessage = `API Virhe: ${data.error.message}`;
+          }
+        } catch (parseError) {
+          console.error("[GeminiChat] handleSend: Error parsing Gemini API error response text:", parseError);
+        }
+      }
+      setMessages(prev => [...prev, { role: 'model', parts: [{text: errorMessage}] }]);
     } finally {
       setIsLoading(false);
+      console.log("[GeminiChat] handleSend: Message send attempt finished.");
     }
   };
 

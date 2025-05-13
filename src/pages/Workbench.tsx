@@ -25,7 +25,6 @@ const Workbench = () => {
     if (imageUrl) {
       URL.revokeObjectURL(imageUrl);
     }
-    console.log('setImageUrl(null) called from handleRemoveFile');
     setImageUrl(null);
     setSelectedProduct(null);
   };

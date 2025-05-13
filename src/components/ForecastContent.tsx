@@ -66,26 +66,29 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
   useEffect(() => {
     const loadData = async () => {
       try {
+        console.log('[ForecastContent] useEffect (initial load): Starting initial data load.');
         setIsLoading(true);
         const dataService = DataService.getInstance();
         await dataService.loadForecastData();
         const classes = dataService.getUniqueProductClasses();
-        console.log('Loaded product classes:', classes);
+        console.log(`[ForecastContent] useEffect (initial load): Loaded ${classes.length} unique product classes.`);
         setProductClasses(classes.map(String));
         
-        // Load initial aggregated data
         const allData = dataService.getAllData();
         setRawData(allData);
+        console.log(`[ForecastContent] useEffect (initial load): Processing ${allData.length} raw data rows for initial aggregation.`);
         const aggregatedData = aggregateData(allData);
         setChartData(aggregatedData);
-        // Generate initial chart image
+        console.log(`[ForecastContent] useEffect (initial load): Aggregated data set (${aggregatedData.length} points). Generating initial chart image for 'Kaikki tuoteluokat'.`);
         const chartImageUrl = await generateChartImage(aggregatedData, 'Kaikki tuoteluokat');
         setImageUrl(chartImageUrl);
+        console.log('[ForecastContent] useEffect (initial load): Initial chart image generated and set.');
       } catch (err) {
-        console.error('Error loading data:', err);
+        console.error('[ForecastContent] useEffect (initial load): Error loading initial data:', err);
         toast.error('Failed to load data. Please try again.');
       } finally {
         setIsLoading(false);
+        console.log('[ForecastContent] useEffect (initial load): Initial data load process finished.');
       }
     };
 
@@ -93,19 +96,18 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
   }, []);
 
   useEffect(() => {
-    // Päivitä chartLevel valitun tason mukaan
+    let newChartLevel: 'class' | 'group' | 'product' = 'class';
     if (selectedProduct) {
-      setChartLevel('product');
+      newChartLevel = 'product';
     } else if (selectedGroup) {
-      setChartLevel('group');
+      newChartLevel = 'group';
     } else if (selectedClass) {
-      setChartLevel('class');
-    } else {
-      setChartLevel('class'); // Oletus
+      newChartLevel = 'class';
     }
+    setChartLevel(newChartLevel);
   }, [selectedProduct, selectedGroup, selectedClass]);
 
-  const aggregateData = (data: any[]): ChartDataPoint[] => {
+  const aggregateData = (data: any[], aggregationLevel?: string): ChartDataPoint[] => {
     const dates = [...new Set(data.map(row => row.Year_Month))];
     return dates.map(date => {
       const rowsForDate = data.filter(row => row.Year_Month === date);
@@ -160,219 +162,284 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
   };
 
   const handleClassChange = async (productClass: string) => {
-    console.log('Class selected:', productClass);
+    console.log(`[ForecastContent] handleClassChange: Class selected: '${productClass}'. Resetting group and product.`);
     setSelectedClass(productClass);
     setSelectedGroup('');
     setSelectedProduct(null);
     setChartData([]);
-    if (!productClass) {
-      // If no class selected, show aggregated data
-      const dataService = DataService.getInstance();
-      const allData = dataService.getAllData();
-      setRawData(allData);
-      const aggregatedData = aggregateData(allData);
-      setChartData(aggregatedData);
-      // Luo kuva koko datasta
-      const chartImageUrl = await generateChartImage(aggregatedData, 'Kaikki tuoteluokat');
-      setImageUrl(chartImageUrl);
-      return;
-    }
-    
+    setImageUrl(null);
+    setIsLoading(true);
     try {
       const dataService = DataService.getInstance();
-      // Hae ja aggregoi valitun tuoteluokan data
-      const classData = dataService.getDataByClass(productClass);
-      setRawData(classData);
-      const aggregatedData = aggregateData(classData);
+      let dataToAggregate;
+      let chartTitle;
+      if (!productClass) {
+        console.log('[ForecastContent] handleClassChange: No class selected, showing aggregated data for all classes.');
+        dataToAggregate = dataService.getAllData();
+        chartTitle = 'Kaikki tuoteluokat';
+        setProductGroups([]); 
+        setProducts([]); 
+      } else {
+        console.log(`[ForecastContent] handleClassChange: Fetching data for class: '${productClass}'.`);
+        dataToAggregate = dataService.getDataByClass(productClass);
+        chartTitle = productClass;
+        const groups = dataService.getProductGroupsInClass(productClass);
+        console.log(`[ForecastContent] handleClassChange: Loaded ${groups.length} product groups for class '${productClass}'.`);
+        setProductGroups(groups.map(String));
+        setProducts([]); 
+      }
+      setRawData(dataToAggregate);
+      const aggregatedData = aggregateData(dataToAggregate, productClass || 'All Classes');
       setChartData(aggregatedData);
-      // Luo kuva valitun luokan datasta
-      const chartImageUrl = await generateChartImage(aggregatedData, productClass);
+      console.log(`[ForecastContent] handleClassChange: Aggregated data set (${aggregatedData.length} points for '${chartTitle}'). Generating chart image.`);
+      const chartImageUrl = await generateChartImage(aggregatedData, chartTitle);
       setImageUrl(chartImageUrl);
-      const groups = dataService.getProductGroupsInClass(productClass);
-      console.log('Loaded product groups for class:', groups);
-      setProductGroups(groups.map(String));
+      console.log(`[ForecastContent] handleClassChange: Chart image for '${chartTitle}' generated and set.`);
     } catch (err) {
-      console.error('Error loading product groups:', err);
-      toast.error('Failed to load product groups. Please try again.');
+      console.error(`[ForecastContent] handleClassChange: Error processing class change for '${productClass}':`, err);
+      toast.error('Failed to update data for selected class. Please try again.');
+      setImageUrl(null);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleGroupChange = async (group: string) => {
+    console.log(`[ForecastContent] handleGroupChange: Group selected: '${group}' (under class '${selectedClass}'). Resetting product.`);
     setSelectedGroup(group);
     setSelectedProduct(null);
     setChartData([]);
-    if (!group) {
-      // If no group selected, show class aggregated data
-      const dataService = DataService.getInstance();
-      const classData = dataService.getDataByClass(selectedClass);
-      setRawData(classData);
-      const aggregatedData = aggregateData(classData);
-      setChartData(aggregatedData);
-      // Luo kuva valitun luokan datasta
-      const chartImageUrl = await generateChartImage(aggregatedData, selectedClass || '');
-      setImageUrl(chartImageUrl);
-      return;
-    }
-    
+    setImageUrl(null);
+    setIsLoading(true);
     try {
       const dataService = DataService.getInstance();
+      let dataToAggregate;
+      let chartTitle;
+      if (!group) {
+        console.log(`[ForecastContent] handleGroupChange: No group selected, showing aggregated data for class: '${selectedClass}'.`);
+        dataToAggregate = dataService.getDataByClass(selectedClass);
+        chartTitle = selectedClass || 'Valitse luokka';
+        setProducts([]);
+      } else {
+        console.log(`[ForecastContent] handleGroupChange: Fetching data for group: '${group}'.`);
       const groupProducts = dataService.getProductsInGroup(group);
       setProducts(groupProducts);
-      // Luo pilkulla eroteltu lista tuoteryhmän tuotteista
-      const productDescriptions = groupProducts.map(p => `${p.code} ${p.description}`);
-      // Show group aggregated data (so that forecast error is included)
-      const groupData = dataService.getProductGroupData(group);
-      setRawData(groupData);
-      const aggregatedData = aggregateData(groupData);
+        console.log(`[ForecastContent] handleGroupChange: Loaded ${groupProducts.length} products for group '${group}'.`);
+        dataToAggregate = dataService.getProductGroupData(group);
+        chartTitle = group;
+      }
+      setRawData(dataToAggregate);
+      const aggregatedData = aggregateData(dataToAggregate, group || selectedClass || 'Selected Group/Class');
       setChartData(aggregatedData);
-      // Luo kuva valitun ryhmän datasta
-      const chartImageUrl = await generateChartImage(aggregatedData, group);
+      console.log(`[ForecastContent] handleGroupChange: Aggregated data set (${aggregatedData.length} points for '${chartTitle}'). Generating chart image.`);
+      const chartImageUrl = await generateChartImage(aggregatedData, chartTitle);
       setImageUrl(chartImageUrl);
+      console.log(`[ForecastContent] handleGroupChange: Chart image for '${chartTitle}' generated and set.`);
     } catch (err) {
-      console.error('Error loading products:', err);
-      toast.error('Failed to load products. Please try again.');
+      console.error(`[ForecastContent] handleGroupChange: Error processing group change for '${group}':`, err);
+      toast.error('Failed to update data for selected group. Please try again.');
+      setImageUrl(null);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleProductChange = async (productCode: string) => {
-    console.log('Product selected:', productCode);
+    console.log(`[ForecastContent] handleProductChange: Product selected: '${productCode}' (under group '${selectedGroup}').`);
     setSelectedProduct(productCode);
-    if (!productCode) {
-      // If no product selected, show group aggregated data (so that forecast error is included)
-      const dataService = DataService.getInstance();
-      const groupData = dataService.getProductGroupData(selectedGroup);
-      setRawData(groupData);
-      const aggregatedData = aggregateData(groupData);
-      setChartData(aggregatedData);
-      return;
-    }
-
+    setChartData([]);
+    setImageUrl(null);
+    setIsLoading(true);
     try {
-      setIsLoading(true);
-      if (imageUrl) {
-        URL.revokeObjectURL(imageUrl);
-      }
       const dataService = DataService.getInstance();
-      const productData = dataService.getProductData(productCode);
-      setRawData(productData);
-      
-      const transformedData = productData
-        .sort((a, b) => new Date(a.Year_Month).getTime() - new Date(b.Year_Month).getTime())
-        .map(item => ({
-          date: item.Year_Month,
-          value: item.Quantity,
-          new_forecast: item.new_forecast,
-          old_forecast: item.old_forecast,
-          old_forecast_error: item.old_forecast_error === null ? null : Number(item.old_forecast_error),
-          new_forecast_manually_adjusted: item.new_forecast_manually_adjusted,
-          explanation: item.explanation
-        }));
-
-      setChartData(transformedData);
-
-      // Generate chart image
-      const productDescription = products.find(p => p.code === productCode)?.description || 'Tuotteen kysyntä';
-      const chartImageUrl = await generateChartImage(transformedData, productDescription);
-      console.log('setImageUrl chartImageUrl:', chartImageUrl.slice(0, 100), 'length:', chartImageUrl.length);
-      setImageUrl(chartImageUrl);
-      
-      toast.success('Product data loaded successfully');
-    } catch (err) {
-      console.error('Error loading product data:', err);
-      toast.error('Failed to load product data. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Chart refresh callback for corrections
-  const handleCorrectionsApplied = async () => {
-    try {
-      setIsLoading(true);
-      const dataService = DataService.getInstance();
-      dataService.data = []; // Tyhjennä cache, jotta saadaan tuore data Firestoresta
-      await dataService.loadForecastData();
-      let data: any[] = [];
-      if (selectedProduct) {
-        data = dataService.getProductData(selectedProduct);
-      } else if (selectedGroup) {
-        data = dataService.getProductGroupData(selectedGroup);
-      } else if (selectedClass) {
-        data = dataService.getDataByClass(selectedClass);
+      let dataToChart;
+      let chartTitle;
+      if (!productCode) {
+        console.log(`[ForecastContent] handleProductChange: No product selected, showing aggregated data for group: '${selectedGroup}'.`);
+        dataToChart = dataService.getProductGroupData(selectedGroup);
+        chartTitle = selectedGroup || 'Valitse ryhmä';
+        // Kun tuotevalinta poistetaan, näytetään ryhmän aggregoitu data, joka vaatii aggregointifunktion
+        const aggregatedGroupData = aggregateData(dataToChart, chartTitle);
+        setChartData(aggregatedGroupData);
+        setRawData(dataToChart); 
       } else {
-        data = dataService.getAllData();
+        console.log(`[ForecastContent] handleProductChange: Fetching data for product: '${productCode}'.`);
+        dataToChart = dataService.getProductData(productCode);
+        const productDetails = products.find(p => p.code === productCode);
+        chartTitle = productDetails ? `${productDetails.description} (${productCode})` : productCode;
+        // Tuotetasolla data on jo valmiiksi tuotekohtaista, muunnetaan vain ChartDataPoint-muotoon
+        const productChartDataPoints = dataToChart.map(row => ({
+          date: row.Year_Month,
+          value: row.Quantity,
+          new_forecast: row.new_forecast,
+          old_forecast: row.old_forecast,
+          new_forecast_manually_adjusted: row.new_forecast_manually_adjusted,
+          old_forecast_error: typeof row.old_forecast_error === 'string' ? parseFloat(row.old_forecast_error) : row.old_forecast_error,
+          explanation: row.explanation
+        })).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        setChartData(productChartDataPoints);
+        setRawData(dataToChart); 
       }
-      setRawData(data);
-      const aggregatedData = aggregateData(data);
-      setChartData(aggregatedData);
-      // Päivitä myös kuva
-      const chartImageUrl = await generateChartImage(aggregatedData, selectedProduct || selectedGroup || selectedClass || 'Kaikki tuoteluokat');
+      console.log(`[ForecastContent] handleProductChange: Data set for '${chartTitle}' (${(chartData || []).length} points). Generating chart image.`);
+      const chartImageUrl = await generateChartImage(chartData, chartTitle); // Käytä state-muuttujaa chartData tässä
       setImageUrl(chartImageUrl);
-      toast.success('Graafi päivitetty korjausten jälkeen');
+      console.log(`[ForecastContent] handleProductChange: Chart image for '${chartTitle}' generated and set.`);
     } catch (err) {
-      console.error('Error refreshing chart after corrections:', err);
-      toast.error('Graafin päivitys epäonnistui');
+      console.error(`[ForecastContent] handleProductChange: Error processing product change for '${productCode}':`, err);
+      toast.error('Failed to update data for selected product. Please try again.');
+      setImageUrl(null);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Laske ennustevirhedata (kpl ja %)
-  const calculateForecastErrorData = (data: any[]): { date: string, meanAbsError: number, percentBelow20: number }[] => {
-    // Suodata pois rivit, joissa sekä Quantity että old_forecast ovat null/undefined/0
-    const filtered = data.filter(row => {
-      const q = row.Quantity;
-      const f = row.old_forecast;
-      // Jos molemmat null/undefined/0, jätetään pois
-      if ((q === null || q === undefined || q === 0) && (f === null || f === undefined || f === 0)) return false;
-      return true;
-    });
-    // Ryhmitellään päivämäärän mukaan
-    const dates = [...new Set(filtered.map(row => row.Year_Month || row.date))];
-    let result = dates.map(date => {
-      // Etsi kaikki rivit tälle päivälle
-      const rows = filtered.filter(row => (row.Year_Month || row.date) === date);
-      // Lasketaan vain rivit, joilla on sekä toteutunut että ennuste
-      const validRows = rows.filter(row => row.Quantity !== null && row.old_forecast !== null && row.Quantity !== undefined && row.old_forecast !== undefined && row.Quantity !== 0 && row.old_forecast !== 0);
-      const absErrors = validRows.map(row => Math.abs(row.Quantity - row.old_forecast));
-      const meanAbsError = absErrors.length > 0 ? absErrors.reduce((a, b) => a + b, 0) / absErrors.length : 0;
-      const percentBelow20 = validRows.length > 0 ? 100 * validRows.filter(row => Math.abs(row.Quantity - row.old_forecast) / (row.Quantity === 0 ? 1 : Math.abs(row.Quantity)) < 0.2).length / validRows.length : 0;
-      if (validRows.length === 0) return null;
-      return {
-        date,
-        meanAbsError,
-        percentBelow20
-      };
-    }).filter(Boolean);
-    // Järjestä aikajärjestykseen ja ota vain viimeiset 36 kuukautta
-    result = result.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    if (result.length > 36) {
-      result = result.slice(result.length - 36);
+  const handleCorrectionsApplied = async () => {
+    console.log('[ForecastContent] handleCorrectionsApplied: Corrections have been applied. Refreshing data and chart...');
+    setIsLoading(true);
+    try {
+      const dataService = DataService.getInstance();
+      dataService.clearCache(); 
+      await dataService.loadForecastData();
+      console.log('[ForecastContent] handleCorrectionsApplied: Data reloaded from DataService.');
+
+      let currentData;
+      let chartTitleToRefresh = "Data";
+      let processedChartData: ChartDataPoint[];
+      
+      if (selectedProduct) {
+        console.log(`[ForecastContent] handleCorrectionsApplied: Refreshing product view for '${selectedProduct}'.`);
+        currentData = dataService.getProductData(selectedProduct);
+        const productDetails = products.find(p => p.code === selectedProduct);
+        chartTitleToRefresh = productDetails ? `${productDetails.description} (${selectedProduct})` : selectedProduct;
+        processedChartData = currentData.map(row => ({
+            date: row.Year_Month,
+            value: row.Quantity,
+            new_forecast: row.new_forecast,
+            old_forecast: row.old_forecast,
+            new_forecast_manually_adjusted: row.new_forecast_manually_adjusted,
+            old_forecast_error: typeof row.old_forecast_error === 'string' ? parseFloat(row.old_forecast_error) : row.old_forecast_error,
+            explanation: row.explanation
+        })).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      } else if (selectedGroup) {
+        console.log(`[ForecastContent] handleCorrectionsApplied: Refreshing group view for '${selectedGroup}'.`);
+        currentData = dataService.getProductGroupData(selectedGroup);
+        chartTitleToRefresh = selectedGroup;
+        processedChartData = aggregateData(currentData, selectedGroup);
+      } else if (selectedClass) {
+        console.log(`[ForecastContent] handleCorrectionsApplied: Refreshing class view for '${selectedClass}'.`);
+        currentData = dataService.getDataByClass(selectedClass);
+        chartTitleToRefresh = selectedClass;
+        processedChartData = aggregateData(currentData, selectedClass);
+      } else {
+        console.log('[ForecastContent] handleCorrectionsApplied: Refreshing view for all classes.');
+        currentData = dataService.getAllData();
+        chartTitleToRefresh = 'Kaikki tuoteluokat';
+        processedChartData = aggregateData(currentData, 'All Classes');
+      }
+      setChartData(processedChartData);
+      setRawData(currentData); 
+      console.log(`[ForecastContent] handleCorrectionsApplied: New chart data set for '${chartTitleToRefresh}' (${processedChartData.length} points). Generating chart image.`);
+      const chartImageUrl = await generateChartImage(processedChartData, chartTitleToRefresh);
+      setImageUrl(chartImageUrl);
+      console.log(`[ForecastContent] handleCorrectionsApplied: Chart for '${chartTitleToRefresh}' refreshed after corrections.`);
+      toast.success("Forecast data and chart refreshed after applying corrections.");
+
+      if (activeTab === 'error') {
+        await generateErrorImage(currentData, chartTitleToRefresh);
+      }
+
+    } catch (err) {
+      console.error('[ForecastContent] handleCorrectionsApplied: Error refreshing data/chart after corrections:', err);
+      toast.error("Failed to refresh data after corrections. Please try again or reload the page.");
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  const calculateForecastErrorData = (data: any[]): { date: string, meanAbsError: number | null, percentBelow20: number | null }[] => {
+    if (!data || data.length === 0) return [];
+    console.log(`[ForecastContent] calculateForecastErrorData: Calculating errors for ${data.length} data points.`);
+    const errorsByMonth: { [key: string]: { sumAbsError: number, count: number, below20Count: number } } = {};
+    data.forEach(row => {
+        const quantity = row.Quantity;
+        const oldForecast = row.old_forecast;
+        if (quantity !== null && quantity !== undefined && oldForecast !== null && oldForecast !== undefined) {
+            const absError = Math.abs(quantity - oldForecast);
+            const month = row.Year_Month;
+            if (!errorsByMonth[month]) {
+                errorsByMonth[month] = { sumAbsError: 0, count: 0, below20Count: 0 };
+            }
+            errorsByMonth[month].sumAbsError += absError;
+            errorsByMonth[month].count++;
+            if (quantity !== 0 && Math.abs((quantity - oldForecast) / quantity) * 100 < 20) {
+                errorsByMonth[month].below20Count++;
+            }
+        }
+    });
+    const result = Object.keys(errorsByMonth).map(month => {
+        const { sumAbsError, count, below20Count } = errorsByMonth[month];
+        const meanAbsError = count > 0 ? sumAbsError / count : null;
+        const percentBelow20 = count > 0 ? (below20Count / count) * 100 : null;
+        return { date: month, meanAbsError, percentBelow20 };
+    }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    console.log(`[ForecastContent] calculateForecastErrorData: Calculated ${result.length} monthly error data points.`);
     return result;
   };
 
-  useEffect(() => {
-    // Generoi error-kuva kun rawData päivittyy
-    const generateErrorImage = async () => {
-      const errorData = calculateForecastErrorData(rawData);
-      const title =
-        selectedProduct
-          ? products.find(p => p.code === selectedProduct)?.description || 'Tuotteen ennustevirhe'
-          : selectedGroup
-            ? selectedGroup
-            : selectedClass
-              ? selectedClass
-              : 'Kaikki tuoteluokat';
-      // Käytä uutta funktiota
-      const image = await generateErrorChartImage(errorData, title);
-      setErrorImageUrl(image);
-    };
-    if (rawData.length > 0) {
-      generateErrorImage();
+  const generateErrorImage = async (currentDataToUse?: any[], title?: string) => {
+    const dataForErrorChart = currentDataToUse && currentDataToUse.length > 0 ? currentDataToUse : rawData;
+    const chartTitleForError = title || (selectedProduct || selectedGroup || selectedClass || "Kokonaisennuste");
+    if (!dataForErrorChart || dataForErrorChart.length === 0) {
+        console.warn('[ForecastContent] generateErrorImage: No data available to generate error chart.');
+        setErrorImageUrl(null);
+        return;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rawData, selectedProduct, selectedGroup, selectedClass, products]);
+    console.log(`[ForecastContent] generateErrorImage: Generating error chart for '${chartTitleForError}' with ${dataForErrorChart.length} data points.`);
+    setIsLoading(true);
+    try {
+        const errorDataPoints = calculateForecastErrorData(dataForErrorChart);
+        if (errorDataPoints.length === 0) {
+            console.warn(`[ForecastContent] generateErrorImage: No error data points calculated for '${chartTitleForError}'. Cannot generate error chart.`);
+            setErrorImageUrl(null);
+            toast.info("Not enough data to generate forecast error chart for the current selection.");
+            return;
+        }
+        const imgUrl = await generateErrorChartImage(errorDataPoints, `Ennustevirheet: ${chartTitleForError}`);
+        setErrorImageUrl(imgUrl);
+        console.log(`[ForecastContent] generateErrorImage: Error chart image generated and set for '${chartTitleForError}'. URL length: ${imgUrl?.length || 0}`);
+    } catch (err) {
+        console.error(`[ForecastContent] generateErrorImage: Error generating error chart for '${chartTitleForError}':`, err);
+        toast.error("Failed to generate forecast error chart.");
+        setErrorImageUrl(null);
+    } finally {
+        setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'error') {
+        let currentLevelDataForErrorTab;
+        let titleSuffixForErrorTab;
+        if (selectedProduct) {
+            currentLevelDataForErrorTab = rawData.filter(d => d['Product code'] === selectedProduct);
+            const pDetail = products.find(p=>p.code === selectedProduct);
+            titleSuffixForErrorTab = pDetail ? `${pDetail.description} (${selectedProduct})` : selectedProduct;
+        } else if (selectedGroup) {
+            currentLevelDataForErrorTab = rawData.filter(d => d['Product Group'] === selectedGroup);
+            titleSuffixForErrorTab = selectedGroup;
+        } else if (selectedClass) {
+            currentLevelDataForErrorTab = rawData.filter(d => d.prod_class === selectedClass);
+            titleSuffixForErrorTab = selectedClass;
+        } else {
+            currentLevelDataForErrorTab = rawData;
+            titleSuffixForErrorTab = "Kaikki tuoteluokat";
+        }
+        console.log(`[ForecastContent] useEffect (activeTab='error' or selection change): Triggering error image generation for '${titleSuffixForErrorTab}'.`);
+        generateErrorImage(currentLevelDataForErrorTab, titleSuffixForErrorTab);
+    } else {
+        setErrorImageUrl(null); 
+    }
+  }, [activeTab, selectedClass, selectedGroup, selectedProduct, rawData]);
 
   return (
     <div className="space-y-4">

@@ -14,7 +14,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   }
 
   if (!user?.isAuthenticated) {
-    console.log('🔒 Access denied: User not authenticated, redirecting to login');
+    // console.log('🔒 Access denied: User not authenticated, redirecting to login'); // Kommentoitu pois
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
 

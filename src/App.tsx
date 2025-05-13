@@ -5,14 +5,13 @@ import LoginForm from "./components/LoginForm";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect } from 'react';
-import { saveForecast } from './api/saveForecast';
 
 const AppRoutes = () => {
   const { user, loading } = useAuth();
 
   useEffect(() => {
-    console.log('🧪 App mounted - Testing Vercel logs');
-    console.log('Auth state:', { user, loading });
+    // console.log('🧪 App mounted - Testing Vercel logs');
+    // console.log('[App.tsx] Auth state:', { user, loading });
   }, [user, loading]);
 
   if (loading) {
@@ -47,7 +46,13 @@ const AppRoutes = () => {
 
 const App = () => {
   return (
-    <BrowserRouter basename="/">
+    <BrowserRouter 
+      basename="/"
+      future={{
+        v7_startTransition: true,
+        v7_relativeSplatPath: true
+      }}
+    >
       <AppRoutes />
     </BrowserRouter>
   );

@@ -14,26 +14,21 @@ export const useAuth = () => {
     const initializeAuth = () => {
       try {
         const storedUser = localStorage.getItem('user');
-        console.log('🔍 Checking stored user:', storedUser);
         
         if (storedUser) {
           const parsedUser = JSON.parse(storedUser);
-          // Validate stored user data
           if (parsedUser && typeof parsedUser === 'object' && 
               'email' in parsedUser && 'isAuthenticated' in parsedUser) {
-            console.log('✅ Found valid stored user:', parsedUser);
             setUser(parsedUser);
           } else {
-            console.warn('⚠️ Invalid stored user data format');
             localStorage.removeItem('user');
             setUser(null);
           }
         } else {
-          console.log('ℹ️ No stored user found');
           setUser(null);
         }
       } catch (error) {
-        console.error('❌ Error parsing stored user:', error);
+        console.error('[useAuth] Error initializing auth state from localStorage:', error);
         localStorage.removeItem('user');
         setUser(null);
       } finally {
@@ -46,7 +41,6 @@ export const useAuth = () => {
 
   const login = async (email: string, password: string) => {
     setLoading(true);
-    console.log('🔑 Login attempt:', { email });
     
     try {
       if (email === 'forecasting@kemppi.com' && password === 'laatu') {
@@ -57,17 +51,15 @@ export const useAuth = () => {
         
         // Store in localStorage first
         localStorage.setItem('user', JSON.stringify(userData));
-        console.log('✅ Login successful, user data stored');
         
         // Then update state
         setUser(userData);
         return true;
       }
       
-      console.log('❌ Login failed: Invalid credentials');
       return false;
     } catch (error) {
-      console.error('❌ Error during login:', error);
+      console.error('[useAuth] Error during login attempt:', error);
       return false;
     } finally {
       setLoading(false);
@@ -76,15 +68,13 @@ export const useAuth = () => {
 
   const logout = () => {
     setLoading(true);
-    console.log('🚪 Logging out user');
     try {
       // Clear localStorage first
       localStorage.removeItem('user');
       // Then update state
       setUser(null);
-      console.log('✅ Logout successful');
     } catch (error) {
-      console.error('❌ Error during logout:', error);
+      console.error('[useAuth] Error during logout:', error);
     } finally {
       setLoading(false);
     }

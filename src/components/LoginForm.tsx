@@ -22,22 +22,16 @@ const LoginForm = () => {
     setIsLoading(true);
 
     try {
-      console.log('🔐 Attempting login with:', email);
       const success = await login(email, password);
-      console.log('Login result:', success);
       
       if (success) {
-        console.log('✅ Login successful, navigating to workbench...');
-        // Get the intended destination from location state, or default to /workbench
         const from = (location.state as any)?.from || '/workbench';
-        console.log('Navigating to:', from);
         navigate(from, { replace: true });
       } else {
-        console.log('❌ Login failed');
         setError('Invalid credentials');
       }
     } catch (err) {
-      console.error('❌ Login error:', err);
+      console.error('[LoginForm] Login error:', err);
       setError('An error occurred during login');
     } finally {
       setIsLoading(false);

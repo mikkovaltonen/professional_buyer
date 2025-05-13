@@ -27,11 +27,10 @@ export interface ForecastCorrection {
 export class DataService {
   private static instance: DataService;
   private data: TimeSeriesData[] = [];
-  private baseUrl: string;
+  private baseUrl = '/api';
   private authToken: string;
 
   private constructor() {
-    this.baseUrl = '/api';
     this.authToken = 'fm91Lp8IhmZfIAFhwmx2Gb2fhDJZmsV4XaRDPse5zWfwYpURMcKJI7kS7QLbiiU5';
   }
 

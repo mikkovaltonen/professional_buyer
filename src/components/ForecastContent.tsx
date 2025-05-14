@@ -557,27 +557,34 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <TimeChart 
-                data={chartData}
-                title={
-                  selectedProduct
-                    ? products.find(p => p.code === selectedProduct)?.description || 'Tuotteen kysyntä'
-                    : selectedGroup
-                      ? selectedGroup
-                      : selectedClass
-                        ? selectedClass
-                        : 'Kaikki tuoteluokat'
-                }
-                subtitle={
-                  selectedProduct
-                    ? 'Tuotetaso'
-                    : selectedGroup
-                      ? `Tuoteryhmätaso - ${products.map(p => `${p.code} ${p.description}`).join(', ')}`
-                      : selectedClass
-                        ? 'Tuoteluokkataso'
-                        : 'Kaikki tuoteluokat'
-                }
-              />
+              {isLoading ? (
+                <div className="flex flex-col items-center justify-center h-64">
+                  <Loader2 className="h-10 w-10 animate-spin text-gray-400 mb-2" />
+                  <span className="text-gray-500">Ladataan dataa, odota hetki...</span>
+                </div>
+              ) : (
+                <TimeChart 
+                  data={chartData}
+                  title={
+                    selectedProduct
+                      ? products.find(p => p.code === selectedProduct)?.description || 'Tuotteen kysyntä'
+                      : selectedGroup
+                        ? selectedGroup
+                        : selectedClass
+                          ? selectedClass
+                          : 'Kaikki tuoteluokat'
+                  }
+                  subtitle={
+                    selectedProduct
+                      ? 'Tuotetaso'
+                      : selectedGroup
+                        ? `Tuoteryhmätaso - ${products.map(p => `${p.code} ${p.description}`).join(', ')}`
+                        : selectedClass
+                          ? 'Tuoteluokkataso'
+                          : 'Kaikki tuoteluokat'
+                  }
+                />
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -592,27 +599,34 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <ForecastErrorChart 
-                data={calculateForecastErrorData(rawData)}
-                title={
-                  selectedProduct
-                    ? products.find(p => p.code === selectedProduct)?.description || 'Tuotteen ennustevirhe'
-                    : selectedGroup
-                      ? selectedGroup
-                      : selectedClass
-                        ? selectedClass
-                        : 'Kaikki tuoteluokat'
-                }
-                subtitle={
-                  selectedProduct
-                    ? 'Tuotetaso'
-                    : selectedGroup
-                      ? `Tuoteryhmätaso - ${products.map(p => `${p.code} ${p.description}`).join(', ')}`
-                      : selectedClass
-                        ? 'Tuoteluokkataso'
-                        : 'Kaikki tuoteluokat'
-                }
-              />
+              {isLoading ? (
+                <div className="flex flex-col items-center justify-center h-64">
+                  <Loader2 className="h-10 w-10 animate-spin text-gray-400 mb-2" />
+                  <span className="text-gray-500">Ladataan dataa, odota hetki...</span>
+                </div>
+              ) : (
+                <ForecastErrorChart 
+                  data={calculateForecastErrorData(rawData)}
+                  title={
+                    selectedProduct
+                      ? products.find(p => p.code === selectedProduct)?.description || 'Tuotteen ennustevirhe'
+                      : selectedGroup
+                        ? selectedGroup
+                        : selectedClass
+                          ? selectedClass
+                          : 'Kaikki tuoteluokat'
+                  }
+                  subtitle={
+                    selectedProduct
+                      ? 'Tuotetaso'
+                      : selectedGroup
+                        ? `Tuoteryhmätaso - ${products.map(p => `${p.code} ${p.description}`).join(', ')}`
+                        : selectedClass
+                          ? 'Tuoteluokkataso'
+                          : 'Kaikki tuoteluokat'
+                  }
+                />
+              )}
             </CardContent>
           </Card>
         </TabsContent>

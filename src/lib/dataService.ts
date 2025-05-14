@@ -49,10 +49,6 @@ export class DataService {
     }
 
     try {
-      console.log('[DataService] loadForecastData: Fetching data from REST API.');
-      console.log(`[DataService] loadForecastData: Using baseUrl: ${this.baseUrl}`);
-      console.log(`[DataService] loadForecastData: Auth token present: ${!!this.authToken}`);
-      
       const response = await fetch(this.baseUrl, {
         method: 'GET',
         headers: {
@@ -62,9 +58,6 @@ export class DataService {
         }
       });
       
-      console.log(`[DataService] loadForecastData: Response status: ${response.status}`);
-      console.log(`[DataService] loadForecastData: Response headers:`, Object.fromEntries(response.headers.entries()));
-      
       if (!response.ok) {
         const errorText = await response.text();
         console.error('[DataService] loadForecastData: API error response:', errorText);
@@ -72,12 +65,6 @@ export class DataService {
       }
 
       const rawData = await response.json();
-      console.log('[DataService] loadForecastData: Received raw data structure:', {
-        hasData: !!rawData,
-        hasResults: !!rawData?.results,
-        resultsIsArray: Array.isArray(rawData?.results),
-        resultsLength: rawData?.results?.length
-      });
       
       if (!rawData || !rawData.results || !Array.isArray(rawData.results)) {
         console.error('[DataService] loadForecastData: Invalid data format in REST API response:', rawData);
@@ -85,20 +72,8 @@ export class DataService {
       }
 
       this.data = rawData.results.map((row: any) => normalizeTimeSeriesData(row));
-
-      console.log(`[DataService] loadForecastData: Successfully loaded and processed ${this.data.length} rows from REST API.`);
-      if (this.data.length > 0) {
-        const sample = this.data[0];
-        console.log(`[DataService] loadForecastData: Sample processed row:`, {
-          Year_Month: sample.Year_Month,
-          Product_Group: sample.prodgroup,
-          Product_Code: sample.prodcode,
-          Product_Description: sample.proddesc1,
-          Quantity: sample.Quantity,
-          New_Forecast: sample.new_forecast,
-          Old_Forecast: sample.old_forecast
-        });
-      }
+      console.log(`[DataService] loadForecastData: Successfully loaded ${this.data.length} rows from REST API.`);
+      
       return this.data;
     } catch (error) {
       console.error('[DataService] loadForecastData: Failed to load data from REST API:', error);

@@ -193,6 +193,68 @@ export class DataService {
   public clearCache(): void {
     this.data = [];
   }
+
+  public async applyCorrections(corrections: ForecastCorrection[]): Promise<void> {
+    console.log('[DataService] applyCorrections: Starting to apply corrections...');
+    
+    if (!corrections || corrections.length === 0) {
+      console.log('[DataService] applyCorrections: No corrections to apply');
+      return;
+    }
+
+    try {
+      // Process each correction
+      for (const correction of corrections) {
+        console.log('[DataService] applyCorrections: Processing correction:', correction);
+        
+        // Prepare the request body
+        const requestBody = {
+          Year_Month: correction.month,
+          prod_class: correction.prod_class,
+          prodgroup: correction.product_group,
+          prodcode: correction.product_code,
+          correction_percent: correction.correction_percent,
+          explanation: correction.explanation,
+          forecast_corrector: correction.forecast_corrector || 'system',
+          correction_timestamp: new Date().toISOString()
+        };
+
+        console.log('[DataService] applyCorrections: Sending request with body:', requestBody);
+
+        // Send the request to the REST API
+        const response = await fetch(this.baseUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${this.authToken}`,
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(requestBody)
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('[DataService] applyCorrections: API error response:', errorText);
+          throw new Error(`Failed to apply correction: ${response.status} ${response.statusText} - ${errorText}`);
+        }
+
+        console.log('[DataService] applyCorrections: Successfully applied correction');
+      }
+
+      // Clear cache after successful updates
+      this.clearCache();
+      console.log('[DataService] applyCorrections: All corrections applied successfully');
+    } catch (error) {
+      console.error('[DataService] applyCorrections: Error applying corrections:', error);
+      if (error instanceof Error) {
+        console.error('[DataService] applyCorrections: Error details:', {
+          message: error.message,
+          stack: error.stack
+        });
+      }
+      throw error;
+    }
+  }
 }
 
 export function normalizeTimeSeriesData(row: any): TimeSeriesData {

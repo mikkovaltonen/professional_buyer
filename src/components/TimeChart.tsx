@@ -84,8 +84,18 @@ const TimeChart: React.FC<TimeChartProps> = ({ data, title, subtitle, showForeca
       {subtitle && (
         <div className="mb-3">
           <div
-            className="text-xs text-gray-700 bg-gray-100 rounded p-2 overflow-x-auto"
-            style={{maxWidth: '100%', minHeight: '2.5em', whiteSpace: 'pre-wrap', wordBreak: 'break-word'}}
+            className="text-xs text-gray-700 bg-gray-100 rounded p-2"
+            style={{
+              maxWidth: '100%',
+              minHeight: '2.5em',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+              display: '-webkit-box',
+              WebkitLineClamp: 3,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
           >
             {subtitle}
           </div>

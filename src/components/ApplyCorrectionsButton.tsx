@@ -243,7 +243,7 @@ const ApplyCorrectionsButton: React.FC<ApplyCorrectionsButtonProps> = ({
         ) : (
           <Save className="h-4 w-4 mr-2" />
         )}
-        Tallenna ehdotetut manuaaliset korjaukset
+        Tallenna json
       </Button>
       {status !== 'idle' && statusMessage && (
         <span className={`text-sm mt-1 ${statusColors[status] || ''}`}>{statusMessage}</span>

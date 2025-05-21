@@ -102,9 +102,14 @@ export class DataService {
     return Array.from(groups);
   }
 
-  public getProductsInGroup(productGroup: string): { code: string; description: string }[] {
+  public getProductsInGroup(productGroup: string, productClass?: string): { code: string; description: string }[] {
+    let filteredData = this.data;
+    if (productClass && productClass.trim() !== '') {
+      filteredData = filteredData.filter(row => row.prod_class === productClass);
+    }
+    
     const products = new Map<string, string>();
-    this.data
+    filteredData
       .filter(row => row.prodgroup === productGroup)
       .forEach(row => {
         if (row.prodcode && row.proddesc1) {
@@ -120,8 +125,13 @@ export class DataService {
       .sort((a, b) => new Date(a.Year_Month).getTime() - new Date(b.Year_Month).getTime());
   }
 
-  public getProductGroupData(productGroup: string): TimeSeriesData[] {
-    const groupData = this.data.filter(row => row.prodgroup === productGroup);
+  public getProductGroupData(productGroup: string, productClass?: string): TimeSeriesData[] {
+    let initialData = this.data;
+    if (productClass && productClass.trim() !== '') {
+      initialData = initialData.filter(row => row.prod_class === productClass);
+    }
+    
+    const groupData = initialData.filter(row => row.prodgroup === productGroup);
     
     // Get unique dates
     const dates = [...new Set(groupData.map(row => row.Year_Month))];

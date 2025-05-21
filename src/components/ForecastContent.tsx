@@ -240,11 +240,11 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
         chartTitle = selectedClass || 'Valitse luokka';
         setProducts([]);
       } else {
-        console.log(`[ForecastContent] handleGroupChange: Fetching data for group: '${group}'.`);
-      const groupProducts = dataService.getProductsInGroup(group);
+        console.log(`[ForecastContent] handleGroupChange: Fetching data for group: '${group}' within class '${selectedClass}'.`);
+      const groupProducts = dataService.getProductsInGroup(group, selectedClass);
       setProducts(groupProducts);
-        console.log(`[ForecastContent] handleGroupChange: Loaded ${groupProducts.length} products for group '${group}'.`);
-        dataToAggregate = dataService.getProductGroupData(group);
+        console.log(`[ForecastContent] handleGroupChange: Loaded ${groupProducts.length} products for group '${group}' in class '${selectedClass}'.`);
+        dataToAggregate = dataService.getProductGroupData(group, selectedClass);
         chartTitle = group;
       }
       setRawData(dataToAggregate);
@@ -274,8 +274,8 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
       let dataToChart;
       let chartTitle;
       if (!productCode) {
-        console.log(`[ForecastContent] handleProductChange: No product selected, showing aggregated data for group: '${selectedGroup}'.`);
-        dataToChart = dataService.getProductGroupData(selectedGroup);
+        console.log(`[ForecastContent] handleProductChange: No product selected, showing aggregated data for group: '${selectedGroup}' within class '${selectedClass}'.`);
+        dataToChart = dataService.getProductGroupData(selectedGroup, selectedClass);
         chartTitle = selectedGroup || 'Valitse ryhmä';
         // Kun tuotevalinta poistetaan, näytetään ryhmän aggregoitu data, joka vaatii aggregointifunktion
         const aggregatedGroupData = aggregateData(dataToChart, chartTitle);
@@ -343,9 +343,11 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
             explanation: row.explanation
         })).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
       } else if (selectedGroup) {
-        console.log(`[ForecastContent] handleCorrectionsApplied: Refreshing group view for '${selectedGroup}'.`);
-        currentData = dataService.getProductGroupData(selectedGroup);
+        console.log(`[ForecastContent] handleCorrectionsApplied: Refreshing group view for '${selectedGroup}' within class '${selectedClass}'.`);
+        currentData = dataService.getProductGroupData(selectedGroup, selectedClass);
         chartTitleToRefresh = selectedGroup;
+        // Note: aggregateData for group level doesn't strictly need expectedProductGroups, 
+        // as its own logic for adjusted forecast relies on unique groups within its data.
         processedChartData = aggregateData(currentData, selectedGroup);
       } else if (selectedClass) {
         console.log(`[ForecastContent] handleCorrectionsApplied: Refreshing class view for '${selectedClass}'.`);

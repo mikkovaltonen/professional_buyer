@@ -162,7 +162,7 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
     }
 
     const jsonString = JSON.stringify(payload, null, 2);
-    const fullMessageString = `Anna tutkimukseesi perustuva paras arvauksesi tilastollisen kysyntäennusteen korjausesta alla olevassaJSON muodossa\n\`\`\`json\n${jsonString}\n\`\`\``;
+    const fullMessageString = `Anna tutkimukseesi perustuva paras arvauksesi tilastollisen kysyntäennusteen korjauksesta. Lisääthän myös kuukauden yhdelle riville. JSON-muoto on alla:\n\`\`\`json\n${jsonString}\n\`\`\``;
 
     const userMessage: Message = { role: 'user', parts: [{ text: fullMessageString }] };
     setMessages(prev => [...prev, userMessage]);
@@ -519,7 +519,7 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
         <button
           className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded"
           onClick={handleClearSession}
-          disabled={!sessionActive || isLoading}
+          disabled={!sessionActive}
         >
           Puhdista chat
         </button>
@@ -609,17 +609,17 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
         />
         <button
           className="bg-[#4ADE80] hover:bg-[#22C55E] text-white px-4 py-2 rounded"
-          onClick={handleRequestJson}
-          disabled={!sessionActive || isLoading}
-        >
-          Pyydä json
-        </button>
-        <button
-          className="bg-[#4ADE80] hover:bg-[#22C55E] text-white px-4 py-2 rounded"
           onClick={handleSend}
           disabled={!sessionActive || isLoading || !input.trim()}
         >
           Lähetä
+        </button>
+        <button
+          className="bg-[#4ADE80] hover:bg-[#22C55E] text-white px-4 py-2 rounded"
+          onClick={handleRequestJson}
+          disabled={!sessionActive || isLoading}
+        >
+          Pyydä json
         </button>
       </div>
     </div>

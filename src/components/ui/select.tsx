@@ -106,7 +106,10 @@ const SelectContent = React.forwardRef<
               React.isValidElement(child) &&
               (child.type as any).displayName === SelectItem.displayName // Compare with SelectItem's displayName
             ) {
-              const itemText = child.props.value || (typeof child.props.children === 'string' ? child.props.children : '');
+              const childrenText = React.Children.toArray(child.props.children)
+                .map((c) => (typeof c === 'string' || typeof c === 'number' ? c.toString() : ''))
+                .join(' ');
+              const itemText = `${child.props.value ?? ''} ${childrenText}`.trim();
               if (
                 searchTerm === "" ||
                 itemText.toLowerCase().includes(searchTerm.toLowerCase())

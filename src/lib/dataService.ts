@@ -102,6 +102,29 @@ export class DataService {
     return Array.from(groups);
   }
 
+  public getProductGroupDetailsInClass(productClass: string): { code: string; description: string }[] {
+    if (!productClass || productClass.trim() === '') {
+      return [];
+    }
+
+    const classSpecificData = this.data.filter(row => row.prod_class === productClass);
+    
+    if (classSpecificData.length === 0) {
+      return [];
+    }
+
+    // Using a Map to get unique product groups and use prodgroup itself as description
+    const groupMap = new Map<string, string>();
+    classSpecificData.forEach(row => {
+      if (row.prodgroup && !groupMap.has(row.prodgroup)) {
+        // For description, we use the prodgroup value itself as per revised understanding
+        groupMap.set(row.prodgroup, row.prodgroup);
+      }
+    });
+
+    return Array.from(groupMap.entries()).map(([code, description]) => ({ code, description }));
+  }
+
   public getProductsInGroup(productGroup: string, productClass?: string): { code: string; description: string }[] {
     let filteredData = this.data;
     if (productClass && productClass.trim() !== '') {

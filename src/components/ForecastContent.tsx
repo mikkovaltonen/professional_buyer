@@ -62,6 +62,7 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
   const [activeTab, setActiveTab] = useState<'history' | 'error'>('history');
   const [rawData, setRawData] = useState<any[]>([]);
   const [errorImageUrl, setErrorImageUrl] = useState<string | null>(null);
+  const [currentClassProductGroupDetails, setCurrentClassProductGroupDetails] = useState<{ code: string; description: string; }[]>([]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -197,6 +198,7 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
         chartTitle = 'Kaikki tuoteluokat';
         setProductGroups([]); 
         setProducts([]);
+        setCurrentClassProductGroupDetails([]);
       } else {
         console.log(`[ForecastContent] handleClassChange: Fetching data for class: '${productClass}'.`);
         dataToAggregate = dataService.getDataByClass(productClass);
@@ -205,7 +207,10 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
         expectedGroupsForClass = groups.map(String);
         console.log(`[ForecastContent] handleClassChange: Loaded ${expectedGroupsForClass.length} product groups for class '${productClass}'. These are the expected groups for adjusted forecast aggregation.`);
         setProductGroups(expectedGroupsForClass);
-        setProducts([]); 
+        setProducts([]);
+        const groupDetails = dataService.getProductGroupDetailsInClass(productClass);
+        setCurrentClassProductGroupDetails(groupDetails);
+        console.log(`[ForecastContent] handleClassChange: Loaded ${groupDetails.length} product group details for class '${productClass}'.`);
       }
       setRawData(dataToAggregate);
       const aggregatedData = aggregateData(dataToAggregate, productClass || 'All Classes', expectedGroupsForClass);
@@ -606,7 +611,20 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
                       : selectedGroup
                         ? `Tuoteryhmätaso - ${products.map(p => `${p.code} ${p.description}`).join(', ')}`
                         : selectedClass
-                          ? 'Tuoteluokkataso'
+                          ? (() => {
+                              const groupCodes = currentClassProductGroupDetails.map(g => g.code);
+                              if (groupCodes.length === 0) {
+                                return 'Tuoteluokkataso';
+                              }
+                              let groupListString = groupCodes.join(', ');
+                              const maxGroupsToShow = 5;
+                              const prefix = "Sisältää tuoteryhmät: ";
+                              if (groupCodes.length > maxGroupsToShow) {
+                                const firstGroups = groupCodes.slice(0, 3).join(', ');
+                                groupListString = `${firstGroups} ... ja ${groupCodes.length - 3} muuta ryhmää`;
+                              }
+                              return `Tuoteluokkataso - ${prefix}${groupListString}`;
+                            })()
                           : 'Kaikki tuoteluokat'
                   }
                 />

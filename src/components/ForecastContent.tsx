@@ -107,7 +107,11 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
     setChartLevel(newChartLevel);
   }, [selectedProduct, selectedGroup, selectedClass]);
 
-  const aggregateData = (data: any[], aggregationLevel?: string): ChartDataPoint[] => {
+  const aggregateData = (
+    data: any[], 
+    aggregationLevel?: string, 
+    expectedProductGroups?: string[]
+  ): ChartDataPoint[] => {
     const dates = [...new Set(data.map(row => row.Year_Month))];
     return dates.map(date => {
       const rowsForDate = data.filter(row => row.Year_Month === date);
@@ -126,11 +130,23 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
             .reduce((sum, row) => sum + (row.new_forecast || 0), 0)
         : null;
 
-      // Korjattu ennuste: näytetään vain jos kaikilla tuoteryhmillä on arvo
-      // Selvitetään montako uniikkia tuoteryhmää on rivillä
-      const uniqueGroups = [...new Set(rowsForDate.map(row => row["Product Group"]))];
-      const groupsWithAdjustment = [...new Set(rowsForDate.filter(row => row.new_forecast_manually_adjusted !== null && row.new_forecast_manually_adjusted !== undefined).map(row => row["Product Group"]))];
-      const showAdjusted = uniqueGroups.length > 0 && uniqueGroups.every(g => groupsWithAdjustment.includes(g));
+      // Korjattu ennuste:
+      const groupsWithAdjustment = [...new Set(
+        rowsForDate
+          .filter(row => row.new_forecast_manually_adjusted !== null && row.new_forecast_manually_adjusted !== undefined)
+          .map(row => row["Product Group"])
+      )];
+
+      let showAdjusted = false;
+      if (expectedProductGroups && expectedProductGroups.length > 0) {
+        // Stricter logic: all expected product groups must have an adjustment.
+        showAdjusted = expectedProductGroups.every(expectedGroup => groupsWithAdjustment.includes(expectedGroup));
+      } else {
+        // Original logic: all unique groups *present in the current data for this date* must have an adjustment.
+        const uniqueGroupsOnDate = [...new Set(rowsForDate.map(row => row["Product Group"]))];
+        showAdjusted = uniqueGroupsOnDate.length > 0 && uniqueGroupsOnDate.every(g => groupsWithAdjustment.includes(g));
+      }
+      
       const totalNewForecastAdjusted = showAdjusted
         ? rowsForDate.filter(row => row.new_forecast_manually_adjusted !== null)
             .reduce((sum, row) => sum + (row.new_forecast_manually_adjusted || 0), 0)
@@ -173,23 +189,26 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
       const dataService = DataService.getInstance();
       let dataToAggregate;
       let chartTitle;
+      let expectedGroupsForClass: string[] | undefined = undefined;
+
       if (!productClass) {
         console.log('[ForecastContent] handleClassChange: No class selected, showing aggregated data for all classes.');
         dataToAggregate = dataService.getAllData();
         chartTitle = 'Kaikki tuoteluokat';
         setProductGroups([]); 
-        setProducts([]); 
+        setProducts([]);
       } else {
         console.log(`[ForecastContent] handleClassChange: Fetching data for class: '${productClass}'.`);
         dataToAggregate = dataService.getDataByClass(productClass);
         chartTitle = productClass;
         const groups = dataService.getProductGroupsInClass(productClass);
-        console.log(`[ForecastContent] handleClassChange: Loaded ${groups.length} product groups for class '${productClass}'.`);
-        setProductGroups(groups.map(String));
+        expectedGroupsForClass = groups.map(String);
+        console.log(`[ForecastContent] handleClassChange: Loaded ${expectedGroupsForClass.length} product groups for class '${productClass}'. These are the expected groups for adjusted forecast aggregation.`);
+        setProductGroups(expectedGroupsForClass);
         setProducts([]); 
       }
       setRawData(dataToAggregate);
-      const aggregatedData = aggregateData(dataToAggregate, productClass || 'All Classes');
+      const aggregatedData = aggregateData(dataToAggregate, productClass || 'All Classes', expectedGroupsForClass);
       setChartData(aggregatedData);
       console.log(`[ForecastContent] handleClassChange: Aggregated data set (${aggregatedData.length} points for '${chartTitle}'). Generating chart image.`);
       const chartImageUrl = await generateChartImage(aggregatedData, chartTitle);
@@ -261,7 +280,10 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
         // Kun tuotevalinta poistetaan, näytetään ryhmän aggregoitu data, joka vaatii aggregointifunktion
         const aggregatedGroupData = aggregateData(dataToChart, chartTitle);
         setChartData(aggregatedGroupData);
-        setRawData(dataToChart); 
+        setRawData(dataToChart); // Set rawData for the group
+        console.log(`[ForecastContent] handleProductChange: Data set for '${chartTitle}' (${aggregatedGroupData.length} points). Generating chart image.`);
+        const chartImageUrl = await generateChartImage(aggregatedGroupData, chartTitle); // Use local variable
+        setImageUrl(chartImageUrl);
       } else {
         console.log(`[ForecastContent] handleProductChange: Fetching data for product: '${productCode}'.`);
         dataToChart = dataService.getProductData(productCode);
@@ -278,11 +300,11 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
           explanation: row.explanation
         })).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
         setChartData(productChartDataPoints);
-        setRawData(dataToChart); 
+        setRawData(dataToChart); // Set rawData for the product
+        console.log(`[ForecastContent] handleProductChange: Data set for '${chartTitle}' (${productChartDataPoints.length} points). Generating chart image.`);
+        const chartImageUrl = await generateChartImage(productChartDataPoints, chartTitle); // Use local variable
+        setImageUrl(chartImageUrl);
       }
-      console.log(`[ForecastContent] handleProductChange: Data set for '${chartTitle}' (${(chartData || []).length} points). Generating chart image.`);
-      const chartImageUrl = await generateChartImage(chartData, chartTitle); // Käytä state-muuttujaa chartData tässä
-      setImageUrl(chartImageUrl);
       console.log(`[ForecastContent] handleProductChange: Chart image for '${chartTitle}' generated and set.`);
     } catch (err) {
       console.error(`[ForecastContent] handleProductChange: Error processing product change for '${productCode}':`, err);
@@ -329,12 +351,14 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
         console.log(`[ForecastContent] handleCorrectionsApplied: Refreshing class view for '${selectedClass}'.`);
         currentData = dataService.getDataByClass(selectedClass);
         chartTitleToRefresh = selectedClass;
-        processedChartData = aggregateData(currentData, selectedClass);
+        const expectedGroupsForClass = dataService.getProductGroupsInClass(selectedClass).map(String);
+        console.log(`[ForecastContent] handleCorrectionsApplied: For class '${selectedClass}', expecting ${expectedGroupsForClass.length} groups for adjusted forecast aggregation: ${expectedGroupsForClass.join(', ')}`);
+        processedChartData = aggregateData(currentData, selectedClass, expectedGroupsForClass);
       } else {
         console.log('[ForecastContent] handleCorrectionsApplied: Refreshing view for all classes.');
         currentData = dataService.getAllData();
         chartTitleToRefresh = 'Kaikki tuoteluokat';
-        processedChartData = aggregateData(currentData, 'All Classes');
+        processedChartData = aggregateData(currentData, 'All Classes'); // No expected groups for "All classes"
       }
       setChartData(processedChartData);
       setRawData(currentData); 

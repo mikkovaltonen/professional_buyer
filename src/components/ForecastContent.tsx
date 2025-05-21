@@ -17,6 +17,7 @@ import GeminiChat from "@/components/GeminiChat";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { generateErrorChartImage } from "@/lib/chartUtils";
 import ForecastErrorChart from "./ForecastErrorChart";
+import { generateTruncatedListString } from "@/lib/utils";
 
 interface ForecastContentProps {
   selectedProduct: string | null;
@@ -609,21 +610,22 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
                     selectedProduct
                       ? 'Tuotetaso'
                       : selectedGroup
-                        ? `Tuoteryhmätaso - ${products.map(p => `${p.code} ${p.description}`).join(', ')}`
+                        ? (() => {
+                            const productStrings = products.map(p => `${p.code} ${p.description}`);
+                            if (productStrings.length === 0) {
+                              return 'Tuoteryhmätaso';
+                            }
+                            const productListStr = generateTruncatedListString(productStrings, "tuote", "tuotetta", 3);
+                            return `Tuoteryhmätaso - Sisältää: ${productListStr}`;
+                          })()
                         : selectedClass
                           ? (() => {
                               const groupCodes = currentClassProductGroupDetails.map(g => g.code);
                               if (groupCodes.length === 0) {
                                 return 'Tuoteluokkataso';
                               }
-                              let groupListString = groupCodes.join(', ');
-                              const maxGroupsToShow = 5;
-                              const prefix = "Sisältää tuoteryhmät: ";
-                              if (groupCodes.length > maxGroupsToShow) {
-                                const firstGroups = groupCodes.slice(0, 3).join(', ');
-                                groupListString = `${firstGroups} ... ja ${groupCodes.length - 3} muuta ryhmää`;
-                              }
-                              return `Tuoteluokkataso - ${prefix}${groupListString}`;
+                              const groupListStr = generateTruncatedListString(groupCodes, "tuoteryhmä", "tuoteryhmää", 3);
+                              return `Tuoteluokkataso - Sisältää: ${groupListStr}`;
                             })()
                           : 'Kaikki tuoteluokat'
                   }
@@ -664,9 +666,23 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
                     selectedProduct
                       ? 'Tuotetaso'
                       : selectedGroup
-                        ? `Tuoteryhmätaso - ${products.map(p => `${p.code} ${p.description}`).join(', ')}`
+                        ? (() => {
+                            const productStrings = products.map(p => `${p.code} ${p.description}`);
+                            if (productStrings.length === 0) {
+                              return 'Tuoteryhmätaso';
+                            }
+                            const productListStr = generateTruncatedListString(productStrings, "tuote", "tuotetta", 3);
+                            return `Tuoteryhmätaso - Sisältää: ${productListStr}`;
+                          })()
                         : selectedClass
-                          ? 'Tuoteluokkataso'
+                          ? (() => {
+                              const groupCodes = currentClassProductGroupDetails.map(g => g.code);
+                              if (groupCodes.length === 0) {
+                                return 'Tuoteluokkataso';
+                              }
+                              const groupListStr = generateTruncatedListString(groupCodes, "tuoteryhmä", "tuoteryhmää", 3);
+                              return `Tuoteluokkataso - Sisältää: ${groupListStr}`;
+                            })()
                           : 'Kaikki tuoteluokat'
                   }
                 />

@@ -473,143 +473,151 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
     }
   }, [activeTab, selectedClass, selectedGroup, selectedProduct, rawData]);
 
-  async function applyCorrectionFromChat(correctionJSON: any) {
-    console.log("[ForecastContent] applyCorrectionFromChat: Received correction JSON:", correctionJSON);
+  // Renamed from applyCorrectionFromChat
+  async function applyBatchCorrectionsFromChat(corrections: DataService.ForecastCorrection[]) { 
+    console.log(`[ForecastContent] applyBatchCorrectionsFromChat: Received ${corrections?.length || 0} corrections.`);
+    
+    if (!corrections || corrections.length === 0) {
+      toast.info("No valid corrections to apply.");
+      return;
+    }
+
     setIsLoading(true);
-    let skippedProductsCount = 0;
+    let appliedCount = 0;
+    let skippedCount = 0;
+    const successfullyAppliedCorrectionsForDataService: DataService.ForecastCorrection[] = [];
     const dataService = DataService.getInstance();
 
     try {
-      const { level, identifier, month, correctionPercent, explanation } = correctionJSON;
-
-      // Basic validation
-      if (!level || !identifier || !month || typeof correctionPercent !== 'number' || !explanation) {
-        toast.error("Korjauspyyntö epäonnistui: Puutteelliset tiedot korjausobjektissa.");
-        console.error("[ForecastContent] applyCorrectionFromChat: Invalid correction JSON:", correctionJSON);
-        setIsLoading(false);
-        return;
-      }
-      
-      // Year-Month validation
-      const monthPattern = /^\d{4}-\d{2}$/;
-      if (!monthPattern.test(month)) {
-          toast.error("Korjauspyyntö epäonnistui: Virheellinen kuukausimuoto. Käytä YYYY-MM.");
-          console.error("[ForecastContent] applyCorrectionFromChat: Invalid month format:", month);
-          setIsLoading(false);
-          return;
-      }
-
-
-      let targetProducts: { productCode: string, productClass: string, productGroup: string }[] = [];
-
-      if (level === 'product') {
-        console.log(`[ForecastContent] applyCorrectionFromChat: Product level correction for ${identifier}.`);
-        const productDataRows = dataService.getProductData(identifier); // This returns TimeSeriesData[]
-        if (productDataRows.length > 0) {
-          const firstRow = productDataRows[0]; // All rows for a product will have same class/group
-          targetProducts.push({ 
-            productCode: identifier, 
-            productClass: firstRow.prod_class, 
-            productGroup: firstRow.prodgroup 
-          });
-        } else {
-          toast.error(`Tuotetta ${identifier} ei löytynyt tietokannasta.`);
-          console.warn(`[ForecastContent] applyCorrectionFromChat: Product ${identifier} not found.`);
+      for (const correction of corrections) {
+        // Light validation for individual correction object
+        // Main validation is assumed to be done by GeminiChat.tsx before calling this.
+        if (!correction.product_code || !correction.month || typeof correction.correction_percent !== 'number' || !correction.explanation || !correction.prod_class || !correction.product_group) {
+          console.warn("[ForecastContent] applyBatchCorrectionsFromChat: Skipping invalid or incomplete correction object:", correction);
+          skippedCount++;
+          continue;
         }
-      } else if (level === 'group') {
-        if (!selectedClass) {
-          toast.error("Valitse ensin tuoteluokka, jotta korjaus voidaan kohdistaa oikein.");
-          console.warn("[ForecastContent] applyCorrectionFromChat: Group level correction attempted without a selected class.");
-          setIsLoading(false);
-          return;
+         // Year-Month validation
+        const monthPattern = /^\d{4}-\d{2}$/;
+        if (!monthPattern.test(correction.month)) {
+            toast.error(`Korjauspyyntö tuotteelle ${correction.product_code} ohitettu: Virheellinen kuukausimuoto (${correction.month}). Käytä YYYY-MM.`);
+            console.warn(`[ForecastContent] applyBatchCorrectionsFromChat: Invalid month format for product ${correction.product_code}:`, correction.month);
+            skippedCount++;
+            continue;
         }
-        console.log(`[ForecastContent] applyCorrectionFromChat: Group level correction for ${identifier} in class ${selectedClass}.`);
-        const productsInGroup = dataService.getProductsInGroup(identifier, selectedClass);
-        targetProducts = productsInGroup.map(p => ({ 
-          productCode: p.code, 
-          productClass: selectedClass, 
-          productGroup: identifier 
-        }));
-      } else if (level === 'class') {
-        console.log(`[ForecastContent] applyCorrectionFromChat: Class level correction for ${identifier}.`);
-        const classData = dataService.getDataByClass(identifier);
-        const uniqueProductsMap = new Map<string, { productCode: string, productClass: string, productGroup: string }>();
-        classData.forEach(row => {
-          if (row.prodcode && !uniqueProductsMap.has(row.prodcode)) {
-            uniqueProductsMap.set(row.prodcode, {
-              productCode: row.prodcode,
-              productClass: identifier, // The class is the identifier itself
-              productGroup: row.prodgroup
-            });
-          }
-        });
-        targetProducts = Array.from(uniqueProductsMap.values());
-      } else {
-        toast.error(`Tuntematon korjaustaso: ${level}`);
-        console.error(`[ForecastContent] applyCorrectionFromChat: Unknown correction level: ${level}`);
-        setIsLoading(false);
-        return;
-      }
 
-      if (targetProducts.length === 0 && level !== 'product') { // For product level, error already shown if not found
-          toast.warn(`Ei tuotteita löytynyt tasolle ${level} tunnisteella ${identifier}. Korjausta ei voida jatkaa.`);
-          console.warn(`[ForecastContent] applyCorrectionFromChat: No products found for ${level} ${identifier}.`);
-          setIsLoading(false);
-          return;
-      }
-      
-      console.log(`[ForecastContent] applyCorrectionFromChat: Identified ${targetProducts.length} target products.`);
 
-      const correctionsToApply: any[] = []; // Using any[] to match DataService's ForecastCorrection more broadly for now
-
-      for (const tp of targetProducts) {
-        const productData = dataService.getProductData(tp.productCode);
-        const monthData = productData.find(row => row.Year_Month === month);
-        
+        const productData = await dataService.getProductData(correction.product_code);
+        const monthData = productData.find(row => row.Year_Month === correction.month);
         const currentForecast = monthData ? (monthData.new_forecast_manually_adjusted ?? monthData.new_forecast) : null;
 
-        if (currentForecast === null || currentForecast === 0 || currentForecast === undefined) {
-          console.log(`[ForecastContent] applyCorrectionFromChat: Skipping product ${tp.productCode} for month ${month} due to zero, null, or undefined current forecast (${currentForecast}).`);
-          skippedProductsCount++;
+        if (currentForecast === null || currentForecast === 0) {
+          console.log(`[ForecastContent] applyBatchCorrectionsFromChat: Skipping correction for ${correction.product_code} in ${correction.month}: current forecast is zero or null.`);
+          skippedCount++;
           continue;
         }
 
-        correctionsToApply.push({
-          product_code: tp.productCode,
-          month: month,
-          correction_percent: correctionPercent,
-          explanation: explanation,
-          prod_class: tp.productClass,
-          product_group: tp.productGroup,
-          // forecast_corrector: "GeminiChatUser" // Example, could be passed or set in DataService
-        });
+        // The 'correction' object should already match the ForecastCorrection interface.
+        // It includes product_code, month, correction_percent, explanation, prod_class, product_group.
+        // DataService.applyCorrections will add 'correction_timestamp' and 'forecast_corrector' if needed.
+        successfullyAppliedCorrectionsForDataService.push(correction);
+        // appliedCount is incremented after successful DataService call, or here if we want to count attempts.
+        // Let's count successful preparations here for now.
       }
 
-      console.log(`[ForecastContent] applyCorrectionFromChat: Prepared ${correctionsToApply.length} corrections. Skipped ${skippedProductsCount} products.`);
-
-      if (correctionsToApply.length > 0) {
-        await dataService.applyCorrections(correctionsToApply);
-        toast.success(`Ennustekorjaus (${correctionPercent > 0 ? '+' : ''}${correctionPercent}%) kuukaudelle ${month} onnistuneesti lähetetty ${correctionsToApply.length} tuotteelle.`);
-        if (skippedProductsCount > 0) {
-          toast.info(`${skippedProductsCount} tuotetta ohitettiin, koska niiden ennuste oli nolla tai puuttui kyseiseltä kuukaudelta.`);
-        }
-        await handleCorrectionsApplied(); // Refresh UI data
-      } else if (targetProducts.length > 0 && skippedProductsCount === targetProducts.length) {
-         toast.warn(`Kaikkien ${targetProducts.length} kohdetuotteen ennuste oli nolla tai puuttui kuukaudelta ${month}. Korjausta ei voitu soveltaa.`);
-      } else if (targetProducts.length === 0 && level === 'product' && skippedProductsCount === 0) {
-        // This case means the single product in product-level correction was not found or its forecast was zero.
-        // Specific error for product-level already handled.
-        // If it was found but forecast was zero, it's handled by the skippedProductsCount logic.
-      }
-       else {
-        toast.info("Ei korjauksia sovellettavaksi. Tämä voi johtua siitä, ettei kohdetuotteita löytynyt tai niiden ennusteet olivat nollia.");
+      if (successfullyAppliedCorrectionsForDataService.length > 0) {
+        // At this point, successfullyAppliedCorrectionsForDataService contains corrections that passed the zero-forecast check.
+        appliedCount = successfullyAppliedCorrectionsForDataService.length; 
+        await dataService.applyCorrections(successfullyAppliedCorrectionsForDataService);
+        toast.success(`${appliedCount} forecast correction(s) sent to be applied.` + 
+                      (skippedCount > 0 ? ` ${skippedCount} correction(s) were skipped (invalid data or zero forecast).` : ""));
+        await handleCorrectionsApplied(); // This reloads data and chart
+      } else if (skippedCount > 0) {
+        toast.info(`All ${skippedCount} potential corrections were skipped (due to invalid data or zero forecast). No changes applied.`);
+      } else { 
+        toast.info("No corrections were ultimately applied or sent.");
       }
 
     } catch (error) {
-      console.error("[ForecastContent] applyCorrectionFromChat: Error applying correction:", error);
-      toast.error("Ennustekorjauksen soveltamisessa tapahtui virhe.");
+      console.error("[ForecastContent] applyBatchCorrectionsFromChat: Error applying batch corrections:", error);
+      toast.error("Failed to apply some or all corrections. Please check console for details.");
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  async function prepareProductListForGeminiPrompt(): Promise<{ productCode: string; productGroupCode: string; productClassCode: string; }[] | null> {
+    const dataService = DataService.getInstance();
+    console.log(`[ForecastContent] prepareProductListForGeminiPrompt: Called with chartLevel: ${chartLevel}, selectedClass: ${selectedClass}, selectedGroup: ${selectedGroup}, selectedProduct: ${selectedProduct}`);
+
+    if (chartLevel === 'class') {
+      if (!selectedClass) {
+        console.error("[ForecastContent] prepareProductListForGeminiPrompt: 'class' level selected, but selectedClass is missing.");
+        toast.error("Tuoteluokkaa ei ole valittu kontekstin muodostamiseksi.");
+        return null;
+      }
+      try {
+        const classData = dataService.getDataByClass(selectedClass); // This is TimeSeriesData[]
+        const productMap = new Map<string, { productCode: string; productGroupCode: string; productClassCode: string; }>();
+        classData.forEach(row => {
+          if (row.prodcode && !productMap.has(row.prodcode)) {
+            productMap.set(row.prodcode, {
+              productCode: row.prodcode,
+              productGroupCode: row.prodgroup,
+              productClassCode: selectedClass 
+            });
+          }
+        });
+        const productList = Array.from(productMap.values());
+        console.log(`[ForecastContent] prepareProductListForGeminiPrompt: Prepared ${productList.length} products for class ${selectedClass}.`);
+        return productList.length > 0 ? productList : null;
+      } catch (error) {
+        console.error(`[ForecastContent] prepareProductListForGeminiPrompt: Error fetching/processing data for class ${selectedClass}:`, error);
+        toast.error(`Virhe haettaessa tuotteita luokalle ${selectedClass}.`);
+        return null;
+      }
+
+    } else if (chartLevel === 'group') {
+      if (!selectedGroup || !selectedClass) {
+        console.error("[ForecastContent] prepareProductListForGeminiPrompt: 'group' level selected, but selectedGroup or selectedClass is missing.");
+        toast.error("Tuoteryhmää tai tuoteluokkaa ei ole valittu kontekstin muodostamiseksi.");
+        return null;
+      }
+      try {
+        // getProductsInGroup returns { code: string; description: string }[]
+        const groupProducts = dataService.getProductsInGroup(selectedGroup, selectedClass); 
+        const productList = groupProducts.map(p => ({
+          productCode: p.code,
+          productGroupCode: selectedGroup,
+          productClassCode: selectedClass
+        }));
+        console.log(`[ForecastContent] prepareProductListForGeminiPrompt: Prepared ${productList.length} products for group ${selectedGroup} in class ${selectedClass}.`);
+        return productList.length > 0 ? productList : null;
+      } catch (error) {
+        console.error(`[ForecastContent] prepareProductListForGeminiPrompt: Error fetching/processing data for group ${selectedGroup}:`, error);
+        toast.error(`Virhe haettaessa tuotteita ryhmälle ${selectedGroup}.`);
+        return null;
+      }
+
+    } else if (chartLevel === 'product') {
+      if (!selectedProduct || !selectedGroup || !selectedClass) {
+        console.error("[ForecastContent] prepareProductListForGeminiPrompt: 'product' level selected, but selectedProduct, selectedGroup, or selectedClass is missing.");
+        toast.error("Tuotetta, tuoteryhmää tai tuoteluokkaa ei ole valittu kontekstin muodostamiseksi.");
+        return null;
+      }
+      // Assuming selectedProduct (code), selectedGroup (code), and selectedClass (code) from state are authoritative.
+      const productList = [{
+        productCode: selectedProduct,
+        productGroupCode: selectedGroup,
+        productClassCode: selectedClass
+      }];
+      console.log(`[ForecastContent] prepareProductListForGeminiPrompt: Prepared 1 product: ${selectedProduct}.`);
+      return productList;
+
+    } else {
+      console.error(`[ForecastContent] prepareProductListForGeminiPrompt: Unknown or unsupported chartLevel: ${chartLevel}`);
+      toast.error("Tuntematon valintataso kontekstin muodostamiseksi.");
+      return null;
     }
   }
 
@@ -842,7 +850,7 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
           errorImageUrl={errorImageUrl}
           chartLevel={chartLevel}
           onCorrectionsApplied={handleCorrectionsApplied}
-          applyCorrectionFromChat={applyCorrectionFromChat} // Pass the new function
+          applyBatchCorrectionsFromChat={applyBatchCorrectionsFromChat} // Updated prop name
           selectedClass={selectedClass}
           selectedGroups={
             selectedGroup

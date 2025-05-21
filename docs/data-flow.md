@@ -6,7 +6,7 @@ This document describes how data flows through the application, from Firestore t
 
 ```mermaid
 graph TD
-    A[Firestore Collection: forecast] --> B[DataService]
+    A[MariaDB via REST API] --> B[DataService]
     B --> C[ForecastContent]
     C --> D[TimeChart Component]
     
@@ -17,12 +17,13 @@ graph TD
     E1 --> F3[Image Display]
     
     %% Separate Chat Session Flow
-    D --> E2[Chat Session Service]
-    E2 --> F4[Chat Interface]
-    F4 --> G[Google API/Gemini]
-    G --> H[User Corrections]
-    H --> I[ApplyCorrectionsButton]
-    I --> J[Firestore Update]
+    D --> E2[GeminiChat Component]
+    E2 --> F4[Chat Interface in GeminiChat]
+    F4 --> G[Google API/Gemini for suggestions]
+    G --> H[User Correction Instructions (JSON) via Chat]
+    H --> I[ForecastContent.applyCorrectionFromChat]
+    I --> J[DataService.applyCorrections (sends multiple product-level POST reqs)]
+    J --> A %% Update back to MariaDB via REST API
 
     %% Independent Image Analysis Flow
     F1 --> G1[Image Analysis]
@@ -145,41 +146,37 @@ graph TD
 
 ## Detailed Flow Description
 
-### 1. Data Loading (Firestore → Application)
+### 1. Data Loading (REST API → Application)
 
 **Source Files:**
 - `src/lib/dataService.ts`
 - `src/components/ForecastContent.tsx`
 
 **Flow:**
-1. Data is stored in Firestore collection `forecast`
-2. `DataService` loads data using Firebase SDK
-3. Data is normalized to `TimeSeriesData` interface
-4. Components fetch data through `DataService.getInstance()`
+1. Data is stored in MariaDB and accessed via a REST API.
+2. `DataService` loads data using `fetch` to call the REST API.
+3. Data is normalized to `TimeSeriesData` interface (as defined in `api-documentation.md` and `dataService.ts`).
+4. Components fetch data through `DataService.getInstance()`.
 
 **Key Methods:**
 ```typescript
 // DataService.ts
 public async loadForecastData(): Promise<TimeSeriesData[]>
-public getProductGroupData(group: string): TimeSeriesData[]
+public getProductGroupData(group: string, productClass?: string): TimeSeriesData[]
 public getProductData(productCode: string): TimeSeriesData[]
 ```
 
 ### 2. Chart Visualization and Image Management
+(This section remains largely the same conceptually, as it's about frontend rendering)
 
 **Source Files:**
 - `src/components/TimeChart.tsx`
 - `src/lib/chartUtils.ts`
-- `src/services/imageService.ts`
 
 **Flow:**
-1. Data is transformed for chart display
-2. `TimeChart` component renders using Recharts
-3. Image management service handles:
-   - Image storage
-   - Image processing
-   - Image display
-   - Independent image analysis
+1. Data is transformed for chart display.
+2. `TimeChart` component renders using Recharts.
+3. Image generation for chat (`generateChartImage`) occurs in `chartUtils.ts`.
 
 **Key Components:**
 ```typescript
@@ -187,278 +184,170 @@ public getProductData(productCode: string): TimeSeriesData[]
 const TimeChart: React.FC<TimeChartProps>
 // chartUtils.ts
 export const generateChartImage = (chartData: ChartDataPoint[], title: string)
-// imageService.ts
-export const ImageService = {
-  storeImage: (image: ImageData) => Promise<void>,
-  processImage: (image: ImageData) => Promise<ProcessedImage>,
-  displayImage: (imageId: string) => Promise<void>,
-  analyzeImage: (image: ImageData) => Promise<ImageAnalysis>
-}
 ```
 
-### 3. Chat Session Management
+### 3. Chat Session and Forecast Correction Flow (Updated)
 
 **Source Files:**
-- `src/components/ChatInterface.tsx`
-- `src/api/chat.ts`
-- `src/services/chatSessionService.ts`
-
-**Flow:**
-1. Chat session is managed independently of image management
-2. User interacts with AI through chat
-3. AI analyzes data and provides insights
-4. User can make corrections based on AI suggestions
-
-**Key Methods:**
-```typescript
-// ChatInterface.tsx
-const handleSendMessage = async ()
-// chat.ts
-export const createResponse = async (message: string)
-// chatSessionService.ts
-export const ChatSessionService = {
-  startSession: () => Promise<void>,
-  endSession: () => Promise<void>,
-  getSessionState: () => SessionState,
-  updateSession: (data: SessionData) => Promise<void>
-}
-```
-
-### 4. Data Correction and Update
-
-**Source Files:**
-- `src/components/ApplyCorrectionsButton.tsx`
+- `src/components/GeminiChat.tsx`
+- `src/components/ForecastContent.tsx`
 - `src/lib/dataService.ts`
 
 **Flow:**
-1. User applies corrections through UI
-2. Corrections are validated
-3. Updates are batched and sent to Firestore
-4. Local state is updated
-5. Chart is refreshed
+1. User interacts with AI (Gemini) via the `GeminiChat` component.
+2. AI may suggest a forecast correction as a JSON object (e.g., "increase product X forecast for YYYY-MM by Z%").
+3. User confirms or triggers the correction via the chat interface.
+4. The `correctionJSON` from Gemini is passed to `ForecastContent.applyCorrectionFromChat(correctionJSON)`.
+5. **Correction Processing in `ForecastContent.tsx` (`applyCorrectionFromChat` function):**
+    a. The `correctionJSON` is parsed. It's expected to specify the `level` (product, group, or class), `identifier` (code/name of the product, group, or class), `month` (YYYY-MM format), `correctionPercent`, and `explanation`.
+    b. **Translation to Product-Level:** If the `level` is 'class' or 'group', `applyCorrectionFromChat` translates this into individual product-level corrections. It identifies all products belonging to the specified class or group (using `selectedClass` from component state for group-level corrections to ensure context).
+    c. **Zero Forecast Handling (Frontend):** For each potential target product and the specified month, `applyCorrectionFromChat` fetches its current forecast (prioritizing `new_forecast_manually_adjusted` then `new_forecast`) using `DataService`. Products with a current forecast of zero (or null/undefined) for the target month are **skipped by the frontend** and not included in the correction batch sent to the API. A count of skipped products is maintained for user feedback.
+    d. **`ForecastCorrection` Object Creation:** For each valid product-month (i.e., non-zero forecast), a `ForecastCorrection` object is prepared. This object includes:
+        - `product_code` (specific product to be corrected)
+        - `month` (target month, YYYY-MM)
+        - `correction_percent` (the percentage change)
+        - `explanation` (reason for the correction)
+        - `prod_class` (product class of the target product)
+        - `product_group` (product group of the target product)
+        - `forecast_corrector` (optional, e.g., "GeminiChatUser")
+6. **API Call via `DataService`:** `DataService.applyCorrections(arrayOfForecastCorrectionObjects)` is called. This method iterates through the array and sends **one POST request per `ForecastCorrection` object** to the REST API endpoint (`/api/forecast` as per `maria_db_api-specifications.md` or the `baseUrl` in `DataService`). The `DataService` also adds the `correction_timestamp` to each object before sending.
+7. **UI Update:** After all API calls are processed by `DataService.applyCorrections` (successfully or with errors), `ForecastContent.handleCorrectionsApplied()` is triggered. This function calls `dataService.clearCache()` and then reloads all forecast data, ensuring the UI reflects any changes.
+8. **User Feedback:** The user receives toast notifications from `ForecastContent.applyCorrectionFromChat` indicating the outcome (overall success, partial success with details on skipped items, or failure).
 
 **Key Methods:**
 ```typescript
+// ForecastContent.tsx
+async function applyCorrectionFromChat(correctionJSON: any)
+async function handleCorrectionsApplied()
+
 // dataService.ts
-public async applyCorrections(corrections: ForecastCorrection[]): Promise<void>
+public async applyCorrections(corrections: ForecastCorrection[]): Promise<void> 
 ```
 
-## Data Structures
+## Data Structures (Frontend Conceptual)
 
-### TimeSeriesData Interface
+### TimeSeriesData Interface (from API)
+(As defined in `dataService.ts` and `api-documentation.md`)
 ```typescript
-interface TimeSeriesData {
-  dates: string[];
-  values: number[];
-  forecasts: number[];
-  corrections: number[];
-  prod_class: string;  // Product class identifier (e.g., "Virtalähteet")
+export interface TimeSeriesData {
+  Year_Month: string;
+  prod_class: string;
+  prodgroup: string; // Product group code
+  prodcode: string;   // Product code
+  proddesc1: string; // Product description
+  Quantity: number | null;
+  new_forecast: number | null;
+  old_forecast: number | null;
+  old_forecast_error: number | null;
+  correction_percent?: number | null;
+  explanation?: string | null;
+  new_forecast_manually_adjusted: number | null;
+  correction_timestamp?: string | null;
 }
 ```
 
 ### ChartDataPoint Interface
+(Used by `TimeChart` and `generateChartImage`)
 ```typescript
 interface ChartDataPoint {
-  date: string;
-  value: number;
-  forecast: number;
-  correction: number;
-  prod_class: string;  // Product class identifier
+  date: string; // YYYY-MM
+  value: number | null; // Actual Quantity
+  forecast?: number | null; // Typically new_forecast
+  old_forecast?: number | null;
+  new_forecast_manually_adjusted?: number | null;
+  old_forecast_error?: number | null;
+  explanation?: string;
 }
 ```
 
-### Database Schema (Firestore)
-
-#### Collection: forecast
+### ForecastCorrection Object (Payload for DataService.applyCorrections)
+(This is the `ForecastCorrection` interface defined in `dataService.ts`)
 ```typescript
-interface SalesDataDocument {
-  // Required fields
-  date: string;           // Date of the data point
-  value: number;          // Actual sales value
-  forecast: number;       // AI-generated forecast
-  correction: number;     // User-applied correction
-  prod_class: string;     // Product class identifier (e.g., "Virtalähteet")
-  
-  // Optional fields
-  product_id?: string;    // Product identifier
-  product_name?: string;  // Product name
-  category?: string;      // Product category
-  region?: string;        // Sales region
-  notes?: string;         // Additional notes or metadata
+export interface ForecastCorrection {
+  product_group?: string; // Product group code
+  product_code?: string;  // Product code
+  month: string;          // Target month (YYYY-MM)
+  correction_percent: number;
+  explanation: string;
+  forecast_corrector?: string;
+  prod_class?: string;
 }
+// DataService internally adds correction_timestamp before sending to the API.
+// The actual API payload includes Year_Month, prod_class, prodgroup, prodcode etc.
 ```
 
-### Data Normalization
-The system includes a data normalization layer that maps between external and internal data formats:
-
-```typescript
-interface DataMapping {
-  external: {
-    date: string;
-    sales: number;
-    product: string;
-    category: string;
-    region: string;
-    prod_class: string;
-  };
-  internal: {
-    date: string;
-    value: number;
-    product_id: string;
-    category: string;
-    region: string;
-    prod_class: string;
-  };
-}
-```
+### Database Schema (MariaDB)
+Refer to `docs/maria_db_api-specifications.md` for the `forecast_data` table structure. Data is stored in and retrieved from MariaDB via the REST API.
 
 ## Color Coding in Charts
-
-| Line Type | Color | Data Field |
-|-----------|-------|------------|
-| Actual Demand | Blue (#4338ca) | `Quantity` |
-| Old Forecast | Green Dotted (#10b981) | `old_forecast` |
-| New Forecast | Orange Dotted (#f59e0b) | `new_forecast` |
-| Corrected Forecast | Red (#dc2626) | `new_forecast_manually_adjusted` |
-| Forecast Error | Red Dotted (#ef4444) | `old_forecast_error` |
+(This section remains valid)
+...
 
 ## Error Handling
+(General principles remain valid. Specifics for REST API interactions are handled in `DataService` and `ForecastContent`.)
 
-The application implements comprehensive error handling at each stage:
-
-1. **Data Loading**
-   - Authentication checks
-   - Data validation
-   - Error logging
-
-2. **Chart Generation**
-   - Null value handling
-   - Data transformation validation
-   - Canvas context checks
-
-3. **Chat Interface**
-   - Session management
-   - API error handling
-   - Message validation
-
-4. **Data Updates**
-   - Batch operation error handling
-   - Validation before updates
-   - Rollback mechanisms
+1. **Data Loading (REST API):**
+   - `DataService` handles API errors (network, HTTP status codes).
+   - `ForecastContent` displays toast notifications on load failure.
+2. **Chat Interface & Corrections:**
+   - Validation of `correctionJSON` in `applyCorrectionFromChat`.
+   - Errors from `DataService.applyCorrections` (individual API call failures) are caught in `applyCorrectionFromChat`.
+   - User receives feedback via toast messages detailing success, partial success (due to skipped items), or failure.
+...
 
 ## Performance Considerations
 
-1. **Data Caching**
-   - `DataService` implements singleton pattern
-   - Local data caching
-   - Batch updates for Firestore
-
-2. **Chart Optimization**
-   - Canvas-based image generation
-   - Efficient data transformation
-   - Responsive chart rendering
-
-3. **Chat Performance**
-   - Asynchronous message handling
-   - Efficient image processing
-   - Session cleanup
+1. **Data Caching:**
+   - `DataService` caches data in memory (`this.data`).
+   - `clearCache()` is called by `handleCorrectionsApplied` (which is invoked after corrections via `applyCorrectionFromChat`) to ensure fresh data is loaded.
+   - REST API might have its own server-side caching.
+...
 
 ## Security
 
-1. **Authentication**
-   - Firebase Authentication
-   - Protected routes
-   - Session management
+1. **Authentication:**
+   - Bearer token authentication for the REST API.
+   - Token is managed by `DataService`.
+...
 
-2. **Data Access**
-   - Firestore security rules
-   - API key protection
-   - Input validation
+## Datarakenne (Conceptual Frontend Types)
 
-## Testing
-
-The application includes tests for:
-- Data import (`tests/import-sales-data-to-firestore.mjs`)
-- Data transformation
-- Chart generation
-- API integration
-
-## Future Improvements
-
-1. **Data Flow**
-   - Real-time updates
-   - Offline support
-   - Enhanced caching
-
-2. **Visualization**
-   - Additional chart types
-   - Interactive features
-   - Export capabilities
-
-3. **AI Integration**
-   - Enhanced analysis
-   - More sophisticated corrections
-   - Learning from user feedback 
-
-## 1. Autentikaatio
-```mermaid
-graph TD
-    A[Käyttäjä] -->|Kirjaudu| B[LoginForm]
-    B -->|Tarkista tunnukset| C[userService]
-    C -->|Onnistui| D[Workbench]
-    C -->|Epäonnistui| E[Virheilmoitus]
-```
-
-## 2. Ennusteiden käsittely
-```mermaid
-graph TD
-    A[Workbench] -->|Lataa data| B[dataService]
-    B -->|Muunna data| C[TimeChart]
-    C -->|Näytä ennusteet| D[Käyttäjä]
-    D -->|Korjaa ennuste| E[ApplyCorrectionsButton]
-    E -->|Tallenna korjaus| F[apply-corrections.ts]
-    F -->|Päivitä kuvaaja| C
-```
-
-## 3. Tiedostojen käsittely
-```mermaid
-graph TD
-    A[Käyttäjä] -->|Tallenna| B[save-json.ts]
-    B -->|Tarkista| C[fileService]
-    C -->|Tallenna| D[JSON tiedosto]
-    A -->|Lataa| E[dataService]
-    E -->|Lue| D
-```
-
-## Datarakenne
-
-### Ennustedata
+### Ennustedata (`TimeSeriesData` from DataService)
 ```typescript
-interface TimeSeriesData {
-  date: string;
-  quantity: number;
-  old_forecast: number;
-  new_forecast: number;
-  new_forecast_manually_adjusted: number;
-  old_forecast_error: number;
-  correction_percent: number;
-  explanation: string;
-  correction_timestamp: string;
+// Matches the TimeSeriesData interface in dataService.ts
+export interface TimeSeriesData {
+  Year_Month: string;
+  prod_class: string;
+  prodgroup: string;
+  prodcode: string;
+  proddesc1: string;
+  Quantity: number | null;
+  new_forecast: number | null;
+  old_forecast: number | null;
+  old_forecast_error: number | null;
+  correction_percent?: number | null;
+  explanation?: string | null;
+  new_forecast_manually_adjusted: number | null;
+  correction_timestamp?: string | null;
 }
 ```
 
-### Korjausdata
+### Lähetettävä Korjausdata (`ForecastCorrection` interface in DataService)
 ```typescript
-interface CorrectionData {
-  date: string;
-  new_forecast_manually_adjusted: number;
+// Matches the ForecastCorrection interface in dataService.ts
+export interface ForecastCorrection {
+  product_group?: string;
+  product_code?: string;
+  month: string; // YYYY-MM
   correction_percent: number;
   explanation: string;
-  correction_timestamp: string;
+  forecast_corrector?: string;
+  prod_class?: string;
 }
 ```
 
 ## Tiedostomuodot
+(This section is likely outdated as data interaction is now primarily via REST API, not direct file operations for corrections in this flow)
 
 ### JSON
 ```json

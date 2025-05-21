@@ -141,6 +141,119 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
     }
   };
 
+  const handleRequestJson = async () => {
+    console.log("[GeminiChat] handleRequestJson: Initiating JSON request.");
+    setIsLoading(true);
+
+    const payload: any = {
+      prod_class: selectedClass || "N/A",
+      month: "2025-08",
+      correction_percent: -2,
+      explanation: "Perustelu tähän.",
+      forecast_corrector: "forecasting@kemppi.com",
+    };
+
+    if (chartLevel === "group" || chartLevel === "product") {
+      payload.product_group = (selectedGroups && selectedGroups.length > 0) ? selectedGroups[0] : "N/A";
+    }
+
+    if (chartLevel === "product") {
+      payload.product_code = (selectedProducts && selectedProducts.length > 0 && selectedProducts[0].code) ? selectedProducts[0].code : "N/A";
+    }
+
+    const jsonString = JSON.stringify(payload, null, 2);
+    const fullMessageString = `Anna tutkimukseesi perustuva paras arvauksesi tilastollisen kysyntäennusteen korjauksesta. Lisääthän myös kuukauden yhdelle riville. JSON-muoto on alla:\n\`\`\`json\n${jsonString}\n\`\`\``;
+
+    const userMessage: Message = { role: 'user', parts: [{ text: fullMessageString }] };
+    setMessages(prev => [...prev, userMessage]);
+
+    try {
+      const model = genAI.getGenerativeModel({
+        model: geminiModel,
+        generationConfig: { temperature: 0.2 },
+        tools: [ { googleSearch: {} } as any ]
+      });
+
+      const history = messages.map(msg => ({ // messages state before adding the current userMessage
+        role: msg.role,
+        parts: msg.parts
+      }));
+
+      console.log("[GeminiChat] handleRequestJson: Sending message to Gemini model with payload:", payload);
+      const result = await model.generateContent({
+        contents: [
+          ...history,
+          { role: 'user', parts: [{ text: fullMessageString }] }
+        ]
+      });
+      
+      const response = result.response;
+
+      if (response && response.candidates && response.candidates.length > 0) {
+        const candidate = response.candidates[0];
+        const content = candidate.content;
+        let processedCitationMetadata: { citationSources: CitationSource[] } | undefined = undefined;
+
+        // Logic for citation metadata (adapted from handleSend)
+        if (candidate.citationMetadata && candidate.citationMetadata.citationSources && candidate.citationMetadata.citationSources.length > 0) {
+            processedCitationMetadata = candidate.citationMetadata;
+        } else if (candidate.groundingMetadata) {
+            const sources: CitationSource[] = [];
+            const supports = candidate.groundingMetadata.groundingSupports;
+            const allChunks = candidate.groundingMetadata.groundingChunks;
+            if (supports && Array.isArray(supports)) {
+                supports.forEach((support: any) => {
+                    if (support.segment && support.groundingChunkIndices && Array.isArray(support.groundingChunkIndices) && support.groundingChunkIndices.length > 0) {
+                        const firstChunkIndex = support.groundingChunkIndices[0];
+                        if (allChunks && Array.isArray(allChunks) && firstChunkIndex >= 0 && firstChunkIndex < allChunks.length) {
+                            const chunk = allChunks[firstChunkIndex] as any;
+                            const uri = chunk?.web?.uri || chunk?.uri;
+                            if (uri) {
+                                sources.push({ 
+                                    startIndex: parseInt(support.segment.startIndex || '0', 10), 
+                                    endIndex: parseInt(support.segment.endIndex || '0', 10), 
+                                    uri: uri
+                                });
+                            }
+                        }
+                    }
+                });
+            }
+            if (sources.length > 0) {
+                processedCitationMetadata = { citationSources: sources };
+            }
+        }
+        
+        setMessages(prev => [...prev, { 
+          role: 'model', 
+          parts: content?.parts || [{text: "Sain tyhjän vastauksen."}], 
+          citationMetadata: processedCitationMetadata 
+        }]);
+      } else {
+        console.warn("[GeminiChat] handleRequestJson: No valid candidates in Gemini response.");
+        setMessages(prev => [...prev, { role: 'model', parts: [{text: "En saanut vastausta mallilta."}] }]);
+      }
+    } catch (error: any) {
+      console.error(`[GeminiChat] handleRequestJson: Error calling Gemini API:`, error.message || error, { status: error.status, details: error.details });
+      let errorMessage = "Virhe JSON-pyynnön lähetyksessä avustajalle.";
+      if (error.response && typeof error.response.text === 'function') {
+        try {
+          const txt = await error.response.text();
+          const data = JSON.parse(txt);
+          if (data && data.error && data.error.message) {
+            errorMessage = `API Virhe: ${data.error.message}`;
+          }
+        } catch (parseError) {
+          console.error("[GeminiChat] handleRequestJson: Error parsing Gemini API error response text:", parseError);
+        }
+      }
+      setMessages(prev => [...prev, { role: 'model', parts: [{text: errorMessage}] }]);
+    } finally {
+      setIsLoading(false);
+      console.log("[GeminiChat] handleRequestJson: JSON request attempt finished.");
+    }
+  };
+
   const getInstructions = () => instructions;
 
   const handleStartSession = async () => {
@@ -406,7 +519,7 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
         <button
           className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded"
           onClick={handleClearSession}
-          disabled={!sessionActive || isLoading}
+          disabled={!sessionActive}
         >
           Puhdista chat
         </button>
@@ -500,6 +613,13 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
           disabled={!sessionActive || isLoading || !input.trim()}
         >
           Lähetä
+        </button>
+        <button
+          className="bg-[#4ADE80] hover:bg-[#22C55E] text-white px-4 py-2 rounded"
+          onClick={handleRequestJson}
+          disabled={!sessionActive || isLoading}
+        >
+          Pyydä json
         </button>
       </div>
     </div>

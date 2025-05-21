@@ -17,6 +17,7 @@ import GeminiChat from "@/components/GeminiChat";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { generateErrorChartImage } from "@/lib/chartUtils";
 import ForecastErrorChart from "./ForecastErrorChart";
+import { generateTruncatedListString } from "@/lib/utils";
 
 interface ForecastContentProps {
   selectedProduct: string | null;
@@ -62,6 +63,7 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
   const [activeTab, setActiveTab] = useState<'history' | 'error'>('history');
   const [rawData, setRawData] = useState<any[]>([]);
   const [errorImageUrl, setErrorImageUrl] = useState<string | null>(null);
+  const [currentClassProductGroupDetails, setCurrentClassProductGroupDetails] = useState<{ code: string; description: string; }[]>([]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -107,7 +109,11 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
     setChartLevel(newChartLevel);
   }, [selectedProduct, selectedGroup, selectedClass]);
 
-  const aggregateData = (data: any[], aggregationLevel?: string): ChartDataPoint[] => {
+  const aggregateData = (
+    data: any[], 
+    aggregationLevel?: string, 
+    expectedProductGroups?: string[]
+  ): ChartDataPoint[] => {
     const dates = [...new Set(data.map(row => row.Year_Month))];
     return dates.map(date => {
       const rowsForDate = data.filter(row => row.Year_Month === date);
@@ -126,11 +132,23 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
             .reduce((sum, row) => sum + (row.new_forecast || 0), 0)
         : null;
 
-      // Korjattu ennuste: näytetään vain jos kaikilla tuoteryhmillä on arvo
-      // Selvitetään montako uniikkia tuoteryhmää on rivillä
-      const uniqueGroups = [...new Set(rowsForDate.map(row => row["Product Group"]))];
-      const groupsWithAdjustment = [...new Set(rowsForDate.filter(row => row.new_forecast_manually_adjusted !== null && row.new_forecast_manually_adjusted !== undefined).map(row => row["Product Group"]))];
-      const showAdjusted = uniqueGroups.length > 0 && uniqueGroups.every(g => groupsWithAdjustment.includes(g));
+      // Korjattu ennuste:
+      const groupsWithAdjustment = [...new Set(
+        rowsForDate
+          .filter(row => row.new_forecast_manually_adjusted !== null && row.new_forecast_manually_adjusted !== undefined)
+          .map(row => row["Product Group"])
+      )];
+
+      let showAdjusted = false;
+      if (expectedProductGroups && expectedProductGroups.length > 0) {
+        // Stricter logic: all expected product groups must have an adjustment.
+        showAdjusted = expectedProductGroups.every(expectedGroup => groupsWithAdjustment.includes(expectedGroup));
+      } else {
+        // Original logic: all unique groups *present in the current data for this date* must have an adjustment.
+        const uniqueGroupsOnDate = [...new Set(rowsForDate.map(row => row["Product Group"]))];
+        showAdjusted = uniqueGroupsOnDate.length > 0 && uniqueGroupsOnDate.every(g => groupsWithAdjustment.includes(g));
+      }
+      
       const totalNewForecastAdjusted = showAdjusted
         ? rowsForDate.filter(row => row.new_forecast_manually_adjusted !== null)
             .reduce((sum, row) => sum + (row.new_forecast_manually_adjusted || 0), 0)
@@ -173,23 +191,30 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
       const dataService = DataService.getInstance();
       let dataToAggregate;
       let chartTitle;
+      let expectedGroupsForClass: string[] | undefined = undefined;
+
       if (!productClass) {
         console.log('[ForecastContent] handleClassChange: No class selected, showing aggregated data for all classes.');
         dataToAggregate = dataService.getAllData();
         chartTitle = 'Kaikki tuoteluokat';
         setProductGroups([]); 
-        setProducts([]); 
+        setProducts([]);
+        setCurrentClassProductGroupDetails([]);
       } else {
         console.log(`[ForecastContent] handleClassChange: Fetching data for class: '${productClass}'.`);
         dataToAggregate = dataService.getDataByClass(productClass);
         chartTitle = productClass;
         const groups = dataService.getProductGroupsInClass(productClass);
-        console.log(`[ForecastContent] handleClassChange: Loaded ${groups.length} product groups for class '${productClass}'.`);
-        setProductGroups(groups.map(String));
-        setProducts([]); 
+        expectedGroupsForClass = groups.map(String);
+        console.log(`[ForecastContent] handleClassChange: Loaded ${expectedGroupsForClass.length} product groups for class '${productClass}'. These are the expected groups for adjusted forecast aggregation.`);
+        setProductGroups(expectedGroupsForClass);
+        setProducts([]);
+        const groupDetails = dataService.getProductGroupDetailsInClass(productClass);
+        setCurrentClassProductGroupDetails(groupDetails);
+        console.log(`[ForecastContent] handleClassChange: Loaded ${groupDetails.length} product group details for class '${productClass}'.`);
       }
       setRawData(dataToAggregate);
-      const aggregatedData = aggregateData(dataToAggregate, productClass || 'All Classes');
+      const aggregatedData = aggregateData(dataToAggregate, productClass || 'All Classes', expectedGroupsForClass);
       setChartData(aggregatedData);
       console.log(`[ForecastContent] handleClassChange: Aggregated data set (${aggregatedData.length} points for '${chartTitle}'). Generating chart image.`);
       const chartImageUrl = await generateChartImage(aggregatedData, chartTitle);
@@ -221,11 +246,11 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
         chartTitle = selectedClass || 'Valitse luokka';
         setProducts([]);
       } else {
-        console.log(`[ForecastContent] handleGroupChange: Fetching data for group: '${group}'.`);
-      const groupProducts = dataService.getProductsInGroup(group);
+        console.log(`[ForecastContent] handleGroupChange: Fetching data for group: '${group}' within class '${selectedClass}'.`);
+      const groupProducts = dataService.getProductsInGroup(group, selectedClass);
       setProducts(groupProducts);
-        console.log(`[ForecastContent] handleGroupChange: Loaded ${groupProducts.length} products for group '${group}'.`);
-        dataToAggregate = dataService.getProductGroupData(group);
+        console.log(`[ForecastContent] handleGroupChange: Loaded ${groupProducts.length} products for group '${group}' in class '${selectedClass}'.`);
+        dataToAggregate = dataService.getProductGroupData(group, selectedClass);
         chartTitle = group;
       }
       setRawData(dataToAggregate);
@@ -255,13 +280,16 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
       let dataToChart;
       let chartTitle;
       if (!productCode) {
-        console.log(`[ForecastContent] handleProductChange: No product selected, showing aggregated data for group: '${selectedGroup}'.`);
-        dataToChart = dataService.getProductGroupData(selectedGroup);
+        console.log(`[ForecastContent] handleProductChange: No product selected, showing aggregated data for group: '${selectedGroup}' within class '${selectedClass}'.`);
+        dataToChart = dataService.getProductGroupData(selectedGroup, selectedClass);
         chartTitle = selectedGroup || 'Valitse ryhmä';
         // Kun tuotevalinta poistetaan, näytetään ryhmän aggregoitu data, joka vaatii aggregointifunktion
         const aggregatedGroupData = aggregateData(dataToChart, chartTitle);
         setChartData(aggregatedGroupData);
-        setRawData(dataToChart); 
+        setRawData(dataToChart); // Set rawData for the group
+        console.log(`[ForecastContent] handleProductChange: Data set for '${chartTitle}' (${aggregatedGroupData.length} points). Generating chart image.`);
+        const chartImageUrl = await generateChartImage(aggregatedGroupData, chartTitle); // Use local variable
+        setImageUrl(chartImageUrl);
       } else {
         console.log(`[ForecastContent] handleProductChange: Fetching data for product: '${productCode}'.`);
         dataToChart = dataService.getProductData(productCode);
@@ -278,11 +306,11 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
           explanation: row.explanation
         })).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
         setChartData(productChartDataPoints);
-        setRawData(dataToChart); 
+        setRawData(dataToChart); // Set rawData for the product
+        console.log(`[ForecastContent] handleProductChange: Data set for '${chartTitle}' (${productChartDataPoints.length} points). Generating chart image.`);
+        const chartImageUrl = await generateChartImage(productChartDataPoints, chartTitle); // Use local variable
+        setImageUrl(chartImageUrl);
       }
-      console.log(`[ForecastContent] handleProductChange: Data set for '${chartTitle}' (${(chartData || []).length} points). Generating chart image.`);
-      const chartImageUrl = await generateChartImage(chartData, chartTitle); // Käytä state-muuttujaa chartData tässä
-      setImageUrl(chartImageUrl);
       console.log(`[ForecastContent] handleProductChange: Chart image for '${chartTitle}' generated and set.`);
     } catch (err) {
       console.error(`[ForecastContent] handleProductChange: Error processing product change for '${productCode}':`, err);
@@ -321,20 +349,24 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
             explanation: row.explanation
         })).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
       } else if (selectedGroup) {
-        console.log(`[ForecastContent] handleCorrectionsApplied: Refreshing group view for '${selectedGroup}'.`);
-        currentData = dataService.getProductGroupData(selectedGroup);
+        console.log(`[ForecastContent] handleCorrectionsApplied: Refreshing group view for '${selectedGroup}' within class '${selectedClass}'.`);
+        currentData = dataService.getProductGroupData(selectedGroup, selectedClass);
         chartTitleToRefresh = selectedGroup;
+        // Note: aggregateData for group level doesn't strictly need expectedProductGroups, 
+        // as its own logic for adjusted forecast relies on unique groups within its data.
         processedChartData = aggregateData(currentData, selectedGroup);
       } else if (selectedClass) {
         console.log(`[ForecastContent] handleCorrectionsApplied: Refreshing class view for '${selectedClass}'.`);
         currentData = dataService.getDataByClass(selectedClass);
         chartTitleToRefresh = selectedClass;
-        processedChartData = aggregateData(currentData, selectedClass);
+        const expectedGroupsForClass = dataService.getProductGroupsInClass(selectedClass).map(String);
+        console.log(`[ForecastContent] handleCorrectionsApplied: For class '${selectedClass}', expecting ${expectedGroupsForClass.length} groups for adjusted forecast aggregation: ${expectedGroupsForClass.join(', ')}`);
+        processedChartData = aggregateData(currentData, selectedClass, expectedGroupsForClass);
       } else {
         console.log('[ForecastContent] handleCorrectionsApplied: Refreshing view for all classes.');
         currentData = dataService.getAllData();
         chartTitleToRefresh = 'Kaikki tuoteluokat';
-        processedChartData = aggregateData(currentData, 'All Classes');
+        processedChartData = aggregateData(currentData, 'All Classes'); // No expected groups for "All classes"
       }
       setChartData(processedChartData);
       setRawData(currentData); 
@@ -440,6 +472,154 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
         setErrorImageUrl(null); 
     }
   }, [activeTab, selectedClass, selectedGroup, selectedProduct, rawData]);
+
+  // Renamed from applyCorrectionFromChat
+  async function applyBatchCorrectionsFromChat(corrections: DataService.ForecastCorrection[]) { 
+    console.log(`[ForecastContent] applyBatchCorrectionsFromChat: Received ${corrections?.length || 0} corrections.`);
+    
+    if (!corrections || corrections.length === 0) {
+      toast.info("No valid corrections to apply.");
+      return;
+    }
+
+    setIsLoading(true);
+    let appliedCount = 0;
+    let skippedCount = 0;
+    const successfullyAppliedCorrectionsForDataService: DataService.ForecastCorrection[] = [];
+    const dataService = DataService.getInstance();
+
+    try {
+      for (const correction of corrections) {
+        // Light validation for individual correction object
+        // Main validation is assumed to be done by GeminiChat.tsx before calling this.
+        if (!correction.product_code || !correction.month || typeof correction.correction_percent !== 'number' || !correction.explanation || !correction.prod_class || !correction.product_group) {
+          console.warn("[ForecastContent] applyBatchCorrectionsFromChat: Skipping invalid or incomplete correction object:", correction);
+          skippedCount++;
+          continue;
+        }
+         // Year-Month validation
+        const monthPattern = /^\d{4}-\d{2}$/;
+        if (!monthPattern.test(correction.month)) {
+            toast.error(`Korjauspyyntö tuotteelle ${correction.product_code} ohitettu: Virheellinen kuukausimuoto (${correction.month}). Käytä YYYY-MM.`);
+            console.warn(`[ForecastContent] applyBatchCorrectionsFromChat: Invalid month format for product ${correction.product_code}:`, correction.month);
+            skippedCount++;
+            continue;
+        }
+
+
+        const productData = await dataService.getProductData(correction.product_code);
+        const monthData = productData.find(row => row.Year_Month === correction.month);
+        const currentForecast = monthData ? (monthData.new_forecast_manually_adjusted ?? monthData.new_forecast) : null;
+
+        if (currentForecast === null || currentForecast === 0) {
+          console.log(`[ForecastContent] applyBatchCorrectionsFromChat: Skipping correction for ${correction.product_code} in ${correction.month}: current forecast is zero or null.`);
+          skippedCount++;
+          continue;
+        }
+
+        // The 'correction' object should already match the ForecastCorrection interface.
+        // It includes product_code, month, correction_percent, explanation, prod_class, product_group.
+        // DataService.applyCorrections will add 'correction_timestamp' and 'forecast_corrector' if needed.
+        successfullyAppliedCorrectionsForDataService.push(correction);
+        // appliedCount is incremented after successful DataService call, or here if we want to count attempts.
+        // Let's count successful preparations here for now.
+      }
+
+      if (successfullyAppliedCorrectionsForDataService.length > 0) {
+        // At this point, successfullyAppliedCorrectionsForDataService contains corrections that passed the zero-forecast check.
+        appliedCount = successfullyAppliedCorrectionsForDataService.length; 
+        await dataService.applyCorrections(successfullyAppliedCorrectionsForDataService);
+        toast.success(`${appliedCount} forecast correction(s) sent to be applied.` + 
+                      (skippedCount > 0 ? ` ${skippedCount} correction(s) were skipped (invalid data or zero forecast).` : ""));
+        await handleCorrectionsApplied(); // This reloads data and chart
+      } else if (skippedCount > 0) {
+        toast.info(`All ${skippedCount} potential corrections were skipped (due to invalid data or zero forecast). No changes applied.`);
+      } else { 
+        toast.info("No corrections were ultimately applied or sent.");
+      }
+
+    } catch (error) {
+      console.error("[ForecastContent] applyBatchCorrectionsFromChat: Error applying batch corrections:", error);
+      toast.error("Failed to apply some or all corrections. Please check console for details.");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function prepareProductListForGeminiPrompt(): Promise<{ productCode: string; productGroupCode: string; productClassCode: string; }[] | null> {
+    const dataService = DataService.getInstance();
+    console.log(`[ForecastContent] prepareProductListForGeminiPrompt: Called with chartLevel: ${chartLevel}, selectedClass: ${selectedClass}, selectedGroup: ${selectedGroup}, selectedProduct: ${selectedProduct}`);
+
+    if (chartLevel === 'class') {
+      if (!selectedClass) {
+        console.error("[ForecastContent] prepareProductListForGeminiPrompt: 'class' level selected, but selectedClass is missing.");
+        toast.error("Tuoteluokkaa ei ole valittu kontekstin muodostamiseksi.");
+        return null;
+      }
+      try {
+        const classData = dataService.getDataByClass(selectedClass); // This is TimeSeriesData[]
+        const productMap = new Map<string, { productCode: string; productGroupCode: string; productClassCode: string; }>();
+        classData.forEach(row => {
+          if (row.prodcode && !productMap.has(row.prodcode)) {
+            productMap.set(row.prodcode, {
+              productCode: row.prodcode,
+              productGroupCode: row.prodgroup,
+              productClassCode: selectedClass 
+            });
+          }
+        });
+        const productList = Array.from(productMap.values());
+        console.log(`[ForecastContent] prepareProductListForGeminiPrompt: Prepared ${productList.length} products for class ${selectedClass}.`);
+        return productList.length > 0 ? productList : null;
+      } catch (error) {
+        console.error(`[ForecastContent] prepareProductListForGeminiPrompt: Error fetching/processing data for class ${selectedClass}:`, error);
+        toast.error(`Virhe haettaessa tuotteita luokalle ${selectedClass}.`);
+        return null;
+      }
+
+    } else if (chartLevel === 'group') {
+      if (!selectedGroup || !selectedClass) {
+        console.error("[ForecastContent] prepareProductListForGeminiPrompt: 'group' level selected, but selectedGroup or selectedClass is missing.");
+        toast.error("Tuoteryhmää tai tuoteluokkaa ei ole valittu kontekstin muodostamiseksi.");
+        return null;
+      }
+      try {
+        // getProductsInGroup returns { code: string; description: string }[]
+        const groupProducts = dataService.getProductsInGroup(selectedGroup, selectedClass); 
+        const productList = groupProducts.map(p => ({
+          productCode: p.code,
+          productGroupCode: selectedGroup,
+          productClassCode: selectedClass
+        }));
+        console.log(`[ForecastContent] prepareProductListForGeminiPrompt: Prepared ${productList.length} products for group ${selectedGroup} in class ${selectedClass}.`);
+        return productList.length > 0 ? productList : null;
+      } catch (error) {
+        console.error(`[ForecastContent] prepareProductListForGeminiPrompt: Error fetching/processing data for group ${selectedGroup}:`, error);
+        toast.error(`Virhe haettaessa tuotteita ryhmälle ${selectedGroup}.`);
+        return null;
+      }
+
+    } else if (chartLevel === 'product') {
+      if (!selectedProduct || !selectedGroup || !selectedClass) {
+        console.error("[ForecastContent] prepareProductListForGeminiPrompt: 'product' level selected, but selectedProduct, selectedGroup, or selectedClass is missing.");
+        toast.error("Tuotetta, tuoteryhmää tai tuoteluokkaa ei ole valittu kontekstin muodostamiseksi.");
+        return null;
+      }
+      // Assuming selectedProduct (code), selectedGroup (code), and selectedClass (code) from state are authoritative.
+      const productList = [{
+        productCode: selectedProduct,
+        productGroupCode: selectedGroup,
+        productClassCode: selectedClass
+      }];
+      console.log(`[ForecastContent] prepareProductListForGeminiPrompt: Prepared 1 product: ${selectedProduct}.`);
+      return productList;
+
+    } else {
+      console.error(`[ForecastContent] prepareProductListForGeminiPrompt: Unknown or unsupported chartLevel: ${chartLevel}`);
+      toast.error("Tuntematon valintataso kontekstin muodostamiseksi.");
+      return null;
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -578,9 +758,23 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
                     selectedProduct
                       ? 'Tuotetaso'
                       : selectedGroup
-                        ? `Tuoteryhmätaso - ${products.map(p => `${p.code} ${p.description}`).join(', ')}`
+                        ? (() => {
+                            const productStrings = products.map(p => `${p.code} ${p.description}`);
+                            if (productStrings.length === 0) {
+                              return 'Tuoteryhmätaso';
+                            }
+                            const productListStr = generateTruncatedListString(productStrings, "tuote", "tuotetta", 3);
+                            return `Tuoteryhmätaso - Sisältää: ${productListStr}`;
+                          })()
                         : selectedClass
-                          ? 'Tuoteluokkataso'
+                          ? (() => {
+                              const groupCodes = currentClassProductGroupDetails.map(g => g.code);
+                              if (groupCodes.length === 0) {
+                                return 'Tuoteluokkataso';
+                              }
+                              const groupListStr = generateTruncatedListString(groupCodes, "tuoteryhmä", "tuoteryhmää", 3);
+                              return `Tuoteluokkataso - Sisältää: ${groupListStr}`;
+                            })()
                           : 'Kaikki tuoteluokat'
                   }
                 />
@@ -620,9 +814,23 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
                     selectedProduct
                       ? 'Tuotetaso'
                       : selectedGroup
-                        ? `Tuoteryhmätaso - ${products.map(p => `${p.code} ${p.description}`).join(', ')}`
+                        ? (() => {
+                            const productStrings = products.map(p => `${p.code} ${p.description}`);
+                            if (productStrings.length === 0) {
+                              return 'Tuoteryhmätaso';
+                            }
+                            const productListStr = generateTruncatedListString(productStrings, "tuote", "tuotetta", 3);
+                            return `Tuoteryhmätaso - Sisältää: ${productListStr}`;
+                          })()
                         : selectedClass
-                          ? 'Tuoteluokkataso'
+                          ? (() => {
+                              const groupCodes = currentClassProductGroupDetails.map(g => g.code);
+                              if (groupCodes.length === 0) {
+                                return 'Tuoteluokkataso';
+                              }
+                              const groupListStr = generateTruncatedListString(groupCodes, "tuoteryhmä", "tuoteryhmää", 3);
+                              return `Tuoteluokkataso - Sisältää: ${groupListStr}`;
+                            })()
                           : 'Kaikki tuoteluokat'
                   }
                 />
@@ -642,6 +850,7 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
           errorImageUrl={errorImageUrl}
           chartLevel={chartLevel}
           onCorrectionsApplied={handleCorrectionsApplied}
+          applyBatchCorrectionsFromChat={applyBatchCorrectionsFromChat} // Updated prop name
           selectedClass={selectedClass}
           selectedGroups={
             selectedGroup

@@ -71,44 +71,53 @@ Invoke-RestMethod -Uri 'https://scmbp.com/REST/v1/genaibase/kemppi_Kemppi_100_FG
 ```
 
 ### POST / - Päivitä data
-Päivittää ennustedataa. Päivitykset tehdään WHERE-ehtojen perusteella.
+Päivittää ennustedataa. API odottaa aina tuotekohtaisia korjauksia. Yksi POST-pyyntö voi sisältää yhden tuotekohtaisen korjauksen.
+Päivitys kohdistuu tiettyyn `Year_Month`, `prodcode`, `prodgroup` ja `prod_class` -kombinaatioon.
 
-#### Request Body
+**Frontendin rooli korjauksissa:**
+- **Tason kääntäminen:** Jos käyttöliittymässä korjaus tehdään tuoteluokka- tai tuoteryhmätasolla, käyttöliittymän (`ForecastContent.tsx`) vastuulla on kääntää tämä prosentuaalinen muutos yksittäisiksi tuotekohtaisiksi korjauspyynnöiksi, jotka lähetetään API:lle.
+- **Nollaennusteiden suodatus:** Käyttöliittymän (`ForecastContent.tsx`) tulee suodattaa pois ne tuotteet, joiden olemassa oleva ennuste (`new_forecast_manually_adjusted` tai `new_forecast`) kyseiselle kuukaudelle on nolla tai puuttuu. API ei sovella korjausprosenttia näihin tapauksiin, ja `DataService` ei lähetä korjausta tällaisille tuotteille.
+
+#### Request Body Structure
+Yksi pyyntö päivittää yhden tuote-kuukausi -parin ennustetta. Tämä vastaa `ForecastCorrection` rajapintaa, jota `DataService` käyttää.
 ```typescript
-interface ForecastCorrection {
-  product_group?: string;    // Tuoteryhmä
-  product_code?: string;     // Tuotekoodi
-  month: string;             // Kuukausi (YYYY-MM)
-  correction_percent: number; // Korjausprosentti
-  explanation: string;       // Korjauksen selitys
-  forecast_corrector?: string; // Korjauksen tehnyt henkilö
-  prod_class?: string;       // Tuoteluokka
+// DataService.applyCorrections lähettää tämän mukaisia JSON-objekteja API:lle.
+interface ForecastCorrectionAPIPayload {
+  Year_Month: string;             // Kuukausi (YYYY-MM), johon korjaus kohdistuu. Avain on "Year_Month".
+  prod_class: string;             // Tuoteluokka
+  prodgroup: string;              // Tuoteryhmä (koodi)
+  prodcode: string;               // Tuotekoodi
+  correction_percent: number;     // Korjausprosentti (esim. 10 tai -5)
+  explanation: string;            // Korjauksen selitys
+  forecast_corrector?: string;    // Korjauksen tekijä (esim. käyttäjätunnus tai sähköposti), vapaaehtoinen.
+  correction_timestamp: string;   // Korjauksen aikaleima (ISO 8601), DataService generoi tämän.
 }
 ```
 
-#### Example Request
+#### Example Request (Single Product Correction)
 ```powershell
 $headers = @{
     'Authorization' = 'Bearer fm91Lp8IhmZfIAFhwmx2Gb2fhDJZmsV4XaRDPse5zWfwYpURMcKJI7kS7QLbiiU5'
     'Content-Type' = 'application/json'
 }
 $body = @{
+    Year_Month = "2025-08" # Avain on "Year_Month"
     prod_class = "1104 LS-laitteet"
-    product_group = "15307 X8 WIRE FEEDERS"
-    product_code = "X8900501501"
-    month = "2025-08"
+    prodgroup = "15307 X8 WIRE FEEDERS" # Tuoteryhmän koodi
+    prodcode = "X8900501501"
     correction_percent = -2
     explanation = "Korjaus perustuu markkinatrendeihin"
-    forecast_corrector = "forecasting@kemppi.com"
+    forecast_corrector = "forecasting@kemppi.com" # Vapaaehtoinen
+    correction_timestamp = "2024-07-12T10:00:00.000Z" # DataService luo tämän automaattisesti
 } | ConvertTo-Json
 
 Invoke-RestMethod -Uri 'https://scmbp.com/REST/v1/genaibase/kemppi_Kemppi_100_FG_sales_m_assistant_input_forecasts_separated' -Headers $headers -Method Post -Body $body
 ```
+Backend laskee `new_forecast_manually_adjusted` -arvon soveltamalla `correction_percent` tuotteen nykyiseen `new_forecast`-arvoon (tai `new_forecast_manually_adjusted`, jos se on jo olemassa ja ei-null). Jos olemassa oleva ennuste on nolla tai null, korjausta ei sovelleta tähän tuotteeseen.
 
 ## Huomioitavaa
-1. Tietokannan riveillä ei ole uniikkia ID:tä/UUID:tä
-2. Päivitykset tehdään WHERE-ehtojen perusteella
-3. Kaikki kentät eivät ole pakollisia päivityksessä
-4. Aikaleima (Year_Month) on muodossa YYYY-MM
+1. Tietokannan riveillä ei ole uniikkia ID:tä/UUID:tä käytetyssä API-rajapinnassa. Päivitykset kohdistetaan `Year_Month`, `prodcode`, `prodgroup` ja `prod_class` perusteella.
+2. Kaikki `ForecastCorrectionAPIPayload`-interfacen kentät (pl. `forecast_corrector`, joka on vapaaehtoinen) ovat pakollisia POST-pyynnössä onnistuneen päivityksen varmistamiseksi backendissä. `correction_timestamp` lisätään automaattisesti `DataService`:n toimesta.
+3. Aikaleima (`Year_Month`) on merkkijono muodossa `YYYY-MM`.
 5. Määrät (Quantity, forecasts) ovat desimaalilukuja
 6. Virheet (old_forecast_error) lasketaan automaattisesti

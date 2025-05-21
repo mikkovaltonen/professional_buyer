@@ -3,6 +3,7 @@ import { GoogleGenerativeAI, Part } from '@google/generative-ai';
 import { Loader2 } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
 import ApplyCorrectionsButton from './ApplyCorrectionsButton';
+import { Button } from '@/components/ui/button';
 
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
 const geminiModel = import.meta.env.VITE_GEMINI_MODEL || 'gemini-2.5-pro-preview-03-25';
@@ -141,25 +142,43 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
     }
   };
 
+  const buildRequestPayload = () => {
+    const base: any = {
+      prod_class: selectedClass || 'N/A',
+      month: '2025-08',
+      correction_percent: -2,
+      explanation: 'Perustelu tähän.',
+      forecast_corrector: 'forecasting@kemppi.com',
+    };
+
+    if (chartLevel === 'group' || chartLevel === 'product') {
+      base.product_group =
+        selectedGroups && selectedGroups.length > 0 ? selectedGroups[0] : 'N/A';
+    }
+
+    if (chartLevel === 'product') {
+      base.product_code =
+        selectedProducts && selectedProducts.length > 0 && selectedProducts[0].code
+          ? selectedProducts[0].code
+          : 'N/A';
+    }
+
+    const ordered: any = { prod_class: base.prod_class };
+    if (base.product_group) ordered.product_group = base.product_group;
+    if (base.product_code) ordered.product_code = base.product_code;
+    ordered.month = base.month;
+    ordered.correction_percent = base.correction_percent;
+    ordered.explanation = base.explanation;
+    ordered.forecast_corrector = base.forecast_corrector;
+
+    return ordered;
+  };
+
   const handleRequestJson = async () => {
     console.log("[GeminiChat] handleRequestJson: Initiating JSON request.");
     setIsLoading(true);
 
-    const payload: any = {
-      prod_class: selectedClass || "N/A",
-      month: "2025-08",
-      correction_percent: -2,
-      explanation: "Perustelu tähän.",
-      forecast_corrector: "forecasting@kemppi.com",
-    };
-
-    if (chartLevel === "group" || chartLevel === "product") {
-      payload.product_group = (selectedGroups && selectedGroups.length > 0) ? selectedGroups[0] : "N/A";
-    }
-
-    if (chartLevel === "product") {
-      payload.product_code = (selectedProducts && selectedProducts.length > 0 && selectedProducts[0].code) ? selectedProducts[0].code : "N/A";
-    }
+    const payload = buildRequestPayload();
 
     const jsonString = JSON.stringify(payload, null, 2);
     const fullMessageString = `Anna tutkimukseesi perustuva paras arvauksesi tilastollisen kysyntäennusteen korjauksesta. Lisääthän myös kuukauden yhdelle riville. JSON-muoto on alla:\n\`\`\`json\n${jsonString}\n\`\`\``;
@@ -507,23 +526,22 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
   return (
     <div className="border rounded-lg p-4 mt-8 bg-white shadow">
       <div className="flex gap-2 mb-4">
-        <button
-          className={`px-4 py-2 rounded transition-colors duration-200 ${sessionActive || isLoading || !imageUrl || !selectedClass
+        <Button
+          className={`transition-colors duration-200 ${sessionActive || isLoading || !imageUrl || !selectedClass
             ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
             : 'bg-[#4ADE80] hover:bg-[#22C55E] text-white'}`}
           onClick={handleStartSession}
           disabled={sessionActive || isLoading || !imageUrl || !selectedClass}
         >
           Aloita chat
-        </button>
-        <button
-          className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded"
+        </Button>
+        <Button
+          className="bg-gray-200 hover:bg-gray-300 text-gray-700"
           onClick={handleClearSession}
           disabled={!sessionActive}
         >
           Puhdista chat
-        </button>
-        <ApplyCorrectionsButton chatContent={messages.map(m => m.parts?.map(p => p.text).join('\n')).join('\n\n')} onCorrectionsApplied={onCorrectionsApplied} />
+        </Button>
       </div>
       <div className="h-[1200px] overflow-y-auto border rounded p-2 bg-gray-50 mb-4">
         {messages.length === 0 && <div className="text-gray-400 text-sm">Ei viestejä</div>}
@@ -607,20 +625,21 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
           disabled={!sessionActive || isLoading}
           onKeyDown={e => { if (e.key === 'Enter') handleSend(); }}
         />
-        <button
-          className="bg-[#4ADE80] hover:bg-[#22C55E] text-white px-4 py-2 rounded"
+        <Button
+          className="bg-[#4ADE80] hover:bg-[#22C55E] text-white"
           onClick={handleSend}
           disabled={!sessionActive || isLoading || !input.trim()}
         >
           Lähetä
-        </button>
-        <button
-          className="bg-[#4ADE80] hover:bg-[#22C55E] text-white px-4 py-2 rounded"
+        </Button>
+        <Button
+          className="bg-[#4ADE80] hover:bg-[#22C55E] text-white"
           onClick={handleRequestJson}
           disabled={!sessionActive || isLoading}
         >
           Pyydä json
-        </button>
+        </Button>
+        <ApplyCorrectionsButton chatContent={messages.map(m => m.parts?.map(p => p.text).join('\n')).join('\n\n')} onCorrectionsApplied={onCorrectionsApplied} />
       </div>
     </div>
   );

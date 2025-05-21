@@ -74,7 +74,7 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
         await dataService.loadForecastData();
         const classes = dataService.getUniqueProductClasses();
         console.log(`[ForecastContent] useEffect (initial load): Loaded ${classes.length} unique product classes.`);
-        setProductClasses(classes.map(String));
+        setProductClasses(classes.map(String).sort((a, b) => a.localeCompare(b)));
         
         const allData = dataService.getAllData();
         setRawData(allData);
@@ -206,6 +206,7 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
         chartTitle = productClass;
         const groups = dataService.getProductGroupsInClass(productClass);
         expectedGroupsForClass = groups.map(String);
+        expectedGroupsForClass.sort((a, b) => a.localeCompare(b)); // Sort here
         console.log(`[ForecastContent] handleClassChange: Loaded ${expectedGroupsForClass.length} product groups for class '${productClass}'. These are the expected groups for adjusted forecast aggregation.`);
         setProductGroups(expectedGroupsForClass);
         setProducts([]);
@@ -248,6 +249,18 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
       } else {
         console.log(`[ForecastContent] handleGroupChange: Fetching data for group: '${group}' within class '${selectedClass}'.`);
       const groupProducts = dataService.getProductsInGroup(group, selectedClass);
+      groupProducts.sort((a, b) => {
+        const descA = a.description.toLowerCase();
+        const descB = b.description.toLowerCase();
+        const codeA = a.code.toLowerCase();
+        const codeB = b.code.toLowerCase();
+
+        if (descA < descB) return -1;
+        if (descA > descB) return 1;
+        if (codeA < codeB) return -1;
+        if (codeA > codeB) return 1;
+        return 0;
+      });
       setProducts(groupProducts);
         console.log(`[ForecastContent] handleGroupChange: Loaded ${groupProducts.length} products for group '${group}' in class '${selectedClass}'.`);
         dataToAggregate = dataService.getProductGroupData(group, selectedClass);

@@ -181,7 +181,7 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
     const payload = buildRequestPayload();
 
     const jsonString = JSON.stringify(payload, null, 2);
-    const fullMessageString = `Anna tutkimukseesi perustuva paras arvauksesi tilastollisen kysyntäennusteen korjauksesta. Lisääthän myös kuukauden yhdelle riville. JSON-muoto on alla:\n\`\`\`json\n${jsonString}\n\`\`\``;
+    const fullMessageString = `Anna tutkimukseesi perustuva paras arvauksesi tilastollisen kysyntäennusteen korjauksesta. Luo yksi rivi kullekin kuukaudelle seurvaan 12kk ajalle ( kuluva kk + 11k tulveisuuteen). Tää on sama aika jolle kuvaajassa annettu tilastollinen ennuste.  JSON-muoto on alla:\n\`\`\`json\n${jsonString}\n\`\`\``;
 
     const userMessage: Message = { role: 'user', parts: [{ text: fullMessageString }] };
     setMessages(prev => [...prev, userMessage]);

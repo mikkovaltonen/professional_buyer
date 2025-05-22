@@ -65,21 +65,15 @@ const ApplyCorrectionsButton: React.FC<ApplyCorrectionsButtonProps> = ({
           
           // Validate the structure of each correction
           const validCorrections = corrections.filter(item => {
-            // Tuotetaso: product_code (product_group voi olla mukana)
-            // Ryhmätaso: vain product_group
-            // Luokkataso: vain prod_class
-            const hasValidIdentifier = (
-              !!item.product_code ||
-              (!!item.product_group && !item.product_code) ||
-              (!!item.prod_class && !item.product_group && !item.product_code)
-            );
-            const isValid = hasValidIdentifier && 
-                          item.month && 
-                          (typeof item.correction_percent === 'number' || 
-                           (typeof item.correction_percent === 'string' && !isNaN(Number(item.correction_percent)))) &&
-                          item.explanation;
+            const isValid = 
+              typeof item.product_code === 'string' && item.product_code.trim() !== '' &&
+              typeof item.month === 'string' && item.month.trim() !== '' &&
+              typeof item.explanation === 'string' && item.explanation.trim() !== '' &&
+              (typeof item.correction_percent === 'number' || 
+               (typeof item.correction_percent === 'string' && !isNaN(Number(item.correction_percent.trim())) && item.correction_percent.trim() !== ''));
+
             if (!isValid) {
-              console.log('Invalid correction item:', item);
+              console.log('Invalid correction item (missing required fields or invalid format):', item);
             }
             return isValid;
           });
@@ -106,21 +100,15 @@ const ApplyCorrectionsButton: React.FC<ApplyCorrectionsButtonProps> = ({
           if (Array.isArray(parsedCorrections)) {
             // Validate the structure of each correction
             const validCorrections = parsedCorrections.filter(item => {
-              // Tuotetaso: product_code (product_group voi olla mukana)
-              // Ryhmätaso: vain product_group
-              // Luokkataso: vain prod_class
-              const hasValidIdentifier = (
-                !!item.product_code ||
-                (!!item.product_group && !item.product_code) ||
-                (!!item.prod_class && !item.product_group && !item.product_code)
-              );
-              const isValid = hasValidIdentifier && 
-                            item.month && 
-                            (typeof item.correction_percent === 'number' || 
-                             (typeof item.correction_percent === 'string' && !isNaN(Number(item.correction_percent)))) &&
-                            item.explanation;
+              const isValid = 
+                typeof item.product_code === 'string' && item.product_code.trim() !== '' &&
+                typeof item.month === 'string' && item.month.trim() !== '' &&
+                typeof item.explanation === 'string' && item.explanation.trim() !== '' &&
+                (typeof item.correction_percent === 'number' || 
+                 (typeof item.correction_percent === 'string' && !isNaN(Number(item.correction_percent.trim())) && item.correction_percent.trim() !== ''));
+
               if (!isValid) {
-                console.log('Invalid correction item:', item);
+                console.log('Invalid correction item (missing required fields or invalid format):', item);
               }
               return isValid;
             });

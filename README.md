@@ -74,6 +74,9 @@ npm install
 3. Luo .env-tiedosto ja lisää tarvittavat ympäristömuuttujat
 ```env
 VITE_GEMINI_API_KEY=xxx
+VITE_API_BEARER_TOKEN=
+# Path to your Google service account JSON key (optional)
+GOOGLE_APPLICATION_CREDENTIALS=/path/to/key.json
 ```
 
 4. Käynnistä kehityspalvelin

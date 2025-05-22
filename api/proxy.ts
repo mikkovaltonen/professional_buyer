@@ -1,7 +1,9 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const targetUrl = 'https://scmbp.com/REST/v1/genaibase/kemppi_Kemppi_100_FG_sales_m_assistant_input_forecasts_separated';
+  const baseUrl = 'https://scmbp.com/REST/v1/genaibase/kemppi_Kemppi_100_FG_sales_m_assistant_input_forecasts_separated';
+  const query = req.url?.split('?')[1];
+  const targetUrl = query ? `${baseUrl}?${query}` : baseUrl;
   
   // Handle OPTIONS request for CORS preflight
   if (req.method === 'OPTIONS') {
@@ -13,14 +15,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     console.log('Proxy: Making request to', targetUrl);
-    
+
     const response = await fetch(targetUrl, {
       method: req.method,
       headers: {
         'Authorization': req.headers.authorization || '',
-        'Content-Type': 'application/json',
+        'Content-Type': req.headers['content-type'] || 'application/json',
         'Accept': 'application/json'
-      }
+      },
+      body:
+        req.method !== 'GET' && req.method !== 'HEAD'
+          ? typeof req.body === 'string' || req.body instanceof Buffer
+            ? req.body
+            : JSON.stringify(req.body)
+          : undefined
     });
 
     console.log('Proxy: Response status:', response.status);

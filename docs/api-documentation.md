@@ -8,7 +8,7 @@ https://scmbp.com/REST/v1/genaibase/kemppi_Kemppi_100_FG_sales_m_assistant_input
 ## Authentication
 API requires Bearer token authentication:
 ```
-Authorization: Bearer fm91Lp8IhmZfIAFhwmx2Gb2fhDJZmsV4XaRDPse5zWfwYpURMcKJI7kS7QLbiiU5
+Authorization: Bearer <YOUR_TOKEN_HERE>
 ```
 
 ## Data Structure
@@ -44,7 +44,7 @@ Hakee ennustedataa. Tukee WHERE-ehtoja rajaamaan hakutuloksia.
 #### Example Request
 ```powershell
 $headers = @{
-    'Authorization' = 'Bearer fm91Lp8IhmZfIAFhwmx2Gb2fhDJZmsV4XaRDPse5zWfwYpURMcKJI7kS7QLbiiU5'
+    'Authorization' = 'Bearer <YOUR_TOKEN_HERE>'
 }
 Invoke-RestMethod -Uri 'https://scmbp.com/REST/v1/genaibase/kemppi_Kemppi_100_FG_sales_m_assistant_input_forecasts_separated?where[prodcode]=3119770' -Headers $headers -Method Get
 ```
@@ -97,7 +97,7 @@ interface ForecastCorrectionAPIPayload {
 #### Example Request (Single Product Correction)
 ```powershell
 $headers = @{
-    'Authorization' = 'Bearer fm91Lp8IhmZfIAFhwmx2Gb2fhDJZmsV4XaRDPse5zWfwYpURMcKJI7kS7QLbiiU5'
+    'Authorization' = 'Bearer <YOUR_TOKEN_HERE>'
     'Content-Type' = 'application/json'
 }
 $body = @{

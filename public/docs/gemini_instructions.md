@@ -87,4 +87,4 @@ product_group tulee olla sama kuin datassa kyseiselle product_code:lle. Anna kun
 
 ---
 
-Korjaukset tulee rajata vain sille aikavälille jolle valokuvassa on "Tilastollinen ennuste" - dataa (Keltainen käyrä), ja niitä tulee antaa vain niille kuukausille, joiden osalta uskot korjauksen olevan perusteltu. 
+Korjaukset tulee rajata vain sille aikavälille jolle valokuvassa on "Tilastollinen ennuste" - dataa (Keltainen käyrä), ja niitä tulee antaa vain niille kuukausille, joiden osalta uskot korjauksen olevan perusteltu. Tämä ennustusjakso on aina kuluva kuukausi + 11 kuukautta tulevaisuuteen. 

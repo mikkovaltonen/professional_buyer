@@ -31,7 +31,10 @@ export class DataService {
   private authToken: string;
 
   private constructor() {
-    this.authToken = 'fm91Lp8IhmZfIAFhwmx2Gb2fhDJZmsV4XaRDPse5zWfwYpURMcKJI7kS7QLbiiU5';
+    this.authToken = import.meta.env.VITE_API_BEARER_TOKEN || '';
+    if (!this.authToken) {
+      console.error('API Bearer token not found in environment variables');
+    }
   }
 
   public static getInstance(): DataService {

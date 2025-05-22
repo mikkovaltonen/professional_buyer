@@ -281,9 +281,12 @@ export class DataService {
       for (const correction of corrections) {
         console.log('[DataService] applyCorrections: Processing correction:', correction);
         
-        // Prepare the request body
+        // Normalize month to include day for the API
+        const normalizedMonth = correction.month.length === 7 ? `${correction.month}-01` : correction.month;
+
+        // Prepare JSON request body
         const requestBody = {
-          Year_Month: correction.month,
+          Year_Month: normalizedMonth,
           prod_class: correction.prod_class,
           prodgroup: correction.product_group,
           prodcode: correction.product_code,

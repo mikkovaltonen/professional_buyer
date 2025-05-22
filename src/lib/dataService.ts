@@ -254,6 +254,13 @@ export class DataService {
     return Array.from(productCodes);
   }
 
+  public getProductDetails(productCode: string): TimeSeriesData | undefined {
+    if (!this.data || this.data.length === 0 || !productCode) {
+      return undefined;
+    }
+    return this.data.find(row => row.prodcode === productCode);
+  }
+
   public clearCache(): void {
     this.data = [];
   }

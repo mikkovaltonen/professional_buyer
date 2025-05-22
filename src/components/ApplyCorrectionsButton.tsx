@@ -165,14 +165,37 @@ const ApplyCorrectionsButton: React.FC<ApplyCorrectionsButtonProps> = ({
 
       if (selectedProductCode) {
         // Scenario 1: selectedProductCode is active. All corrections target this specific product.
-        finalCorrectionsToSend = corrections.map(c => ({
-          ...c,
-          product_code: selectedProductCode,
-          // Ensuring product_group and prod_class are consistent if possible,
-          // but primarily relying on product_code for DataService.
-          // This might need adjustment if DataService strictly needs group/class for a product.
-        }));
-        console.log(`Applying all ${corrections.length} chat corrections to selected product: ${selectedProductCode}`, finalCorrectionsToSend);
+        finalCorrectionsToSend = corrections.map(c => {
+          const mappedCorrection: ForecastCorrection = {
+            ...c,
+            product_code: selectedProductCode,
+            // Ensure correction_percent is a number
+            correction_percent: typeof c.correction_percent === 'string' 
+                                ? parseFloat(c.correction_percent.trim()) 
+                                : c.correction_percent,
+          };
+
+          // ADD LOGGING HERE for mappedCorrection
+          if (mappedCorrection.product_code) {
+            const productDetails = dataService.getProductDetails(mappedCorrection.product_code);
+            console.log(`[Debug Comparison] For Product Code: ${mappedCorrection.product_code}`);
+            console.log(`  Data Sent -> prod_class: ${mappedCorrection.prod_class}, product_group: ${mappedCorrection.product_group}`);
+            if (productDetails) {
+                console.log(`  Actual Data (from DataService) -> prod_class: ${productDetails.prod_class}, product_group: ${productDetails.prodgroup}`);
+                const classMatch = mappedCorrection.prod_class === productDetails.prod_class;
+                const groupMatch = mappedCorrection.product_group === productDetails.prodgroup;
+                console.log(`  Comparison -> Class Match: ${classMatch}, Group Match: ${groupMatch}`);
+                if (!classMatch || !groupMatch) {
+                    console.warn(`  Mismatch detected for ${mappedCorrection.product_code}: Sent (Class: ${mappedCorrection.prod_class}, Group: ${mappedCorrection.product_group}) vs Actual (Class: ${productDetails.prod_class}, Group: ${productDetails.prodgroup})`);
+                }
+            } else {
+                console.warn(`  Actual Data (from DataService) -> Details not found in DataService for ${mappedCorrection.product_code}`);
+            }
+          }
+          return mappedCorrection;
+        }).filter(mc => mc.product_code && !isNaN(mc.correction_percent)); // Filter out if product_code became undefined or percent is NaN
+        
+        console.log(`Applying all ${finalCorrectionsToSend.length} valid chat corrections to selected product: ${selectedProductCode}`, finalCorrectionsToSend);
       } else {
         // Scenarios 2, 3, 4: No selectedProductCode. Corrections might need expansion.
         let candidateCorrections = corrections;
@@ -227,10 +250,29 @@ const ApplyCorrectionsButton: React.FC<ApplyCorrectionsButtonProps> = ({
           
           if (correction.product_code && correction.product_code.trim() !== '') {
             // Already product-specific
-            finalCorrectionsToSend.push({
+            const correctionToLog: ForecastCorrection = {
               ...correction,
               correction_percent: currentCorrectionPercent
-            });
+            };
+
+            // ADD LOGGING HERE for correctionToLog
+            if (correctionToLog.product_code) {
+                const productDetails = dataService.getProductDetails(correctionToLog.product_code);
+                console.log(`[Debug Comparison] For Product Code: ${correctionToLog.product_code}`);
+                console.log(`  Data Sent -> prod_class: ${correctionToLog.prod_class}, product_group: ${correctionToLog.product_group}`);
+                if (productDetails) {
+                    console.log(`  Actual Data (from DataService) -> prod_class: ${productDetails.prod_class}, product_group: ${productDetails.prodgroup}`);
+                    const classMatch = correctionToLog.prod_class === productDetails.prod_class;
+                    const groupMatch = correctionToLog.product_group === productDetails.prodgroup;
+                    console.log(`  Comparison -> Class Match: ${classMatch}, Group Match: ${groupMatch}`);
+                    if (!classMatch || !groupMatch) {
+                        console.warn(`  Mismatch detected for ${correctionToLog.product_code}: Sent (Class: ${correctionToLog.prod_class}, Group: ${correctionToLog.product_group}) vs Actual (Class: ${productDetails.prod_class}, Group: ${productDetails.prodgroup})`);
+                    }
+                } else {
+                    console.warn(`  Actual Data (from DataService) -> Details not found in DataService for ${correctionToLog.product_code}`);
+                }
+            }
+            finalCorrectionsToSend.push(correctionToLog);
           } else {
             // Needs expansion
             let productCodesToCorrect: string[] = [];
@@ -243,15 +285,34 @@ const ApplyCorrectionsButton: React.FC<ApplyCorrectionsButtonProps> = ({
             if (productCodesToCorrect.length > 0) {
               console.log(`Expanding group/class correction for '${normalizeString(correction.product_group) || normalizeString(correction.prod_class)}' into ${productCodesToCorrect.length} specific corrections.`);
               productCodesToCorrect.forEach(pCode => {
-                finalCorrectionsToSend.push({
+                const specificCorrection: ForecastCorrection = {
                   month: correction.month,
                   correction_percent: currentCorrectionPercent,
                   explanation: correction.explanation,
                   forecast_corrector: correction.forecast_corrector,
-                  prod_class: correction.prod_class,
-                  product_group: correction.product_group,
+                  prod_class: correction.prod_class, // This is the prod_class from the original group/class level suggestion
+                  product_group: correction.product_group, // This is the product_group from the original group level suggestion
                   product_code: pCode,
-                });
+                };
+
+                // ADD LOGGING HERE for specificCorrection
+                if (specificCorrection.product_code) {
+                    const productDetails = dataService.getProductDetails(specificCorrection.product_code);
+                    console.log(`[Debug Comparison] For Product Code: ${specificCorrection.product_code}`);
+                    console.log(`  Data Sent -> prod_class: ${specificCorrection.prod_class}, product_group: ${specificCorrection.product_group}`);
+                    if (productDetails) {
+                        console.log(`  Actual Data (from DataService) -> prod_class: ${productDetails.prod_class}, product_group: ${productDetails.prodgroup}`);
+                        const classMatch = specificCorrection.prod_class === productDetails.prod_class;
+                        const groupMatch = specificCorrection.product_group === productDetails.prodgroup;
+                        console.log(`  Comparison -> Class Match: ${classMatch}, Group Match: ${groupMatch}`);
+                        if (!classMatch || !groupMatch) {
+                            console.warn(`  Mismatch detected for ${specificCorrection.product_code}: Sent (Class: ${specificCorrection.prod_class}, Group: ${specificCorrection.product_group}) vs Actual (Class: ${productDetails.prod_class}, Group: ${productDetails.prodgroup})`);
+                        }
+                    } else {
+                        console.warn(`  Actual Data (from DataService) -> Details not found in DataService for ${specificCorrection.product_code}`);
+                    }
+                }
+                finalCorrectionsToSend.push(specificCorrection);
               });
             } else {
               console.warn(`No product codes found for group/class correction: '${normalizeString(correction.product_group) || normalizeString(correction.prod_class)}'. This correction will be skipped.`);

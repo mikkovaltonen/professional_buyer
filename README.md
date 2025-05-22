@@ -23,7 +23,6 @@ AI Kysynnänennusteavustaja on moderni web-sovellus, joka auttaa yrityksiä ennu
 - Shadcn/ui
 - Gemini API
 - Vercel (deployment)
-- Firebase (backend services)
 
 ### Gemini API 
 Kysyntä ennusteen tulkitsemisessa käytetään Gemini 2.5 Pro -mallia, joka tukee sekä kuvien analysointia että nettihakua kysynnän ennustamiseen.
@@ -165,7 +164,7 @@ Sovellus näyttää kaksi erillistä graafia:
 
 ## Tietokanta ja API
 
-Sovellus on siirtymässä Google Firestoresta MariaDB:hen. Tämä siirtymä tuo mukanaan:
+Sovellus on siirtynyt Google Firestoresta MariaDB:hen. Tämä siirtymä tuo mukanaan:
 - Parempi datan suorituskyky
 - Kestävämpi tietojen tallennus
 - Skaalautuvampi ratkaisu

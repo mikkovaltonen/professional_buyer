@@ -20,7 +20,6 @@
 ## Lib
 - `src/lib/chartUtils.ts` - Kuvaajan apufunktiot
 - `src/lib/dataService.ts` - Datan käsittelypalvelu
-- `src/lib/firebase.ts` - Firebase-konfiguraatio
 - `src/lib/chartService.ts` - Kuvaajan palvelu
 - `src/lib/userService.ts` - Käyttäjähallinta
 - `src/lib/env.ts` - Ympäristömuuttujat

@@ -64,16 +64,21 @@ const ApplyCorrectionsButton: React.FC<ApplyCorrectionsButtonProps> = ({
           const corrections = Array.isArray(parsedCorrection) ? parsedCorrection : [parsedCorrection];
           
           // Validate the structure of each correction
+          const hasRequiredFields = (item) => 
+            typeof item.month === 'string' && item.month.trim() !== '' &&
+            typeof item.explanation === 'string' && item.explanation.trim() !== '' &&
+            (typeof item.correction_percent === 'number' || 
+             (typeof item.correction_percent === 'string' && item.correction_percent.trim() !== '' && !isNaN(Number(item.correction_percent.trim()))));
+
           const validCorrections = corrections.filter(item => {
-            const isValid = 
-              typeof item.product_code === 'string' && item.product_code.trim() !== '' &&
-              typeof item.month === 'string' && item.month.trim() !== '' &&
-              typeof item.explanation === 'string' && item.explanation.trim() !== '' &&
-              (typeof item.correction_percent === 'number' || 
-               (typeof item.correction_percent === 'string' && !isNaN(Number(item.correction_percent.trim())) && item.correction_percent.trim() !== ''));
+            const isProductSpecific = typeof item.product_code === 'string' && item.product_code.trim() !== '';
+            const isGroupLevel = (!item.product_code || String(item.product_code).trim() === '') && (typeof item.product_group === 'string' && item.product_group.trim() !== '');
+            const isClassLevel = (!item.product_code || String(item.product_code).trim() === '') && (!item.product_group || String(item.product_group).trim() === '') && (typeof item.prod_class === 'string' && item.prod_class.trim() !== '');
+
+            const isValid = hasRequiredFields(item) && (isProductSpecific || isGroupLevel || isClassLevel);
 
             if (!isValid) {
-              console.log('Invalid correction item (missing required fields or invalid format):', item);
+              console.log('Invalid correction item (must be product-specific, group-level, or class-level and have all required fields):', item);
             }
             return isValid;
           });
@@ -99,16 +104,21 @@ const ApplyCorrectionsButton: React.FC<ApplyCorrectionsButtonProps> = ({
           
           if (Array.isArray(parsedCorrections)) {
             // Validate the structure of each correction
+            const hasRequiredFields = (item) => 
+              typeof item.month === 'string' && item.month.trim() !== '' &&
+              typeof item.explanation === 'string' && item.explanation.trim() !== '' &&
+              (typeof item.correction_percent === 'number' || 
+               (typeof item.correction_percent === 'string' && item.correction_percent.trim() !== '' && !isNaN(Number(item.correction_percent.trim()))));
+
             const validCorrections = parsedCorrections.filter(item => {
-              const isValid = 
-                typeof item.product_code === 'string' && item.product_code.trim() !== '' &&
-                typeof item.month === 'string' && item.month.trim() !== '' &&
-                typeof item.explanation === 'string' && item.explanation.trim() !== '' &&
-                (typeof item.correction_percent === 'number' || 
-                 (typeof item.correction_percent === 'string' && !isNaN(Number(item.correction_percent.trim())) && item.correction_percent.trim() !== ''));
+              const isProductSpecific = typeof item.product_code === 'string' && item.product_code.trim() !== '';
+              const isGroupLevel = (!item.product_code || String(item.product_code).trim() === '') && (typeof item.product_group === 'string' && item.product_group.trim() !== '');
+              const isClassLevel = (!item.product_code || String(item.product_code).trim() === '') && (!item.product_group || String(item.product_group).trim() === '') && (typeof item.prod_class === 'string' && item.prod_class.trim() !== '');
+
+              const isValid = hasRequiredFields(item) && (isProductSpecific || isGroupLevel || isClassLevel);
 
               if (!isValid) {
-                console.log('Invalid correction item (missing required fields or invalid format):', item);
+                console.log('Invalid correction item (must be product-specific, group-level, or class-level and have all required fields):', item);
               }
               return isValid;
             });
@@ -148,51 +158,124 @@ const ApplyCorrectionsButton: React.FC<ApplyCorrectionsButtonProps> = ({
         return;
       }
 
-      // Filter corrections based on whether we're working with product group, single product, or class
-      const normalizeString = (str: string) => str.replace(/\s+/g, ' ').trim();
-      let relevantCorrections;
+      const dataService = DataService.getInstance();
+      const normalizeString = (str: string | undefined) => str ? str.replace(/\s+/g, ' ').trim() : '';
       
-      if (selectedProductCode) {
-        // For single product, use all valid corrections but override the product code
-        relevantCorrections = corrections.map(correction => ({
-          ...correction,
-          product_code: selectedProductCode,  // Override with selected product
-          product_group: undefined        // Clear any product group
-        }));
-        console.log('Modified corrections for selected product:', selectedProductCode, relevantCorrections);
-      } else if (selectedProductGroup) {
-        // Filter for product group corrections
-        relevantCorrections = corrections.filter(
-          correction => normalizeString(correction.product_group) === normalizeString(selectedProductGroup)
-        );
-        console.log('Filtered corrections for product group:', selectedProductGroup, relevantCorrections);
-      } else if (selectedClass) {
-        // For class level, include all corrections with matching prod_class
-        relevantCorrections = corrections.filter(
-          correction => correction.prod_class && normalizeString(correction.prod_class) === normalizeString(selectedClass)
-        );
-        console.log('Filtered corrections for product class:', selectedClass, relevantCorrections);
-      } else {
-        // If nothing is selected, use all corrections
-        relevantCorrections = corrections;
-        console.log('No selection, using all corrections:', relevantCorrections);
-      }
+      let finalCorrectionsToSend: ForecastCorrection[] = [];
 
-      if (!relevantCorrections || relevantCorrections.length === 0) {
-        const target = selectedProductCode ? 'tuotteelle' : selectedProductGroup ? 'tuoteryhmälle' : 'tuoteluokalle';
-        toast.info(`Ei löytynyt korjauksia valitulle ${target}`);
+      if (selectedProductCode) {
+        // Scenario 1: selectedProductCode is active. All corrections target this specific product.
+        finalCorrectionsToSend = corrections.map(c => ({
+          ...c,
+          product_code: selectedProductCode,
+          // Ensuring product_group and prod_class are consistent if possible,
+          // but primarily relying on product_code for DataService.
+          // This might need adjustment if DataService strictly needs group/class for a product.
+        }));
+        console.log(`Applying all ${corrections.length} chat corrections to selected product: ${selectedProductCode}`, finalCorrectionsToSend);
+      } else {
+        // Scenarios 2, 3, 4: No selectedProductCode. Corrections might need expansion.
+        let candidateCorrections = corrections;
+
+        if (selectedProductGroup) {
+          // Filter by selectedProductGroup
+          candidateCorrections = corrections.filter(c => {
+            // Item is relevant if its product_group matches, or if it's product-specific and its group (if known) matches.
+            // Or if it's class-level and its class contains this group (more complex, not handled here).
+            // Simplified: if correction has a group, it must match. If product-specific, its actual group should match.
+            // For now, only direct match on c.product_group or if it's a product specific correction that might be in this group.
+            const correctionProductGroup = normalizeString(c.product_group);
+            const uiSelectedGroup = normalizeString(selectedProductGroup);
+            if (c.product_code && c.product_code.trim() !== '') {
+                // If product specific, we assume it's relevant if its group matches.
+                // This requires knowing the product's actual group. For now, allow if group matches or no group on item.
+                return correctionProductGroup === uiSelectedGroup || !c.product_group;
+            }
+            return correctionProductGroup === uiSelectedGroup;
+          });
+          console.log(`Filtered ${corrections.length} chat corrections to ${candidateCorrections.length} by selected group: ${selectedProductGroup}`);
+        } else if (selectedClass) {
+          // Filter by selectedClass
+          candidateCorrections = corrections.filter(c => {
+            const correctionProdClass = normalizeString(c.prod_class);
+            const uiSelectedClass = normalizeString(selectedClass);
+             // Item is relevant if its prod_class matches.
+            if (c.product_code && c.product_code.trim() !== '') {
+                // If product specific, its actual class should match. Allow if class matches or no class on item.
+                 return correctionProdClass === uiSelectedClass || !c.prod_class;
+            }
+            if (c.product_group && c.product_group.trim() !== '') {
+                // If group specific, its actual class should match. Allow if class matches or no class on item.
+                return correctionProdClass === uiSelectedClass || !c.prod_class;
+            }
+            return correctionProdClass === uiSelectedClass;
+          });
+          console.log(`Filtered ${corrections.length} chat corrections to ${candidateCorrections.length} by selected class: ${selectedClass}`);
+        } else {
+          console.log('No UI selection (product, group, or class), processing all valid chat corrections for potential expansion.');
+        }
+
+        for (const correction of candidateCorrections) {
+          const currentCorrectionPercent = typeof correction.correction_percent === 'string' 
+            ? parseFloat(correction.correction_percent.trim()) 
+            : correction.correction_percent;
+
+          if (isNaN(currentCorrectionPercent)) {
+            console.warn('Skipping correction due to invalid correction_percent:', correction);
+            continue; 
+          }
+          
+          if (correction.product_code && correction.product_code.trim() !== '') {
+            // Already product-specific
+            finalCorrectionsToSend.push({
+              ...correction,
+              correction_percent: currentCorrectionPercent
+            });
+          } else {
+            // Needs expansion
+            let productCodesToCorrect: string[] = [];
+            if (correction.product_group && correction.product_group.trim() !== '') {
+              productCodesToCorrect = dataService.getUniqueProductCodesInGroup(correction.product_group.trim(), correction.prod_class?.trim());
+            } else if (correction.prod_class && correction.prod_class.trim() !== '') {
+              productCodesToCorrect = dataService.getUniqueProductCodesInClass(correction.prod_class.trim());
+            }
+
+            if (productCodesToCorrect.length > 0) {
+              console.log(`Expanding group/class correction for '${normalizeString(correction.product_group) || normalizeString(correction.prod_class)}' into ${productCodesToCorrect.length} specific corrections.`);
+              productCodesToCorrect.forEach(pCode => {
+                finalCorrectionsToSend.push({
+                  month: correction.month,
+                  correction_percent: currentCorrectionPercent,
+                  explanation: correction.explanation,
+                  forecast_corrector: correction.forecast_corrector,
+                  prod_class: correction.prod_class,
+                  product_group: correction.product_group,
+                  product_code: pCode,
+                });
+              });
+            } else {
+              console.warn(`No product codes found for group/class correction: '${normalizeString(correction.product_group) || normalizeString(correction.prod_class)}'. This correction will be skipped.`);
+              toast.warn(`Korjausta ei voitu kohdistaa tuotteisiin ryhmälle/luokalle: ${normalizeString(correction.product_group) || normalizeString(correction.prod_class)}`);
+            }
+          }
+        }
+      }
+      
+      if (finalCorrectionsToSend.length === 0) {
+        const targetMessage = selectedProductCode ? `valitulle tuotteelle (${selectedProductCode})` 
+          : selectedProductGroup ? `valitulle tuoteryhmälle (${selectedProductGroup})` 
+          : selectedClass ? `valitulle tuoteluokalle (${selectedClass})` 
+          : "annetuille ohjeille";
+        toast.info(`Ei löytynyt prosessoitavia korjauksia ${targetMessage}.`);
         setStatus('none-found');
         setStatusMessage('Ei tallennettavia korjauksia.');
         setTimeout(() => setStatus('idle'), 4000);
         return;
       }
-
-      // Get DataService instance and apply corrections
-      console.log('Getting DataService instance...');
-      const dataService = DataService.getInstance();
-      console.log('Calling applyCorrections...');
+      
+      console.log(`Sending ${finalCorrectionsToSend.length} product-specific corrections to DataService:`, finalCorrectionsToSend);
       try {
-        await dataService.applyCorrections(relevantCorrections);
+        await dataService.applyCorrections(finalCorrectionsToSend);
         console.log('Successfully applied corrections');
         toast.success('Korjaukset lisätty onnistuneesti');
         setStatus('success');

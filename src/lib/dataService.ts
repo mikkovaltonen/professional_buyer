@@ -223,6 +223,37 @@ export class DataService {
     return Array.from(classes);
   }
 
+  public getUniqueProductCodesInClass(productClass: string): string[] {
+    if (!this.data || this.data.length === 0) {
+      return [];
+    }
+    const productCodes = new Set<string>();
+    this.data
+      .filter(row => row.prod_class === productClass && row.prodcode && typeof row.prodcode === 'string' && row.prodcode.trim() !== '')
+      .forEach(row => productCodes.add(row.prodcode!)); // prodcode is now guaranteed to be a valid string
+    return Array.from(productCodes);
+  }
+
+  public getUniqueProductCodesInGroup(productGroup: string, productClass?: string): string[] {
+    if (!this.data || this.data.length === 0) {
+      return [];
+    }
+    let filteredData = this.data.filter(row => 
+      row.prodgroup === productGroup && 
+      row.prodcode && 
+      typeof row.prodcode === 'string' && 
+      row.prodcode.trim() !== ''
+    );
+    
+    if (productClass && typeof productClass === 'string' && productClass.trim() !== '') {
+      filteredData = filteredData.filter(row => row.prod_class === productClass);
+    }
+    
+    const productCodes = new Set<string>();
+    filteredData.forEach(row => productCodes.add(row.prodcode!)); // prodcode is now guaranteed to be a valid string
+    return Array.from(productCodes);
+  }
+
   public clearCache(): void {
     this.data = [];
   }

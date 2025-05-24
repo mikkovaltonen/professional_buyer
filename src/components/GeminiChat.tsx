@@ -214,11 +214,10 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
       const model = genAI.getGenerativeModel({
         model: geminiModel,
         generationConfig: { temperature: 0.2 },
-        tools: [ { googleSearch: {} as Record<string, unknown> } ]
       });
       const history = messages.map(msg => ({ role: msg.role, parts: msg.parts }));
       console.log("[GeminiChat] handleRequestJson: Sending message to Gemini model with payload:", payload);
-      const result = await model.generateContent({ contents: [...history, { role: 'user', parts: [{ text: fullMessageString }] }] });
+      const result = await model.generateContent({ contents: [...history, { role: 'user', parts: [{ text: fullMessageString }] }], tools: [{ googleSearchRetrieval: {} }] });
       const response = result.response;
 
       if (response && response.candidates && response.candidates.length > 0) {
@@ -364,11 +363,10 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
       const model = genAI.getGenerativeModel({
         model: geminiModel,
         generationConfig: { temperature: 0.2 },
-        tools: [ { googleSearch: {} as Record<string, unknown> } ]
       });
       
       console.log("[GeminiChat] handleStartSession: Sending initial message to Gemini model.");
-      const result = await model.generateContent({ contents: [{ role: 'user', parts: initialMessageParts }] });
+      const result = await model.generateContent({ contents: [{ role: 'user', parts: initialMessageParts }], tools: [{ googleSearchRetrieval: {} }] });
       const response = result.response;
       if (response && response.candidates && response.candidates.length > 0) {
         const candidate = response.candidates[0];
@@ -456,10 +454,9 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
       const model = genAI.getGenerativeModel({
         model: geminiModel,
         generationConfig: { temperature: 0.2 },
-        tools: [ { googleSearch: {} as Record<string, unknown> } ]
       });
       const history = messages.map(msg => ({ role: msg.role, parts: msg.parts }));
-      const result = await model.generateContent({ contents: [...history, { role: 'user', parts: [{ text: currentInput }] }] });
+      const result = await model.generateContent({ contents: [...history, { role: 'user', parts: [{ text: currentInput }] }], tools: [{ googleSearchRetrieval: {} }] });
       const response = result.response;
 
       if (response && response.candidates && response.candidates.length > 0) {

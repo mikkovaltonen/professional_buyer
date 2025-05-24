@@ -34,80 +34,8 @@ const ApplyCorrectionsButton: React.FC<ApplyCorrectionsButtonProps> = ({
   const [status, setStatus] = useState<'idle' | 'saving' | 'success' | 'error' | 'none-found'>('idle');
   const [statusMessage, setStatusMessage] = useState('');
 
-  const testApiCall = async () => {
-    try {
-      setIsLoading(true);
-      const dataService = new DataService();
-      await dataService.testApiCall();
-      toast.success('API testi onnistui!');
-    } catch (error) {
-      console.error('API test failed:', error);
-      toast.error('API testi epäonnistui: ' + (error instanceof Error ? error.message : 'Tuntematon virhe'));
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
-  const debugMTP23X = async () => {
-    try {
-      setIsLoading(true);
-      const dataService = new DataService();
-      await dataService.debugGetMTP23XData();
-      toast.success('MTP23X debug valmis - katso konsoli!');
-    } catch (error) {
-      console.error('MTP23X debug failed:', error);
-      toast.error('MTP23X debug epäonnistui');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
-  const debugProduct6184113 = async () => {
-    try {
-      setIsLoading(true);
-      const dataService = DataService.getInstance();
-      console.log('[DEBUG] Fetching all data for product 6184113:');
-      
-      const url = `/api?where[prodcode]=6184113`;
-      console.log(`[DEBUG] GET request URL: ${url}`);
-      
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${dataService.authToken}`,
-          'Accept': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        const results = data.results || [];
-        console.log(`[DEBUG] Found ${results.length} records for product 6184113`);
-        
-        // Group by year-month and show new_forecast values
-        const forecastData = results
-          .filter(r => r.new_forecast !== null)
-          .map(r => ({
-            month: r.Year_Month,
-            new_forecast: r.new_forecast,
-            manually_adjusted: r.new_forecast_manually_adjusted,
-            correction_percent: r.correction_percent
-          }))
-          .sort((a, b) => a.month.localeCompare(b.month));
-          
-        console.log('[DEBUG] new_forecast data for 6184113:', forecastData);
-        
-        toast.success(`Found ${forecastData.length} forecast records - check console!`);
-      } else {
-        console.log(`[DEBUG] Failed to fetch: ${response.status}`);
-        toast.error(`API error: ${response.status}`);
-      }
-    } catch (error) {
-      console.error('[DEBUG] Fetch error:', error);
-      toast.error('Fetch failed');
-    } finally {
-      setIsLoading(false);
-    }
-  };
   const statusColors = {
     success: 'text-green-600',
     error: 'text-red-600',
@@ -493,30 +421,6 @@ const ApplyCorrectionsButton: React.FC<ApplyCorrectionsButtonProps> = ({
             <Save className="h-4 w-4 mr-2" />
           )}
           Tallenna json
-        </Button>
-        <Button
-          onClick={testApiCall}
-          disabled={isLoading}
-          variant="outline"
-          size="sm"
-        >
-          Test API
-        </Button>
-        <Button
-          onClick={debugMTP23X}
-          disabled={isLoading}
-          variant="outline"
-          size="sm"
-        >
-          Debug MTP23X
-        </Button>
-        <Button
-          onClick={debugProduct6184113}
-          disabled={isLoading}
-          variant="outline"
-          size="sm"
-        >
-          Debug 6184113
         </Button>
       </div>
       {status !== 'idle' && statusMessage && (

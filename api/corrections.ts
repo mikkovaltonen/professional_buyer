@@ -5,10 +5,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const query = req.url?.split('?')[1];
   const targetUrl = query ? `${baseUrl}?${query}` : baseUrl;
   
-  console.log('Proxy: Method:', req.method);
-  console.log('Proxy: URL:', req.url);
-  console.log('Proxy: Target URL:', targetUrl);
-  
   // Handle OPTIONS request for CORS preflight
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -18,15 +14,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    console.log('Proxy: Making request to', targetUrl);
-    console.log('Proxy: Request headers:', req.headers);
-    console.log('Proxy: Request body:', req.body);
+    console.log('Corrections Proxy: Making request to', targetUrl);
+    console.log('Corrections Proxy: Method:', req.method);
+    console.log('Corrections Proxy: Headers:', req.headers);
+    console.log('Corrections Proxy: Body:', req.body);
 
     const response = await fetch(targetUrl, {
       method: req.method,
       headers: {
         'Authorization': req.headers.authorization || '',
-        'Content-Type': req.headers['content-type'] || 'application/json',
+        'Content-Type': req.headers['content-type'] || 'application/x-www-form-urlencoded',
         'Accept': 'application/json'
       },
       body:
@@ -35,14 +32,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           : undefined
     });
 
-    console.log('Proxy: Response status:', response.status);
+    console.log('Corrections Proxy: Response status:', response.status);
     
     const responseText = await response.text();
-    console.log('Proxy: Response body:', responseText);
+    console.log('Corrections Proxy: Response body:', responseText);
+    
+    // Set CORS headers
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     
     if (!response.ok) {
-      console.error('Proxy: API error response:', responseText);
-      res.setHeader('Access-Control-Allow-Origin', '*');
+      console.error('Corrections Proxy: API error response:', responseText);
       return res.status(response.status).json({
         error: `API responded with status ${response.status}`,
         details: responseText
@@ -50,30 +51,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Try to parse as JSON, if it fails return as text
-    let data;
     try {
-      data = JSON.parse(responseText);
+      const data = JSON.parse(responseText);
+      return res.status(200).json(data);
     } catch (parseError) {
-      data = { message: responseText };
+      return res.status(200).json({ message: responseText });
     }
-    console.log('Proxy: Successfully processed request');
-
-    // Set CORS headers
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     
-    return res.status(200).json(data);
   } catch (error) {
-    console.error('Proxy error:', error);
-    // Set CORS headers even for error responses
+    console.error('Corrections Proxy: Fetch error:', error);
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    
     return res.status(500).json({ 
-      error: 'Failed to fetch data from API',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      error: 'Failed to proxy request', 
+      details: error instanceof Error ? error.message : 'Unknown error' 
     });
   }
-} 
+}

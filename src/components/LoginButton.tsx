@@ -33,8 +33,8 @@ export const LoginButton = () => {
       toast.success("Logged in successfully!");
       setIsOpen(false);
       setFormData({ email: "", password: "" });
-    } catch (error: any) {
-      toast.error(error.message || "Failed to log in");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Failed to log in");
     } finally {
       setIsLoading(false);
     }

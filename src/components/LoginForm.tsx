@@ -25,7 +25,7 @@ const LoginForm = () => {
       const success = await login(email, password);
       
       if (success) {
-        const from = (location.state as any)?.from || '/workbench';
+        const from = (location.state as { from?: string })?.from || '/workbench';
         navigate(from, { replace: true });
       } else {
         setError('Invalid credentials');

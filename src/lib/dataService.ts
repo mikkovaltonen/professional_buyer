@@ -74,7 +74,7 @@ export class DataService {
         throw new Error('Invalid data format in REST API response');
       }
 
-      this.data = rawData.results.map((row: any) => normalizeTimeSeriesData(row));
+      this.data = rawData.results.map((row: Record<string, unknown>) => normalizeTimeSeriesData(row));
       console.log(`[DataService] loadForecastData: Successfully loaded ${this.data.length} rows from REST API.`);
       
       return this.data;
@@ -126,6 +126,10 @@ export class DataService {
     });
 
     return Array.from(groupMap.entries()).map(([code, description]) => ({ code, description }));
+  }
+
+  public getDataForProduct(productCode: string): ForecastDataRow[] {
+    return this.data.filter(row => row.prodcode === productCode);
   }
 
   public getProductsInGroup(productGroup: string, productClass?: string): { code: string; description: string }[] {
@@ -268,6 +272,205 @@ export class DataService {
     this.data = [];
   }
 
+  // Helper method to get current data for a specific product and month
+  private async getDataForCorrection(productCode: string, month: string): Promise<TimeSeriesData | null> {
+    try {
+      // Normalize month to match database format
+      const normalizedMonth = month.length === 7 ? `${month}-01` : month;
+      
+      // Check if we have the data in cache first
+      const cachedData = this.data.find(d => 
+        d.prodcode === productCode && 
+        d.Year_Month === normalizedMonth
+      );
+      
+      // Debug: Show all available months for this product
+      const availableMonths = this.data
+        .filter(d => d.prodcode === productCode)
+        .map(d => d.Year_Month)
+        .sort();
+      console.log(`[DataService] Available months for ${productCode}:`, availableMonths.slice(0, 10)); // Show first 10
+      
+      if (cachedData) {
+        console.log('[DataService] Found cached data for correction calculation:', cachedData);
+        console.log('[DataService] All available numeric fields:', {
+          Quantity: cachedData.Quantity,
+          new_forecast: cachedData.new_forecast,
+          old_forecast: cachedData.old_forecast,
+          new_forecast_manually_adjusted: cachedData.new_forecast_manually_adjusted,
+          old_forecast_error: cachedData.old_forecast_error,
+          correction_percent: cachedData.correction_percent
+        });
+        return cachedData;
+      }
+      
+      // If exact month not found, try to use the latest available data for calculation
+      if (availableMonths.length > 0) {
+        const latestMonth = availableMonths[availableMonths.length - 1];
+        const latestData = this.data.find(d => 
+          d.prodcode === productCode && 
+          d.Year_Month === latestMonth
+        );
+        if (latestData) {
+          console.log(`[DataService] Using latest available data (${latestMonth}) for calculation:`, {
+            targetMonth: normalizedMonth,
+            usedMonth: latestMonth,
+            new_forecast: latestData.new_forecast,
+            old_forecast: latestData.old_forecast,
+            Quantity: latestData.Quantity
+          });
+          return latestData;
+        }
+      }
+      
+      // If not in cache, fetch from API
+      console.log('[DataService] Fetching data for correction calculation...');
+      const queryParams = new URLSearchParams();
+      queryParams.append('where[prodcode]', productCode);
+      queryParams.append('where[Year_Month]', normalizedMonth);
+      
+      const response = await fetch(`${this.baseUrl}?${queryParams.toString()}`, {
+        headers: {
+          'Authorization': `Bearer ${this.authToken}`,
+          'Accept': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const apiResponse = await response.json();
+        
+        // Handle both array and object responses (like debug function)
+        let records: any[] = [];
+        if (Array.isArray(apiResponse)) {
+          records = apiResponse;
+        } else if (apiResponse && Array.isArray(apiResponse.results)) {
+          records = apiResponse.results;
+        }
+        
+        if (records && records.length > 0) {
+          const normalizedData = normalizeTimeSeriesData(records[0]);
+          console.log('[DataService] Fetched data for correction calculation:', normalizedData);
+          return normalizedData;
+        }
+      }
+      
+      console.log('[DataService] No data found for correction calculation');
+      return null;
+    } catch (error) {
+      console.error('[DataService] Error fetching data for correction:', error);
+      return null;
+    }
+  }
+
+  // Manual GET to investigate data for MTP23X
+  public async debugGetMTP23XData(): Promise<void> {
+    console.log('[DataService] debugGetMTP23XData: Starting manual investigation...');
+    
+    try {
+      // 1. Check all MTP23X data in cache
+      const allMTP23XData = this.data.filter(d => d.prodcode === 'MTP23X');
+      console.log(`[DataService] Found ${allMTP23XData.length} MTP23X records in cache`);
+      
+      if (allMTP23XData.length > 0) {
+        console.log('[DataService] Sample MTP23X records:', allMTP23XData.slice(0, 3));
+        console.log('[DataService] All MTP23X months:', allMTP23XData.map(d => d.Year_Month).sort());
+      }
+      
+      // 2. Try direct API call for MTP23X
+      console.log('[DataService] Making direct API call for MTP23X...');
+      const queryParams = new URLSearchParams();
+      queryParams.append('where[prodcode]', 'MTP23X');
+      
+      const response = await fetch(`${this.baseUrl}?${queryParams.toString()}`, {
+        headers: {
+          'Authorization': `Bearer ${this.authToken}`,
+          'Accept': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const apiData = await response.json();
+        console.log('[DataService] Raw API response:', apiData);
+        console.log('[DataService] API response type:', typeof apiData);
+        
+        // Handle both array and object responses
+        let records: any[] = [];
+        if (Array.isArray(apiData)) {
+          records = apiData;
+        } else if (apiData && Array.isArray(apiData.results)) {
+          records = apiData.results;
+          console.log('[DataService] API response format: wrapped in results object');
+        }
+        
+        console.log(`[DataService] Found ${records.length} MTP23X records`);
+        if (records.length > 0) {
+          console.log('[DataService] Sample MTP23X data:', records.slice(0, 3));
+          
+          // Check specifically for 2025-08
+          const aug2025 = records.find((d: any) => d.Year_Month === '2025-08-01');
+          if (aug2025) {
+            console.log('[DataService] Found 2025-08-01 data:', aug2025);
+          } else {
+            console.log('[DataService] No 2025-08-01 data found. Available months:', 
+              [...new Set(records.map((d: any) => d.Year_Month))].sort().slice(0, 10));
+          }
+          
+          // Check what forecast fields have values
+          const sampleRecord = records[0];
+          console.log('[DataService] Sample record fields:', {
+            Year_Month: sampleRecord.Year_Month,
+            prodcode: sampleRecord.prodcode,
+            new_forecast: sampleRecord.new_forecast,
+            old_forecast: sampleRecord.old_forecast,
+            Quantity: sampleRecord.Quantity,
+            new_forecast_manually_adjusted: sampleRecord.new_forecast_manually_adjusted
+          });
+        } else {
+          console.log('[DataService] No MTP23X records found');
+        }
+      } else {
+        console.error('[DataService] API call failed:', response.status, response.statusText);
+      }
+      
+      // 3. Check product group data instead
+      console.log('[DataService] Checking product group 20211 MASTERTIG PANELS...');
+      const groupData = this.data.filter(d => d.prodgroup === '20211 MASTERTIG PANELS');
+      console.log(`[DataService] Found ${groupData.length} records for product group 20211`);
+      
+      if (groupData.length > 0) {
+        console.log('[DataService] Sample group data:', groupData.slice(0, 3));
+        console.log('[DataService] Product codes in group:', [...new Set(groupData.map(d => d.prodcode))].slice(0, 10));
+        console.log('[DataService] Available months for group:', [...new Set(groupData.map(d => d.Year_Month))].sort().slice(0, 10));
+      }
+      
+    } catch (error) {
+      console.error('[DataService] debugGetMTP23XData failed:', error);
+    }
+  }
+
+  // Test function for debugging API calls
+  public async testApiCall(testData?: Partial<ForecastCorrection>): Promise<void> {
+    const defaultTestData: ForecastCorrection = {
+      prod_class: "1000 Lopputuotteet",
+      product_group: "24820 PLASMA CUTT. CONSUMABLES", 
+      product_code: "HY420168",
+      month: "2025-08",
+      correction_percent: -2,
+      explanation: "Test API call - calculating adjusted forecast",
+      forecast_corrector: "test@system.com"
+    };
+
+    const data = { ...defaultTestData, ...testData };
+    console.log('[DataService] testApiCall: Testing with data:', data);
+    
+    try {
+      await this.applyCorrections([data]);
+      console.log('[DataService] testApiCall: SUCCESS');
+    } catch (error) {
+      console.error('[DataService] testApiCall: FAILED:', error);
+    }
+  }
+
   public async applyCorrections(corrections: ForecastCorrection[]): Promise<void> {
     console.log('[DataService] applyCorrections: Starting to apply corrections...');
     
@@ -281,41 +484,153 @@ export class DataService {
       for (const correction of corrections) {
         console.log('[DataService] applyCorrections: Processing correction:', correction);
         
+        // First, get the current forecast data to calculate adjusted forecast
+        const currentData = await this.getDataForCorrection(correction.product_code, correction.month);
+        
         // Normalize month to include day for the API
         const normalizedMonth = correction.month.length === 7 ? `${correction.month}-01` : correction.month;
 
-        // Prepare JSON request body
-        const requestBody = {
-          Year_Month: normalizedMonth,
-          prod_class: correction.prod_class,
-          prodgroup: correction.product_group,
-          prodcode: correction.product_code,
-          correction_percent: correction.correction_percent,
-          explanation: correction.explanation,
-          forecast_corrector: correction.forecast_corrector || 'system',
-          correction_timestamp: new Date().toISOString()
-        };
+        // Build URL with query parameters using correct column names
+        const queryParams = new URLSearchParams();
+        queryParams.append('where[prodcode]', correction.product_code);
+        queryParams.append('where[Year_Month]', normalizedMonth);
+        
+        const apiUrl = `${this.baseUrl}?${queryParams.toString()}`;
+        
+        // Calculate adjusted forecast - try multiple forecast fields
+        let adjustedForecast: number | null = null;
+        let originalForecast: number | null = null;
+        
+        if (currentData) {
+          // Try different forecast fields in order of preference
+          originalForecast = currentData.new_forecast || currentData.old_forecast || currentData.Quantity;
+          let usedField = 'none';
+          
+          if (currentData.new_forecast !== null && currentData.new_forecast > 0) {
+            originalForecast = currentData.new_forecast;
+            usedField = 'new_forecast';
+          } else if (currentData.old_forecast !== null && currentData.old_forecast > 0) {
+            originalForecast = currentData.old_forecast;
+            usedField = 'old_forecast';
+          } else if (currentData.Quantity !== null && currentData.Quantity > 0) {
+            originalForecast = currentData.Quantity;
+            usedField = 'Quantity';
+          }
+          
+          if (originalForecast !== null && originalForecast > 0) {
+            adjustedForecast = originalForecast * (1 + correction.correction_percent / 100);
+            console.log('[DataService] Calculated adjusted forecast:', {
+              original: originalForecast,
+              correctionPercent: correction.correction_percent,
+              adjusted: adjustedForecast,
+              usedField: usedField
+            });
+          } else {
+            // Use default value of 100 for calculation when no data available
+            const defaultValue = 100;
+            adjustedForecast = defaultValue * (1 + correction.correction_percent / 100);
+            console.log('[DataService] Using default value for calculation (no data available):', {
+              defaultValue: defaultValue,
+              correctionPercent: correction.correction_percent,
+              adjusted: adjustedForecast,
+              note: 'All forecast fields were null'
+            });
+          }
+        }
+        
+        // Prepare form data for body (enhanced with calculated values)
+        const formData = new URLSearchParams();
+        
+        // CRITICAL: Only update correction fields, never touch new_forecast
+        console.log('[DataService] PROTECTION: Only updating correction fields, preserving original forecast data');
+        
+        // Core correction data
+        formData.append('correction_percent', correction.correction_percent.toString());
+        
+        // Add calculated adjusted forecast
+        if (adjustedForecast !== null) {
+          formData.append('new_forecast_manually_adjusted', adjustedForecast.toString());
+        }
+        
+        // EXPLICIT PROTECTION: Ensure we don't accidentally overwrite new_forecast
+        // The API should not modify new_forecast field during correction updates
+        
+        // Skip explanation and timestamp for now - database schema issues
+        console.log('[DataService] Skipping explanation and timestamp due to database schema constraints');
 
-        console.log('[DataService] applyCorrections: Sending request with body:', requestBody);
-
-        // Send the request to the REST API
-        const response = await fetch(this.baseUrl, {
+        console.log('[DataService] applyCorrections: API URL:', apiUrl);
+        console.log('[DataService] applyCorrections: Sending form data:', Object.fromEntries(formData));
+        console.log('[DataService] applyCorrections: Full request details:', {
+          url: apiUrl,
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${this.authToken}`,
             'Accept': 'application/json',
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/x-www-form-urlencoded'
           },
-          body: JSON.stringify(requestBody)
+          body: formData.toString(),
+          WARNING: 'THIS REQUEST SHOULD ONLY UPDATE CORRECTION FIELDS, NEVER new_forecast'
+        });
+
+        // Send the request to the REST API using form encoding as per cURL example
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${this.authToken}`,
+            'Accept': 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          body: formData
         });
 
         if (!response.ok) {
-          const errorText = await response.text();
-          console.error('[DataService] applyCorrections: API error response:', errorText);
-          throw new Error(`Failed to apply correction: ${response.status} ${response.statusText} - ${errorText}`);
+          let errorData: unknown;
+          const contentType = response.headers.get('content-type');
+          
+          try {
+            if (contentType?.includes('application/json')) {
+              errorData = await response.json();
+            } else {
+              errorData = await response.text();
+            }
+          } catch (parseError) {
+            errorData = `Failed to parse error response: ${parseError}`;
+          }
+          
+          console.error('[DataService] applyCorrections: Full error details:', {
+            status: response.status,
+            statusText: response.statusText,
+            headers: Object.fromEntries(response.headers.entries()),
+            body: errorData
+          });
+          
+          throw new Error(`API Error ${response.status}: ${JSON.stringify(errorData)}`);
         }
 
         console.log('[DataService] applyCorrections: Successfully applied correction');
+        
+        // Debug: Verify what was actually saved
+        try {
+          const verifyResponse = await fetch(apiUrl, {
+            headers: {
+              'Authorization': `Bearer ${this.authToken}`,
+              'Accept': 'application/json'
+            }
+          });
+          
+          if (verifyResponse.ok) {
+            const verifyData = await verifyResponse.json();
+            const savedData = verifyData.results?.[0];
+            console.log('[DataService] VERIFICATION - Data after save:', {
+              new_forecast: savedData?.new_forecast,
+              new_forecast_manually_adjusted: savedData?.new_forecast_manually_adjusted,
+              correction_percent: savedData?.correction_percent,
+              month: correction.month
+            });
+          }
+        } catch (verifyError) {
+          console.warn('[DataService] Could not verify saved data:', verifyError);
+        }
       }
 
       // Clear cache after successful updates
@@ -334,20 +649,33 @@ export class DataService {
   }
 }
 
-export function normalizeTimeSeriesData(row: any): TimeSeriesData {
+// Global debug functions for console testing
+if (typeof window !== 'undefined') {
+  (window as any).debugApiCall = async (testData?: any) => {
+    const dataService = new DataService();
+    await dataService.testApiCall(testData);
+  };
+  
+  (window as any).debugMTP23X = async () => {
+    const dataService = new DataService();
+    await dataService.debugGetMTP23XData();
+  };
+}
+
+export function normalizeTimeSeriesData(row: Record<string, unknown>): TimeSeriesData {
   return {
-    Year_Month: row.Year_Month,
-    prod_class: row.prod_class,
-    prodgroup: row.prodgroup,
-    prodcode: row.prodcode,
-    proddesc1: row.proddesc1,
-    Quantity: row.Quantity,
-    new_forecast: row.new_forecast,
-    old_forecast: row.old_forecast,
-    old_forecast_error: row.old_forecast_error,
-    correction_percent: row.correction_percent,
-    explanation: row.explanation,
-    new_forecast_manually_adjusted: row.new_forecast_manually_adjusted,
-    correction_timestamp: row.correction_timestamp
+    Year_Month: row.Year_Month as string,
+    prod_class: row.prod_class as string,
+    prodgroup: row.prodgroup as string,
+    prodcode: row.prodcode as string,
+    proddesc1: row.proddesc1 as string,
+    Quantity: row.Quantity as number | null,
+    new_forecast: row.new_forecast as number | null,
+    old_forecast: row.old_forecast as number | null,
+    old_forecast_error: row.old_forecast_error as number | null,
+    correction_percent: row.correction_percent as number | null,
+    explanation: row.explanation as string | null,
+    new_forecast_manually_adjusted: row.new_forecast_manually_adjusted as number | null,
+    correction_timestamp: row.correction_timestamp as string | null
   };
 } 

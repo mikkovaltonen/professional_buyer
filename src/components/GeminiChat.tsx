@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
 import ApplyCorrectionsButton from './ApplyCorrectionsButton';
 import { Button } from '@/components/ui/button';
+import { DataService } from '@/lib/dataService';
 
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
 const geminiModel = import.meta.env.VITE_GEMINI_MODEL || 'gemini-2.5-pro-preview-03-25';
@@ -21,6 +22,17 @@ interface GroundingSupport {
   groundingChunkIndices: number[];
   uri?: string;
   license?: string;
+  segment?: {
+    startIndex?: string;
+    endIndex?: string;
+  };
+}
+
+interface GroundingChunk {
+  web?: {
+    uri?: string;
+  };
+  uri?: string;
 }
 
 interface Message {
@@ -142,8 +154,8 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
     }
   };
 
-  const buildRequestPayload = () => {
-    const base: any = {
+  const buildRequestPayload = async () => {
+    const base: Record<string, string | number> = {
       prod_class: selectedClass || 'N/A',
       month: '2025-08',
       correction_percent: -2,
@@ -156,6 +168,40 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
         selectedGroups && selectedGroups.length > 0 ? selectedGroups[0] : 'N/A';
     }
 
+    // Get current new_forecast from DataService cache if product is selected
+    if (chartLevel === 'product' && selectedProducts && selectedProducts.length > 0) {
+      const currentProductCode = selectedProducts[0].code;
+      try {
+        const dataService = DataService.getInstance();
+        console.log(`[GeminiChat] Getting current new_forecast from cache for product ${currentProductCode}`);
+        
+        // Get data from DataService's cached data
+        const productData = dataService.getDataForProduct(currentProductCode);
+        console.log(`[GeminiChat] Found ${productData.length} cached records for ${currentProductCode}`);
+        
+        if (productData.length > 0) {
+          // Find latest forecast data from cache
+          const forecastData = productData
+            .filter(r => r.new_forecast !== null && r.new_forecast !== undefined)
+            .sort((a, b) => b.Year_Month.localeCompare(a.Year_Month))
+            .slice(0, 1);
+            
+          console.log(`[GeminiChat] Filtered forecast data from cache:`, forecastData);
+            
+          if (forecastData.length > 0) {
+            base.new_forecast = forecastData[0].new_forecast;
+            console.log(`[GeminiChat] Successfully added new_forecast from cache: ${base.new_forecast} for ${currentProductCode}`);
+          } else {
+            console.log(`[GeminiChat] No new_forecast data found in cache for ${currentProductCode}`);
+          }
+        } else {
+          console.log(`[GeminiChat] No cached data found for ${currentProductCode}`);
+        }
+      } catch (error) {
+        console.error(`[GeminiChat] Failed to get new_forecast from cache for ${currentProductCode}:`, error);
+      }
+    }
+
     if (chartLevel === 'product') {
       base.product_code =
         selectedProducts && selectedProducts.length > 0 && selectedProducts[0].code
@@ -163,9 +209,10 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
           : 'N/A';
     }
 
-    const ordered: any = { prod_class: base.prod_class };
+    const ordered: Record<string, string | number> = { prod_class: base.prod_class };
     if (base.product_group) ordered.product_group = base.product_group;
     if (base.product_code) ordered.product_code = base.product_code;
+    if (base.new_forecast !== undefined) ordered.new_forecast = base.new_forecast;
     ordered.month = base.month;
     ordered.correction_percent = base.correction_percent;
     ordered.explanation = base.explanation;
@@ -178,7 +225,7 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
     console.log("[GeminiChat] handleRequestJson: Initiating JSON request.");
     setIsLoading(true);
 
-    const payload = buildRequestPayload();
+    const payload = await buildRequestPayload();
 
     const jsonString = JSON.stringify(payload, null, 2);
     const fullMessageString = `Anna tutkimukseesi perustuva paras arvauksesi tilastollisen kysyntäennusteen korjauksesta. Luo yksi rivi kullekin kuukaudelle seurvaan 12kk ajalle ( kuluva kk + 11k tulveisuuteen). Tää on sama aika jolle kuvaajassa annettu tilastollinen ennuste.  JSON-muoto on alla:\n\`\`\`json\n${jsonString}\n\`\`\``;
@@ -190,7 +237,7 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
       const model = genAI.getGenerativeModel({
         model: geminiModel,
         generationConfig: { temperature: 0.2 },
-        tools: [ { googleSearch: {} } as any ]
+        tools: [ { googleSearch: {} as Record<string, unknown> } ]
       });
 
       const history = messages.map(msg => ({ // messages state before adding the current userMessage
@@ -221,11 +268,11 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
             const supports = candidate.groundingMetadata.groundingSupports;
             const allChunks = candidate.groundingMetadata.groundingChunks;
             if (supports && Array.isArray(supports)) {
-                supports.forEach((support: any) => {
+                supports.forEach((support: GroundingSupport) => {
                     if (support.segment && support.groundingChunkIndices && Array.isArray(support.groundingChunkIndices) && support.groundingChunkIndices.length > 0) {
                         const firstChunkIndex = support.groundingChunkIndices[0];
                         if (allChunks && Array.isArray(allChunks) && firstChunkIndex >= 0 && firstChunkIndex < allChunks.length) {
-                            const chunk = allChunks[firstChunkIndex] as any;
+                            const chunk = allChunks[firstChunkIndex] as GroundingChunk;
                             const uri = chunk?.web?.uri || chunk?.uri;
                             if (uri) {
                                 sources.push({ 
@@ -252,12 +299,13 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
         console.warn("[GeminiChat] handleRequestJson: No valid candidates in Gemini response.");
         setMessages(prev => [...prev, { role: 'model', parts: [{text: "En saanut vastausta mallilta."}] }]);
       }
-    } catch (error: any) {
-      console.error(`[GeminiChat] handleRequestJson: Error calling Gemini API:`, error.message || error, { status: error.status, details: error.details });
+    } catch (error: unknown) {
+      const err = error as { message?: string; status?: unknown; details?: unknown; response?: { text: () => Promise<string> } };
+      console.error(`[GeminiChat] handleRequestJson: Error calling Gemini API:`, err.message || error, { status: err.status, details: err.details });
       let errorMessage = "Virhe JSON-pyynnön lähetyksessä avustajalle.";
-      if (error.response && typeof error.response.text === 'function') {
+      if (err.response && typeof err.response.text === 'function') {
         try {
-          const txt = await error.response.text();
+          const txt = await err.response.text();
           const data = JSON.parse(txt);
           if (data && data.error && data.error.message) {
             errorMessage = `API Virhe: ${data.error.message}`;
@@ -311,7 +359,7 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
       const model = genAI.getGenerativeModel({
         model: geminiModel,
         generationConfig: { temperature: 0.2 },
-        tools: [ { googleSearch: {} } as any ]
+        tools: [ { googleSearch: {} as Record<string, unknown> } ]
       });
       initialMessageParts = [
         { text: promptText },
@@ -336,11 +384,11 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
             const allChunks = candidate.groundingMetadata.groundingChunks;
 
             if (supports && Array.isArray(supports)) {
-                supports.forEach((support: any) => {
+                supports.forEach((support: GroundingSupport) => {
                     if (support.segment && support.groundingChunkIndices && Array.isArray(support.groundingChunkIndices) && support.groundingChunkIndices.length > 0) {
                         const firstChunkIndex = support.groundingChunkIndices[0];
                         if (allChunks && Array.isArray(allChunks) && firstChunkIndex >= 0 && firstChunkIndex < allChunks.length) {
-                            const chunk = allChunks[firstChunkIndex] as any;
+                            const chunk = allChunks[firstChunkIndex] as GroundingChunk;
                             const uri = chunk?.web?.uri || chunk?.uri;
                             if (uri) {
                                 sources.push({ 
@@ -362,20 +410,23 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
             } else if (candidate.groundingMetadata.webSearchQueries && candidate.groundingMetadata.webSearchQueries.length > 0) {
                  console.warn("[GeminiChat] handleStartSession: Found webSearchQueries in groundingMetadata, but could not derive specific citation sources from supports/chunks. Grounding may be general.");
           } else {
-            }
+            // No usable grounding data found
+          }
         } else {
+          // No citation or grounding metadata available
         }
         setMessages(prev => [...prev, { role: 'model', parts: content?.parts || [{text: "Sain tyhjän vastauksen."}], citationMetadata: processedCitationMetadata }]);
       } else {
         console.warn("[GeminiChat] handleStartSession: No valid candidates in Gemini response.");
         setMessages(prev => [...prev, { role: 'model', parts: [{text: "En saanut vastausta mallilta."}] }]);
       }
-    } catch (error: any) {
-      console.error(`[GeminiChat] handleStartSession: Error calling Gemini API:`, error.message || error, { status: error.status, details: error.details });
+    } catch (error: unknown) {
+      const err = error as { message?: string; status?: unknown; details?: unknown; response?: { text: () => Promise<string> } };
+      console.error(`[GeminiChat] handleStartSession: Error calling Gemini API:`, err.message || error, { status: err.status, details: err.details });
       let errorMessage = "Virhe haettaessa vastausta avustajalta.";
-      if (error.response && typeof error.response.text === 'function') {
+      if (err.response && typeof err.response.text === 'function') {
         try {
-          const txt = await error.response.text();
+          const txt = await err.response.text();
           const data = JSON.parse(txt);
           if (data && data.error && data.error.message) {
             errorMessage = `API Virhe: ${data.error.message}`;
@@ -411,7 +462,7 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
       const model = genAI.getGenerativeModel({
         model: geminiModel,
         generationConfig: { temperature: 0.2 },
-        tools: [ { googleSearch: {} } as any ]
+        tools: [ { googleSearch: {} as Record<string, unknown> } ]
       });
       
       // Convert message history to the correct format
@@ -465,11 +516,11 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
             });
 
             if (supports && Array.isArray(supports)) {
-                supports.forEach((support: any) => {
+                supports.forEach((support: GroundingSupport) => {
                     if (support.segment && support.groundingChunkIndices && Array.isArray(support.groundingChunkIndices) && support.groundingChunkIndices.length > 0) {
                         const firstChunkIndex = support.groundingChunkIndices[0];
                         if (allChunks && Array.isArray(allChunks) && firstChunkIndex >= 0 && firstChunkIndex < allChunks.length) {
-                            const chunk = allChunks[firstChunkIndex] as any;
+                            const chunk = allChunks[firstChunkIndex] as GroundingChunk;
                             const uri = chunk?.web?.uri || chunk?.uri;
                             if (uri) {
                                 sources.push({ 
@@ -502,12 +553,13 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
         console.warn("[GeminiChat] handleSend: No valid candidates in Gemini response.");
         setMessages(prev => [...prev, { role: 'model', parts: [{text: "En saanut vastausta mallilta."}] }]);
       }
-    } catch (error: any) {
-      console.error(`[GeminiChat] handleSend: Error calling Gemini API:`, error.message || error, { status: error.status, details: error.details });
+    } catch (error: unknown) {
+      const err = error as { message?: string; status?: unknown; details?: unknown; response?: { text: () => Promise<string> } };
+      console.error(`[GeminiChat] handleSend: Error calling Gemini API:`, err.message || error, { status: err.status, details: err.details });
       let errorMessage = "Virhe lähetettäessä viestiä avustajalle.";
-      if (error.response && typeof error.response.text === 'function') {
+      if (err.response && typeof err.response.text === 'function') {
         try {
-          const txt = await error.response.text();
+          const txt = await err.response.text();
           const data = JSON.parse(txt);
           if (data && data.error && data.error.message) {
             errorMessage = `API Virhe: ${data.error.message}`;
@@ -556,7 +608,7 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
           .map((msg, idx) => (
             <div key={idx} className={`mb-2 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
               {msg.role === 'user' ? (
-                msg.parts.map((part: any, pidx: number) => (
+                msg.parts.map((part: Part, pidx: number) => (
                   <span key={pidx} className="inline-block px-3 py-2 rounded-lg max-w-full break-words whitespace-pre-wrap bg-[#4ADE80] text-white">
                     {part.text}
                   </span>
@@ -578,22 +630,22 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
                       return (
                         <ReactMarkdown
                           components={{
-                            a: ({ node, ...props }) => (
+                            a: ({ node, ...props }: { node?: unknown; [key: string]: unknown }) => (
                               <a {...props} className="text-blue-600 hover:text-blue-800 underline" target="_blank" rel="noopener noreferrer">{props.children}</a>
                             ),
-                            ul: ({ node, ...props }) => (
+                            ul: ({ node, ...props }: { node?: unknown; [key: string]: unknown }) => (
                               <ul {...props} className="list-disc pl-6" />
                             ),
-                            li: ({ node, ...props }) => (
+                            li: ({ node, ...props }: { node?: unknown; [key: string]: unknown }) => (
                               <li {...props} className="mb-0 leading-tight" />
                             ),
-                            p: ({ node, ...props }) => (
+                            p: ({ node, ...props }: { node?: unknown; [key: string]: unknown }) => (
                               <p {...props} className="mb-2" />
                             ),
-                            strong: ({ node, ...props }) => (
+                            strong: ({ node, ...props }: { node?: unknown; [key: string]: unknown }) => (
                               <strong {...props} className="font-bold" />
                             ),
-                            em: ({ node, ...props }) => (
+                            em: ({ node, ...props }: { node?: unknown; [key: string]: unknown }) => (
                               <em {...props} className="italic" />
                             )
                           }}

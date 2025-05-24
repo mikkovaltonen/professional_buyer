@@ -114,6 +114,25 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
     aggregationLevel?: string, 
     expectedProductGroups?: string[]
   ): ChartDataPoint[] => {
+    // Debug: Check if MTP23X data exists in the dataset being aggregated
+    const mtp23xData = data.filter(d => d.prodcode === 'MTP23X');
+    console.log(`[ForecastContent] aggregateData: Found ${mtp23xData.length} MTP23X records in dataset of ${data.length}`);
+    
+    if (mtp23xData.length > 0) {
+      const aug2025 = mtp23xData.find(d => d.Year_Month === '2025-08-01');
+      if (aug2025) {
+        console.log('[ForecastContent] aggregateData: MTP23X 2025-08-01 data:', {
+          prodcode: aug2025.prodcode,
+          Year_Month: aug2025.Year_Month,
+          new_forecast_manually_adjusted: aug2025.new_forecast_manually_adjusted,
+          prodgroup: aug2025.prodgroup
+        });
+      } else {
+        console.log('[ForecastContent] aggregateData: No MTP23X 2025-08-01 data found. Available months:', 
+          mtp23xData.map(d => d.Year_Month).sort());
+      }
+    }
+
     const dates = [...new Set(data.map(row => row.Year_Month))];
     return dates.map(date => {
       const rowsForDate = data.filter(row => row.Year_Month === date);
@@ -132,22 +151,16 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
             .reduce((sum, row) => sum + (row.new_forecast || 0), 0)
         : null;
 
-      // Korjattu ennuste:
-      const groupsWithAdjustment = [...new Set(
-        rowsForDate
-          .filter(row => row.new_forecast_manually_adjusted !== null && row.new_forecast_manually_adjusted !== undefined)
-          .map(row => row["Product Group"])
-      )];
+      // Korjattu ennuste
+      const adjustedRows = rowsForDate.filter(row => 
+        row.new_forecast_manually_adjusted !== null && 
+        row.new_forecast_manually_adjusted !== undefined
+      );
+      
+      const groupsWithAdjustment = [...new Set(adjustedRows.map(row => row.prodgroup))];
 
-      let showAdjusted = false;
-      if (expectedProductGroups && expectedProductGroups.length > 0) {
-        // Stricter logic: all expected product groups must have an adjustment.
-        showAdjusted = expectedProductGroups.every(expectedGroup => groupsWithAdjustment.includes(expectedGroup));
-      } else {
-        // Original logic: all unique groups *present in the current data for this date* must have an adjustment.
-        const uniqueGroupsOnDate = [...new Set(rowsForDate.map(row => row["Product Group"]))];
-        showAdjusted = uniqueGroupsOnDate.length > 0 && uniqueGroupsOnDate.every(g => groupsWithAdjustment.includes(g));
-      }
+      // Show adjusted forecast if ANY product has a manual adjustment
+      const showAdjusted = groupsWithAdjustment.length > 0;
       
       const totalNewForecastAdjusted = showAdjusted
         ? rowsForDate.filter(row => row.new_forecast_manually_adjusted !== null)
@@ -168,7 +181,7 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
           ? totalQuantity - totalOldForecast
           : null;
 
-      return {
+      const result = {
         date,
         value: totalQuantity,
         new_forecast: totalNewForecast,
@@ -176,6 +189,17 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
         new_forecast_manually_adjusted: showAdjusted ? totalNewForecastAdjusted : null,
         old_forecast_error: oldForecastError
       };
+
+      // Debug for 2025-08-01
+      if (date === '2025-08-01') {
+        console.log(`[ForecastContent] Final result for 2025-08-01:`, {
+          showAdjusted,
+          totalNewForecastAdjusted,
+          finalAdjustedValue: result.new_forecast_manually_adjusted
+        });
+      }
+
+      return result;
     }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   };
 

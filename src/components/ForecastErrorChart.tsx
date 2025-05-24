@@ -35,7 +35,7 @@ const ForecastErrorChart: React.FC<ForecastErrorChartProps> = ({ data, title, su
           <XAxis dataKey="date" tickFormatter={formatDate} angle={-45} textAnchor="end" height={80} />
           <YAxis yAxisId="left" label={{ value: 'Keskim. abs. virhe (kpl)', angle: -90, position: 'insideLeft' }} />
           <YAxis yAxisId="right" orientation="right" label={{ value: '% alle 20% virhe', angle: 90, position: 'insideRight' }} domain={[0, 100]} />
-          <Tooltip formatter={(value: any, name: string) => name === 'percentBelow20' ? `${value.toFixed(1)} %` : value.toFixed(1)} />
+          <Tooltip formatter={(value: number, name: string) => name === 'percentBelow20' ? `${value.toFixed(1)} %` : value.toFixed(1)} />
           <Legend />
           <Line yAxisId="left" type="monotone" dataKey="meanAbsError" name="Keskim. abs. virhe (kpl)" stroke="#2563eb" dot={false} strokeWidth={2} />
           <Line yAxisId="right" type="monotone" dataKey="percentBelow20" name="% tuotteista virhe < 20%" stroke="#f59e0b" dot={false} strokeWidth={2} />

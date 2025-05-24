@@ -104,7 +104,7 @@ const SelectContent = React.forwardRef<
           {React.Children.map(children, (child) => {
             if (
               React.isValidElement(child) &&
-              (child.type as any).displayName === SelectItem.displayName // Compare with SelectItem's displayName
+              (child.type as React.ComponentType).displayName === SelectItem.displayName // Compare with SelectItem's displayName
             ) {
               const childrenText = React.Children.toArray(child.props.children)
                 .map((c) => (typeof c === 'string' || typeof c === 'number' ? c.toString() : ''))

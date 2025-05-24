@@ -33,6 +33,81 @@ const ApplyCorrectionsButton: React.FC<ApplyCorrectionsButtonProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState<'idle' | 'saving' | 'success' | 'error' | 'none-found'>('idle');
   const [statusMessage, setStatusMessage] = useState('');
+
+  const testApiCall = async () => {
+    try {
+      setIsLoading(true);
+      const dataService = new DataService();
+      await dataService.testApiCall();
+      toast.success('API testi onnistui!');
+    } catch (error) {
+      console.error('API test failed:', error);
+      toast.error('API testi epäonnistui: ' + (error instanceof Error ? error.message : 'Tuntematon virhe'));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const debugMTP23X = async () => {
+    try {
+      setIsLoading(true);
+      const dataService = new DataService();
+      await dataService.debugGetMTP23XData();
+      toast.success('MTP23X debug valmis - katso konsoli!');
+    } catch (error) {
+      console.error('MTP23X debug failed:', error);
+      toast.error('MTP23X debug epäonnistui');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const debugProduct6184113 = async () => {
+    try {
+      setIsLoading(true);
+      const dataService = DataService.getInstance();
+      console.log('[DEBUG] Fetching all data for product 6184113:');
+      
+      const url = `/api?where[prodcode]=6184113`;
+      console.log(`[DEBUG] GET request URL: ${url}`);
+      
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${dataService.authToken}`,
+          'Accept': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        const results = data.results || [];
+        console.log(`[DEBUG] Found ${results.length} records for product 6184113`);
+        
+        // Group by year-month and show new_forecast values
+        const forecastData = results
+          .filter(r => r.new_forecast !== null)
+          .map(r => ({
+            month: r.Year_Month,
+            new_forecast: r.new_forecast,
+            manually_adjusted: r.new_forecast_manually_adjusted,
+            correction_percent: r.correction_percent
+          }))
+          .sort((a, b) => a.month.localeCompare(b.month));
+          
+        console.log('[DEBUG] new_forecast data for 6184113:', forecastData);
+        
+        toast.success(`Found ${forecastData.length} forecast records - check console!`);
+      } else {
+        console.log(`[DEBUG] Failed to fetch: ${response.status}`);
+        toast.error(`API error: ${response.status}`);
+      }
+    } catch (error) {
+      console.error('[DEBUG] Fetch error:', error);
+      toast.error('Fetch failed');
+    } finally {
+      setIsLoading(false);
+    }
+  };
   const statusColors = {
     success: 'text-green-600',
     error: 'text-red-600',
@@ -46,95 +121,126 @@ const ApplyCorrectionsButton: React.FC<ApplyCorrectionsButtonProps> = ({
     }
 
     try {
-      // First try to find JSON in code blocks
-      const codeBlockRegex = /```(?:json)?\s*(\{[\s\S]*?\})\s*```/g;
-      const codeBlockMatches = content.match(codeBlockRegex);
+      // Find all JSON blocks (both arrays and objects)
+      const codeBlockRegex = /```(?:json)?\s*(\[[\s\S]*?\]|\{[\s\S]*?\})\s*```/g;
+      const codeBlockMatches = [];
+      let match;
       
-      if (codeBlockMatches) {
-        console.log('Found JSON in code blocks:', codeBlockMatches);
-        // Extract JSON from the last code block
-        const jsonContent = codeBlockMatches[codeBlockMatches.length - 1].replace(/```(?:json)?\s*([\s\S]*?)\s*```/, '$1');
-        console.log('Extracted JSON content:', jsonContent);
-        
-        try {
-          const parsedCorrection = JSON.parse(jsonContent);
-          console.log('Parsed correction:', parsedCorrection);
-          
-          // If it's a single object, wrap it in an array
-          const corrections = Array.isArray(parsedCorrection) ? parsedCorrection : [parsedCorrection];
-          
-          // Validate the structure of each correction
-          const hasRequiredFields = (item) => 
-            typeof item.month === 'string' && item.month.trim() !== '' &&
-            typeof item.explanation === 'string' && item.explanation.trim() !== '' &&
-            (typeof item.correction_percent === 'number' || 
-             (typeof item.correction_percent === 'string' && item.correction_percent.trim() !== '' && !isNaN(Number(item.correction_percent.trim()))));
-
-          const validCorrections = corrections.filter(item => {
-            const isProductSpecific = typeof item.product_code === 'string' && item.product_code.trim() !== '';
-            const isGroupLevel = (!item.product_code || String(item.product_code).trim() === '') && (typeof item.product_group === 'string' && item.product_group.trim() !== '');
-            const isClassLevel = (!item.product_code || String(item.product_code).trim() === '') && (!item.product_group || String(item.product_group).trim() === '') && (typeof item.prod_class === 'string' && item.prod_class.trim() !== '');
-
-            const isValid = hasRequiredFields(item) && (isProductSpecific || isGroupLevel || isClassLevel);
-
-            if (!isValid) {
-              console.log('Invalid correction item (must be product-specific, group-level, or class-level and have all required fields):', item);
-            }
-            return isValid;
-          });
-          
-          console.log('Valid corrections:', validCorrections);
-          return validCorrections;
-        } catch (parseError) {
-          console.error('JSON parsing error:', parseError);
-        }
+      while ((match = codeBlockRegex.exec(content)) !== null) {
+        codeBlockMatches.push(match[1]);
       }
       
-      // Fallback: try to find JSON arrays in the content
-      const jsonArrayRegex = /\[\s*\{[\s\S]*?\}\s*\]/g;
-      const arrayMatches = content.match(jsonArrayRegex);
-      
-      if (arrayMatches) {
-        console.log('Found JSON arrays:', arrayMatches);
-        const jsonContent = arrayMatches[arrayMatches.length - 1];
+      if (codeBlockMatches.length > 0) {
+        console.log('Found JSON in code blocks:', codeBlockMatches.length);
         
-        try {
-          const parsedCorrections = JSON.parse(jsonContent);
-          console.log('Parsed corrections:', parsedCorrections);
-          
-          if (Array.isArray(parsedCorrections)) {
+        // Process candidates from last to first (most recent first) and select the last valid dataset
+        let lastValidDataset = null;
+        
+        for (let i = codeBlockMatches.length - 1; i >= 0; i--) {
+          const jsonContent = codeBlockMatches[i];
+          console.log(`Evaluating JSON candidate ${i + 1}/${codeBlockMatches.length} (from newest):`, jsonContent.substring(0, 100) + '...');
+        
+          try {
+            const parsedCorrection = JSON.parse(jsonContent);
+            
+            let corrections = [];
+            let isArray = false;
+            
+            if (Array.isArray(parsedCorrection)) {
+              corrections = parsedCorrection;
+              isArray = true;
+              console.log(`Array found with ${corrections.length} items${corrections.length >= 12 ? ' (12+ months bonus!)' : ''}`);
+            } else {
+              corrections = [parsedCorrection];
+              console.log('Single object detected');
+            }
+            
             // Validate the structure of each correction
-            const hasRequiredFields = (item) => 
+            const hasRequiredFields = (item: any) => 
               typeof item.month === 'string' && item.month.trim() !== '' &&
               typeof item.explanation === 'string' && item.explanation.trim() !== '' &&
               (typeof item.correction_percent === 'number' || 
                (typeof item.correction_percent === 'string' && item.correction_percent.trim() !== '' && !isNaN(Number(item.correction_percent.trim()))));
 
-            const validCorrections = parsedCorrections.filter(item => {
+            const validCorrections = corrections.filter(item => {
               const isProductSpecific = typeof item.product_code === 'string' && item.product_code.trim() !== '';
               const isGroupLevel = (!item.product_code || String(item.product_code).trim() === '') && (typeof item.product_group === 'string' && item.product_group.trim() !== '');
               const isClassLevel = (!item.product_code || String(item.product_code).trim() === '') && (!item.product_group || String(item.product_group).trim() === '') && (typeof item.prod_class === 'string' && item.prod_class.trim() !== '');
-
+            
               const isValid = hasRequiredFields(item) && (isProductSpecific || isGroupLevel || isClassLevel);
-
               if (!isValid) {
                 console.log('Invalid correction item (must be product-specific, group-level, or class-level and have all required fields):', item);
               }
               return isValid;
             });
-            console.log('Valid corrections:', validCorrections);
-            return validCorrections;
+            
+            if (validCorrections.length > 0) {
+              // Skip single-item arrays (likely examples) unless no other option
+              if (isArray && corrections.length === 1 && lastValidDataset === null) {
+                console.log('Single-item array detected (likely example) - will use as fallback if no better option found');
+                lastValidDataset = validCorrections;
+              } else if (!isArray && corrections.length === 1 && lastValidDataset === null) {
+                console.log('Single object detected (likely example) - will use as fallback if no better option found');
+                lastValidDataset = validCorrections;
+              } else if (isArray && corrections.length > 1) {
+                console.log(`Valid dataset found with ${corrections.length} items - selecting as latest valid dataset`);
+                lastValidDataset = validCorrections;
+                break; // Found a good dataset, stop looking (we want the most recent good one)
+              }
+            }
+            
+          } catch (parseError) {
+            console.error('Failed to parse JSON candidate:', parseError);
           }
-        } catch (parseError) {
-          console.error('JSON parsing error:', parseError);
+        }
+        
+        if (lastValidDataset) {
+          console.log(`Selected most recent valid dataset:`, lastValidDataset);
+          return lastValidDataset;
         }
       }
-      
-      console.log('No valid JSON found in content');
+
+      // No valid JSON found
+      console.log('No valid JSON found in code blocks');
       return [];
     } catch (error) {
       console.error('Error extracting corrections:', error);
       return [];
+    }
+  };
+
+  const debugDatabaseData = async (productCode: string, months: string[]) => {
+    try {
+      const dataService = DataService.getInstance();
+      console.log(`[DEBUG] Fetching current database state for ${productCode}:`);
+      
+      for (const month of months) {
+        const url = `/api?where[prodcode]=${productCode}&where[Year_Month]=${month}-01`;
+        console.log(`[DEBUG] GET request URL: ${url}`);
+        
+        const response = await fetch(url, {
+          headers: {
+            'Authorization': `Bearer ${dataService.authToken}`,
+            'Accept': 'application/json'
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          const results = data.results || [];
+          console.log(`[DEBUG] Database data for ${month}:`, {
+            found: results.length > 0,
+            data: results[0] || 'No data',
+            new_forecast: results[0]?.new_forecast || 'null',
+            new_forecast_manually_adjusted: results[0]?.new_forecast_manually_adjusted || 'null',
+            correction_percent: results[0]?.correction_percent || 'null'
+          });
+        } else {
+          console.log(`[DEBUG] Failed to fetch ${month}: ${response.status}`);
+        }
+      }
+    } catch (error) {
+      console.error('[DEBUG] Database fetch error:', error);
     }
   };
 
@@ -149,6 +255,16 @@ const ApplyCorrectionsButton: React.FC<ApplyCorrectionsButtonProps> = ({
       // Extract corrections from chat content
       const corrections = extractCorrectionsFromChat(chatContent);
       console.log('Extracted corrections:', corrections);
+
+      // Debug: Compare with current database state
+      if (corrections.length > 0) {
+        const firstCorrection = corrections[0];
+        if (firstCorrection.product_code) {
+          const months = corrections.map(c => c.month);
+          console.log(`[DEBUG] About to compare JSON input vs database for ${firstCorrection.product_code}`);
+          await debugDatabaseData(firstCorrection.product_code, months);
+        }
+      }
 
       if (corrections.length === 0) {
         toast.error('Korjauksia ei löytynyt chat-sisällöstä');
@@ -364,19 +480,45 @@ const ApplyCorrectionsButton: React.FC<ApplyCorrectionsButtonProps> = ({
   };
 
   return (
-    <div className="flex flex-col items-start gap-1">
-      <Button
-        onClick={applyCorrections}
-        disabled={isLoading}
-        className="bg-[#4ADE80] hover:bg-[#22C55E] text-white"
-      >
-        {isLoading ? (
-          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-        ) : (
-          <Save className="h-4 w-4 mr-2" />
-        )}
-        Tallenna json
-      </Button>
+    <div className="flex flex-col items-start gap-2">
+      <div className="flex gap-2">
+        <Button
+          onClick={applyCorrections}
+          disabled={isLoading}
+          className="bg-[#4ADE80] hover:bg-[#22C55E] text-white"
+        >
+          {isLoading ? (
+            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+          ) : (
+            <Save className="h-4 w-4 mr-2" />
+          )}
+          Tallenna json
+        </Button>
+        <Button
+          onClick={testApiCall}
+          disabled={isLoading}
+          variant="outline"
+          size="sm"
+        >
+          Test API
+        </Button>
+        <Button
+          onClick={debugMTP23X}
+          disabled={isLoading}
+          variant="outline"
+          size="sm"
+        >
+          Debug MTP23X
+        </Button>
+        <Button
+          onClick={debugProduct6184113}
+          disabled={isLoading}
+          variant="outline"
+          size="sm"
+        >
+          Debug 6184113
+        </Button>
+      </div>
       {status !== 'idle' && statusMessage && (
         <span className={`text-sm mt-1 ${statusColors[status] || ''}`}>{statusMessage}</span>
       )}

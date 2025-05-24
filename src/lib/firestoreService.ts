@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
+import { getFirestore, doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -16,7 +16,10 @@ const db = getFirestore(app);
 
 export const savePrompt = async (userId: string, promptText: string): Promise<void> => {
   const promptDocRef = doc(db, 'userPrompts', userId);
-  await setDoc(promptDocRef, { text: promptText });
+  await setDoc(promptDocRef, { 
+    text: promptText,
+    lastSavedAt: serverTimestamp() // Add this line
+  });
 };
 
 export const loadPrompt = async (userId: string): Promise<string | null> => {

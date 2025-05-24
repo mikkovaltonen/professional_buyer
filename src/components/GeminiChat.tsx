@@ -17,6 +17,7 @@ interface CitationSource {
   startIndex?: number;
   endIndex?: number;
   uri?: string;
+  title?: string; // Added title field
   groundingMetadata?: GroundingSupport;
 }
 
@@ -33,8 +34,10 @@ interface GroundingSupport {
 interface GroundingChunk {
   web?: {
     uri?: string;
+    title?: string; // Added title to web property
   };
   uri?: string;
+  // title?: string; // Consider if title can appear at top level of chunk too
 }
 
 interface Message {
@@ -54,11 +57,8 @@ const processTextWithCitations = (text: string, citationSources?: CitationSource
     let sourceNumber = 1;
     citationSources.forEach((source) => {
       if (source.uri && !uniqueUris.has(source.uri)) {
-        // For now, use URI as title. Title extraction can be complex.
-        // The requirement is "[Source X: URI](URI)" or "[Source X: Title](URI)"
-        // Using URI for both parts of the title for simplicity as allowed.
-        const titlePart = source.uri; // Simplified: using URI as title
-        formattedSources.push(`[Lähde ${sourceNumber}: ${titlePart}](${source.uri})`);
+        const linkDescription = source.title && source.title.trim() !== '' ? source.title : source.uri;
+        formattedSources.push(`[Lähde ${sourceNumber}: ${linkDescription}](${source.uri})`);
         uniqueUris.add(source.uri);
         sourceNumber++;
       }
@@ -222,11 +222,13 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
                         if (allChunks && Array.isArray(allChunks) && firstChunkIndex >= 0 && firstChunkIndex < allChunks.length) {
                             const chunk = allChunks[firstChunkIndex] as GroundingChunk;
                             const uri = chunk?.web?.uri || chunk?.uri;
+                            const title = chunk?.web?.title; // Extract title
                             if (uri) {
                                 sources.push({ 
                                     startIndex: parseInt(support.segment.startIndex || '0', 10), 
                                     endIndex: parseInt(support.segment.endIndex || '0', 10), 
-                                    uri: uri
+                                    uri: uri,
+                                    title: title // Add title to CitationSource object
                                 });
                             }
                         }
@@ -371,11 +373,13 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
                         if (allChunks && Array.isArray(allChunks) && firstChunkIndex >= 0 && firstChunkIndex < allChunks.length) {
                             const chunk = allChunks[firstChunkIndex] as GroundingChunk;
                             const uri = chunk?.web?.uri || chunk?.uri;
+                            const title = chunk?.web?.title; // Extract title
                             if (uri) {
                                 sources.push({ 
                                     startIndex: parseInt(support.segment.startIndex || '0', 10), 
                                     endIndex: parseInt(support.segment.endIndex || '0', 10), 
-                                    uri: uri
+                                    uri: uri,
+                                    title: title // Add title to CitationSource object
                                 });
                             } else {
                                 console.warn('[GeminiChat] handleStartSession: Could not find URI in grounding chunk at index:', firstChunkIndex, 'Full chunk structure:', JSON.stringify(chunk, null, 2));
@@ -463,11 +467,13 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
                         if (allChunks && Array.isArray(allChunks) && firstChunkIndex >= 0 && firstChunkIndex < allChunks.length) {
                             const chunk = allChunks[firstChunkIndex] as GroundingChunk;
                             const uri = chunk?.web?.uri || chunk?.uri;
+                            const title = chunk?.web?.title; // Extract title
                             if (uri) {
                                 sources.push({ 
                                     startIndex: parseInt(support.segment.startIndex || '0', 10), 
                                     endIndex: parseInt(support.segment.endIndex || '0', 10), 
-                                    uri: uri
+                                    uri: uri,
+                                    title: title // Add title to CitationSource object
                                 });
                             } else {
                                 console.warn('[GeminiChat] handleSend: Could not find URI in grounding chunk at index:', firstChunkIndex);

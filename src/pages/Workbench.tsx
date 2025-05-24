@@ -9,6 +9,7 @@ import ForecastContent from "@/components/ForecastContent";
 import {
   Dialog,
   DialogContent,
+  DialogDescription, // Added DialogDescription
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -71,6 +72,9 @@ const Workbench = () => {
               <DialogContent className="sm:max-w-[600px]"> {/* Or any appropriate width */}
                 <DialogHeader>
                   <DialogTitle>Järjestelmäpromptin muokkain</DialogTitle>
+                  <DialogDescription>
+                    Tässä voit muokata Gemini-avustajalle annettavaa järjestelmäpromptia.
+                  </DialogDescription>
                 </DialogHeader>
                 <PromptEditor />
                 {/* Example of DialogFooter and DialogClose, uncomment if needed

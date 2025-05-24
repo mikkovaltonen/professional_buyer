@@ -46,41 +46,26 @@ interface Message {
 }
 
 const processTextWithCitations = (text: string, citationSources?: CitationSource[]) => {
-  if (!citationSources || citationSources.length === 0) {
-    return { processedText: text, sourceMap: new Map() };
+  const originalText = text;
+  const formattedSources: string[] = [];
+
+  if (citationSources && citationSources.length > 0) {
+    const uniqueUris = new Set<string>();
+    let sourceNumber = 1;
+    citationSources.forEach((source) => {
+      if (source.uri && !uniqueUris.has(source.uri)) {
+        // For now, use URI as title. Title extraction can be complex.
+        // The requirement is "[Source X: URI](URI)" or "[Source X: Title](URI)"
+        // Using URI for both parts of the title for simplicity as allowed.
+        const titlePart = source.uri; // Simplified: using URI as title
+        formattedSources.push(`[Lähde ${sourceNumber}: ${titlePart}](${source.uri})`);
+        uniqueUris.add(source.uri);
+        sourceNumber++;
+      }
+    });
   }
 
-  let resultText = "";
-  let lastProcessedEnd = 0;
-  let citationNumber = 1;
-
-  const sortedSources = [...citationSources].sort((a, b) => (a.startIndex || 0) - (b.startIndex || 0));
-
-  sortedSources.forEach((source) => {
-    if (source.startIndex !== undefined && source.endIndex !== undefined && source.uri) {
-      if (source.startIndex > lastProcessedEnd) {
-        resultText += text.substring(lastProcessedEnd, source.startIndex);
-      }
-      let currentWordEndIndex = source.endIndex;
-      while (currentWordEndIndex < text.length && text[currentWordEndIndex].trim() !== '') {
-        currentWordEndIndex++;
-      }
-      const wordCited = text.substring(source.startIndex, currentWordEndIndex);
-      const linkText = `[lähde ${citationNumber++}]`;
-      const linkMarkdown = `(${linkText}(${source.uri}))`;
-      resultText += wordCited;
-      resultText += linkMarkdown;
-      lastProcessedEnd = currentWordEndIndex;
-    } else {
-      console.warn("[GeminiChat] processTextWithCitations: Invalid citation source (missing startIndex, endIndex, or uri):", source);
-    }
-  });
-
-  if (lastProcessedEnd < text.length) {
-    resultText += text.substring(lastProcessedEnd);
-  }
-
-  return { processedText: resultText, sourceMap: new Map() };
+  return { originalText, formattedSources };
 };
 
 interface GeminiChatProps {
@@ -572,36 +557,58 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
                 <>
                   <span className="inline-block px-3 py-2 rounded-lg max-w-full break-words whitespace-pre-wrap bg-gray-200 text-gray-800">
                     {(() => {
-                      const modelText = msg.parts.map(p => p.text || '').join('');
-                      const citationResult = processTextWithCitations(modelText, msg.citationMetadata?.citationSources);
+                      const modelTextContent = msg.parts.map(p => p.text || '').join('');
+                      const citationData = processTextWithCitations(modelTextContent, msg.citationMetadata?.citationSources);
+                      
+                      const markdownComponents = {
+                        a: ({ node, ...props }: { node?: unknown; [key: string]: unknown }) => (
+                          <a {...props} className="text-blue-600 hover:text-blue-800 underline" target="_blank" rel="noopener noreferrer">{props.children}</a>
+                        ),
+                        ul: ({ node, ...props }: { node?: unknown; [key: string]: unknown }) => (
+                          <ul {...props} className="list-disc pl-6" />
+                        ),
+                        li: ({ node, ...props }: { node?: unknown; [key: string]: unknown }) => (
+                          <li {...props} className="mb-0 leading-tight" />
+                        ),
+                        p: ({ node, ...props }: { node?: unknown; [key: string]: unknown }) => (
+                          <p {...props} className="mb-2" />
+                        ),
+                        strong: ({ node, ...props }: { node?: unknown; [key: string]: unknown }) => (
+                          <strong {...props} className="font-bold" />
+                        ),
+                        em: ({ node, ...props }: { node?: unknown; [key: string]: unknown }) => (
+                          <em {...props} className="italic" />
+                        )
+                      };
+
                       if (process.env.NODE_ENV === 'development') {
-                        console.log('Rendering Model Message:', { /* ... metadata logging ... */ });
+                        console.log('Rendering Model Message:', { 
+                          originalText: citationData.originalText, 
+                          sources: citationData.formattedSources,
+                          fullMessageObject: msg 
+                        });
                       }
+
                       return (
-                        <ReactMarkdown
-                          components={{
-                            a: ({ node, ...props }: { node?: unknown; [key: string]: unknown }) => (
-                              <a {...props} className="text-blue-600 hover:text-blue-800 underline" target="_blank" rel="noopener noreferrer">{props.children}</a>
-                            ),
-                            ul: ({ node, ...props }: { node?: unknown; [key: string]: unknown }) => (
-                              <ul {...props} className="list-disc pl-6" />
-                            ),
-                            li: ({ node, ...props }: { node?: unknown; [key: string]: unknown }) => (
-                              <li {...props} className="mb-0 leading-tight" />
-                            ),
-                            p: ({ node, ...props }: { node?: unknown; [key: string]: unknown }) => (
-                              <p {...props} className="mb-2" />
-                            ),
-                            strong: ({ node, ...props }: { node?: unknown; [key: string]: unknown }) => (
-                              <strong {...props} className="font-bold" />
-                            ),
-                            em: ({ node, ...props }: { node?: unknown; [key: string]: unknown }) => (
-                              <em {...props} className="italic" />
-                            )
-                          }}
-                        >
-                          {citationResult.processedText}
-                        </ReactMarkdown>
+                        <>
+                          <ReactMarkdown components={markdownComponents}>
+                            {citationData.originalText}
+                          </ReactMarkdown>
+                          {citationData.formattedSources.length > 0 && (
+                            <div className="mt-2">
+                              <h4 className="font-semibold text-sm">Lähteet:</h4>
+                              <ul className="list-none pl-0 text-sm">
+                                {citationData.formattedSources.map((sourceMd, sIdx) => (
+                                  <li key={sIdx} className="mb-0 leading-tight">
+                                    <ReactMarkdown components={markdownComponents}>
+                                      {sourceMd}
+                                    </ReactMarkdown>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </>
                       );
                     })()}
                   </span>

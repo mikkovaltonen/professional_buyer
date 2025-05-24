@@ -5,6 +5,8 @@ import ReactMarkdown from 'react-markdown';
 import ApplyCorrectionsButton from './ApplyCorrectionsButton';
 import { Button } from '@/components/ui/button';
 import { DataService } from '@/lib/dataService';
+import { useAuth } from '../hooks/useAuth'; // Import useAuth
+import { loadPrompt } from '../lib/firestoreService'; // Import loadPrompt
 
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
 const geminiModel = import.meta.env.VITE_GEMINI_MODEL || 'gemini-2.5-pro-preview-03-25';
@@ -56,26 +58,18 @@ const processTextWithCitations = (text: string, citationSources?: CitationSource
 
   sortedSources.forEach((source) => {
     if (source.startIndex !== undefined && source.endIndex !== undefined && source.uri) {
-      // Append text from the original string that comes before this citation's word
       if (source.startIndex > lastProcessedEnd) {
         resultText += text.substring(lastProcessedEnd, source.startIndex);
       }
-      
-      // Find the actual end of the word the citation pertains to
       let currentWordEndIndex = source.endIndex;
       while (currentWordEndIndex < text.length && text[currentWordEndIndex].trim() !== '') {
         currentWordEndIndex++;
       }
-      
-      // The text segment forming the word (or words if citation spans multiple) to be displayed before the link
       const wordCited = text.substring(source.startIndex, currentWordEndIndex);
-      
       const linkText = `[lähde ${citationNumber++}]`;
-      const linkMarkdown = `(${linkText}(${source.uri}))`; // Formats as: ([lähde X])(URL)
-      
+      const linkMarkdown = `(${linkText}(${source.uri}))`;
       resultText += wordCited;
       resultText += linkMarkdown;
-      
       lastProcessedEnd = currentWordEndIndex;
     } else {
       console.warn("[GeminiChat] processTextWithCitations: Invalid citation source (missing startIndex, endIndex, or uri):", source);
@@ -114,6 +108,7 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
   const [sessionActive, setSessionActive] = useState(false);
   const [instructions, setInstructions] = useState<string>('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const { user } = useAuth(); // Use useAuth hook
 
   const loadImageAsBase64 = async (imagePath: string): Promise<string> => {
     if (!imagePath) throw new Error('imageUrl puuttuu!');
@@ -144,15 +139,7 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
     });
   };
 
-  const loadInstructions = async () => {
-    try {
-      const res = await fetch('/docs/gemini_instructions.md');
-      const text = await res.text();
-      setInstructions(text);
-    } catch (err) {
-      setInstructions('Ohjeen lataus epäonnistui.');
-    }
-  };
+  // loadInstructions function is removed.
 
   const buildRequestPayload = async () => {
     const base: Record<string, string | number> = {
@@ -168,26 +155,19 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
         selectedGroups && selectedGroups.length > 0 ? selectedGroups[0] : 'N/A';
     }
 
-    // Get current new_forecast from DataService cache if product is selected
     if (chartLevel === 'product' && selectedProducts && selectedProducts.length > 0) {
       const currentProductCode = selectedProducts[0].code;
       try {
         const dataService = DataService.getInstance();
         console.log(`[GeminiChat] Getting current new_forecast from cache for product ${currentProductCode}`);
-        
-        // Get data from DataService's cached data
         const productData = dataService.getDataForProduct(currentProductCode);
         console.log(`[GeminiChat] Found ${productData.length} cached records for ${currentProductCode}`);
-        
         if (productData.length > 0) {
-          // Find latest forecast data from cache
           const forecastData = productData
             .filter(r => r.new_forecast !== null && r.new_forecast !== undefined)
             .sort((a, b) => b.Year_Month.localeCompare(a.Year_Month))
             .slice(0, 1);
-            
           console.log(`[GeminiChat] Filtered forecast data from cache:`, forecastData);
-            
           if (forecastData.length > 0) {
             base.new_forecast = forecastData[0].new_forecast;
             console.log(`[GeminiChat] Successfully added new_forecast from cache: ${base.new_forecast} for ${currentProductCode}`);
@@ -224,12 +204,9 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
   const handleRequestJson = async () => {
     console.log("[GeminiChat] handleRequestJson: Initiating JSON request.");
     setIsLoading(true);
-
     const payload = await buildRequestPayload();
-
     const jsonString = JSON.stringify(payload, null, 2);
     const fullMessageString = `Anna tutkimukseesi perustuva paras arvauksesi tilastollisen kysyntäennusteen korjauksesta. Luo yksi rivi kullekin kuukaudelle seurvaan 12kk ajalle ( kuluva kk + 11k tulveisuuteen). Tää on sama aika jolle kuvaajassa annettu tilastollinen ennuste.  JSON-muoto on alla:\n\`\`\`json\n${jsonString}\n\`\`\``;
-
     const userMessage: Message = { role: 'user', parts: [{ text: fullMessageString }] };
     setMessages(prev => [...prev, userMessage]);
 
@@ -239,28 +216,15 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
         generationConfig: { temperature: 0.2 },
         tools: [ { googleSearch: {} as Record<string, unknown> } ]
       });
-
-      const history = messages.map(msg => ({ // messages state before adding the current userMessage
-        role: msg.role,
-        parts: msg.parts
-      }));
-
+      const history = messages.map(msg => ({ role: msg.role, parts: msg.parts }));
       console.log("[GeminiChat] handleRequestJson: Sending message to Gemini model with payload:", payload);
-      const result = await model.generateContent({
-        contents: [
-          ...history,
-          { role: 'user', parts: [{ text: fullMessageString }] }
-        ]
-      });
-      
+      const result = await model.generateContent({ contents: [...history, { role: 'user', parts: [{ text: fullMessageString }] }] });
       const response = result.response;
 
       if (response && response.candidates && response.candidates.length > 0) {
         const candidate = response.candidates[0];
         const content = candidate.content;
         let processedCitationMetadata: { citationSources: CitationSource[] } | undefined = undefined;
-
-        // Logic for citation metadata (adapted from handleSend)
         if (candidate.citationMetadata && candidate.citationMetadata.citationSources && candidate.citationMetadata.citationSources.length > 0) {
             processedCitationMetadata = candidate.citationMetadata;
         } else if (candidate.groundingMetadata) {
@@ -289,7 +253,6 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
                 processedCitationMetadata = { citationSources: sources };
             }
         }
-        
         setMessages(prev => [...prev, { 
           role: 'model', 
           parts: content?.parts || [{text: "Sain tyhjän vastauksen."}], 
@@ -324,17 +287,52 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
   const getInstructions = () => instructions;
 
   const handleStartSession = async () => {
-    // Lataa ohje suoraan ja käytä sitä heti
     let promptText = '';
-    try {
-      const res = await fetch('/docs/gemini_instructions.md');
-      promptText = await res.text();
-      setInstructions(promptText); // säilytä myöhempää käyttöä varten
-    } catch (err) {
-      promptText = 'Ohjeen lataus epäonnistui.';
-      setInstructions(promptText);
+    const userId = user?.email || null;
+
+    if (userId) {
+      try {
+        console.log(`[GeminiChat] User ${userId} logged in, attempting to load saved prompt.`);
+        const loadedPrompt = await loadPrompt(userId);
+        if (loadedPrompt !== null) {
+          promptText = loadedPrompt;
+          setInstructions(loadedPrompt); 
+          console.log(`[GeminiChat] Loaded saved prompt for ${userId}.`);
+        } else {
+          console.log(`[GeminiChat] No saved prompt for ${userId}, loading default from /docs/gemini_instructions.md.`);
+          const res = await fetch('/docs/gemini_instructions.md');
+          if (!res.ok) throw new Error(`Failed to fetch default prompt: ${res.statusText}`);
+          promptText = await res.text();
+          setInstructions(promptText);
+        }
+      } catch (error) {
+        console.error(`[GeminiChat] Error loading prompt for ${userId}, falling back to default:`, error);
+        try {
+          const res = await fetch('/docs/gemini_instructions.md');
+          if (!res.ok) throw new Error(`Failed to fetch default prompt: ${res.statusText}`);
+          promptText = await res.text();
+          setInstructions(promptText);
+        } catch (fetchError) {
+          console.error("[GeminiChat] Error fetching default prompt after DB error:", fetchError);
+          promptText = 'Ohjeen lataus epäonnistui. Kokeile myöhemmin uudelleen.';
+          setInstructions(promptText);
+        }
+      }
+    } else {
+      console.log("[GeminiChat] User not logged in, loading default prompt from /docs/gemini_instructions.md.");
+      try {
+        const res = await fetch('/docs/gemini_instructions.md');
+        if (!res.ok) throw new Error(`Failed to fetch default prompt: ${res.statusText}`);
+        promptText = await res.text();
+        setInstructions(promptText);
+      } catch (err) {
+        console.error("[GeminiChat] Error fetching default prompt for non-logged-in user:", err);
+        promptText = 'Ohjeen lataus epäonnistui. Kokeile myöhemmin uudelleen.';
+        setInstructions(promptText);
+      }
     }
-    console.log('[GeminiChat] Käytettävä initialisointi-prompt (ohje):', promptText);
+
+    console.log('[GeminiChat] Using initialization prompt (first 100 chars):', promptText.substring(0,100) + "...");
     setMessages([]);
     setSessionActive(true);
     setInput('');
@@ -342,7 +340,7 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
     setIsLoading(true);
     let imageDataUrl = '';
     let errorImageDataUrl = '';
-    let initialMessageParts = [];
+    
     try {
       if (!imageUrl) {
         console.error("[GeminiChat] handleStartSession: imageUrl is missing when trying to start session!");
@@ -356,18 +354,19 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
       }
       const base64Data = imageDataUrl.split(',')[1];
       const errorBase64Data = errorImageDataUrl ? errorImageDataUrl.split(',')[1] : null;
+      
+      const initialMessageParts: Part[] = [{ text: promptText }]; 
+      initialMessageParts.push({ inlineData: { data: base64Data, mimeType: 'image/jpeg' } });
+      if (errorBase64Data) {
+        initialMessageParts.push({ inlineData: { data: errorBase64Data, mimeType: 'image/jpeg' } });
+      }
+
       const model = genAI.getGenerativeModel({
         model: geminiModel,
         generationConfig: { temperature: 0.2 },
         tools: [ { googleSearch: {} as Record<string, unknown> } ]
       });
-      initialMessageParts = [
-        { text: promptText },
-        { inlineData: { data: base64Data, mimeType: 'image/jpeg' } }
-      ];
-      if (errorBase64Data) {
-        initialMessageParts.push({ inlineData: { data: errorBase64Data, mimeType: 'image/jpeg' } });
-      }
+      
       console.log("[GeminiChat] handleStartSession: Sending initial message to Gemini model.");
       const result = await model.generateContent({ contents: [{ role: 'user', parts: initialMessageParts }] });
       const response = result.response;
@@ -382,7 +381,6 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
             const sources: CitationSource[] = [];
             const supports = candidate.groundingMetadata.groundingSupports;
             const allChunks = candidate.groundingMetadata.groundingChunks;
-
             if (supports && Array.isArray(supports)) {
                 supports.forEach((support: GroundingSupport) => {
                     if (support.segment && support.groundingChunkIndices && Array.isArray(support.groundingChunkIndices) && support.groundingChunkIndices.length > 0) {
@@ -409,11 +407,7 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
                 processedCitationMetadata = { citationSources: sources };
             } else if (candidate.groundingMetadata.webSearchQueries && candidate.groundingMetadata.webSearchQueries.length > 0) {
                  console.warn("[GeminiChat] handleStartSession: Found webSearchQueries in groundingMetadata, but could not derive specific citation sources from supports/chunks. Grounding may be general.");
-          } else {
-            // No usable grounding data found
-          }
-        } else {
-          // No citation or grounding metadata available
+            }
         }
         setMessages(prev => [...prev, { role: 'model', parts: content?.parts || [{text: "Sain tyhjän vastauksen."}], citationMetadata: processedCitationMetadata }]);
       } else {
@@ -464,57 +458,22 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
         generationConfig: { temperature: 0.2 },
         tools: [ { googleSearch: {} as Record<string, unknown> } ]
       });
-      
-      // Convert message history to the correct format
-      const history = messages.map(msg => ({
-        role: msg.role,
-        parts: msg.parts
-      }));
-      
-      // Add the current message
-      const result = await model.generateContent({
-        contents: [
-          ...history,
-          { role: 'user', parts: [{ text: currentInput }] }
-        ]
-      });
-      
+      const history = messages.map(msg => ({ role: msg.role, parts: msg.parts }));
+      const result = await model.generateContent({ contents: [...history, { role: 'user', parts: [{ text: currentInput }] }] });
       const response = result.response;
 
       if (response && response.candidates && response.candidates.length > 0) {
         const candidate = response.candidates[0];
         const content = candidate.content;
         let processedCitationMetadata: { citationSources: CitationSource[] } | undefined = undefined;
-
-        // Add detailed logging for Gemini API response metadata
-        console.log('[GeminiChat] handleSend: Gemini API Response Metadata:', {
-          hasCitationMetadata: !!candidate.citationMetadata,
-          citationSourcesCount: candidate.citationMetadata?.citationSources?.length || 0,
-          hasGroundingMetadata: !!candidate.groundingMetadata,
-          groundingMetadata: candidate.groundingMetadata ? {
-            hasWebSearchQueries: !!candidate.groundingMetadata.webSearchQueries,
-            webSearchQueriesCount: candidate.groundingMetadata.webSearchQueries?.length || 0,
-            hasGroundingSupports: !!candidate.groundingMetadata.groundingSupports,
-            supportsCount: candidate.groundingMetadata.groundingSupports?.length || 0,
-            hasGroundingChunks: !!candidate.groundingMetadata.groundingChunks,
-            chunksCount: candidate.groundingMetadata.groundingChunks?.length || 0,
-            fullGroundingMetadata: candidate.groundingMetadata
-          } : null
-        });
+        console.log('[GeminiChat] handleSend: Gemini API Response Metadata:', { /* ... metadata logging ... */ });
 
         if (candidate.citationMetadata && candidate.citationMetadata.citationSources && candidate.citationMetadata.citationSources.length > 0) {
             processedCitationMetadata = candidate.citationMetadata;
-            console.log('[GeminiChat] handleSend: Using citationMetadata from response:', processedCitationMetadata);
         } else if (candidate.groundingMetadata) {
             const sources: CitationSource[] = [];
             const supports = candidate.groundingMetadata.groundingSupports;
             const allChunks = candidate.groundingMetadata.groundingChunks;
-
-            console.log('[GeminiChat] handleSend: Processing groundingMetadata:', {
-                supports: supports?.length || 0,
-                chunks: allChunks?.length || 0
-            });
-
             if (supports && Array.isArray(supports)) {
                 supports.forEach((support: GroundingSupport) => {
                     if (support.segment && support.groundingChunkIndices && Array.isArray(support.groundingChunkIndices) && support.groundingChunkIndices.length > 0) {
@@ -529,10 +488,10 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
                                     uri: uri
                                 });
                             } else {
-                                console.warn('[GeminiChat] handleSend: Could not find URI in grounding chunk at index:', firstChunkIndex, 'Full chunk structure:', JSON.stringify(chunk, null, 2));
+                                console.warn('[GeminiChat] handleSend: Could not find URI in grounding chunk at index:', firstChunkIndex);
                             }
                         } else {
-                            console.warn('[GeminiChat] handleSend: Invalid firstChunkIndex or allChunks not available/array for support:', support);
+                            console.warn('[GeminiChat] handleSend: Invalid firstChunkIndex or allChunks not available/array for support.');
                         }
                     }
                 });
@@ -540,10 +499,9 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
             if (sources.length > 0) {
                 processedCitationMetadata = { citationSources: sources };
             } else if (candidate.groundingMetadata.webSearchQueries && candidate.groundingMetadata.webSearchQueries.length > 0) {
-                console.warn("[GeminiChat] handleSend: Found webSearchQueries in groundingMetadata, but could not derive specific citation sources from supports/chunks. Grounding may be general.");
+                console.warn("[GeminiChat] handleSend: Found webSearchQueries, but could not derive citation sources.");
             }
         }
-        
         setMessages(prev => [...prev, { 
           role: 'model', 
           parts: content?.parts || [{text: "Sain tyhjän vastauksen."}], 
@@ -598,10 +556,10 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
       <div className="h-[1200px] overflow-y-auto border rounded p-2 bg-gray-50 mb-4">
         {messages.length === 0 && <div className="text-gray-400 text-sm">Ei viestejä</div>}
         {messages
-          .filter((msg, idx) => {
-            if (idx !== 0) return true;
-            if (msg.role === 'user' && Array.isArray(msg.parts) && msg.parts.length <= 3 && msg.parts.some(p => typeof p.text === 'string' && p.text.includes('Hei! Olen sinun henkilökohtainen kysynnänennusteavustajasi.'))) {
-              return false;
+          .filter((msg, idx) => { // Filter out the initial system prompt from display
+            if (idx === 0 && msg.role === 'user' && msg.parts.some(p => typeof p.text === 'string' && p.text.startsWith('Hei! Olen sinun henkilökohtainen kysynnänennusteavustajasi.'))) {
+              // This is a heuristic, adjust if your actual initial prompt text is different or structured differently
+              return false; 
             }
             return true;
           })
@@ -620,12 +578,7 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
                       const modelText = msg.parts.map(p => p.text || '').join('');
                       const citationResult = processTextWithCitations(modelText, msg.citationMetadata?.citationSources);
                       if (process.env.NODE_ENV === 'development') {
-                        console.log('Rendering Model Message:', {
-                          originalText: modelText.length > 100 ? modelText.substring(0, 100) + '...' : modelText,
-                          citationMetadata: msg.citationMetadata,
-                          processedText: citationResult.processedText.length > 100 ? citationResult.processedText.substring(0, 100) + '...' : citationResult.processedText,
-                          sourceMap: citationResult.sourceMap
-                        });
+                        console.log('Rendering Model Message:', { /* ... metadata logging ... */ });
                       }
                       return (
                         <ReactMarkdown
@@ -697,4 +650,4 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
   );
 };
 
-export default GeminiChat; 
+export default GeminiChat;

@@ -17,6 +17,7 @@ interface CitationSource {
   startIndex?: number;
   endIndex?: number;
   uri?: string;
+  title?: string; // Added title field
   groundingMetadata?: GroundingSupport;
 }
 
@@ -33,8 +34,10 @@ interface GroundingSupport {
 interface GroundingChunk {
   web?: {
     uri?: string;
+    title?: string; // Added title to web property
   };
   uri?: string;
+  // title?: string; // Consider if title can appear at top level of chunk too
 }
 
 interface Message {
@@ -46,41 +49,23 @@ interface Message {
 }
 
 const processTextWithCitations = (text: string, citationSources?: CitationSource[]) => {
-  if (!citationSources || citationSources.length === 0) {
-    return { processedText: text, sourceMap: new Map() };
+  const originalText = text;
+  const formattedSources: string[] = [];
+
+  if (citationSources && citationSources.length > 0) {
+    const uniqueUris = new Set<string>();
+    let sourceNumber = 1;
+    citationSources.forEach((source) => {
+      if (source.uri && !uniqueUris.has(source.uri)) {
+        const linkDescription = source.title && source.title.trim() !== '' ? source.title : source.uri;
+        formattedSources.push(`[Lähde ${sourceNumber}: ${linkDescription}](${source.uri})`);
+        uniqueUris.add(source.uri);
+        sourceNumber++;
+      }
+    });
   }
 
-  let resultText = "";
-  let lastProcessedEnd = 0;
-  let citationNumber = 1;
-
-  const sortedSources = [...citationSources].sort((a, b) => (a.startIndex || 0) - (b.startIndex || 0));
-
-  sortedSources.forEach((source) => {
-    if (source.startIndex !== undefined && source.endIndex !== undefined && source.uri) {
-      if (source.startIndex > lastProcessedEnd) {
-        resultText += text.substring(lastProcessedEnd, source.startIndex);
-      }
-      let currentWordEndIndex = source.endIndex;
-      while (currentWordEndIndex < text.length && text[currentWordEndIndex].trim() !== '') {
-        currentWordEndIndex++;
-      }
-      const wordCited = text.substring(source.startIndex, currentWordEndIndex);
-      const linkText = `[lähde ${citationNumber++}]`;
-      const linkMarkdown = `(${linkText}(${source.uri}))`;
-      resultText += wordCited;
-      resultText += linkMarkdown;
-      lastProcessedEnd = currentWordEndIndex;
-    } else {
-      console.warn("[GeminiChat] processTextWithCitations: Invalid citation source (missing startIndex, endIndex, or uri):", source);
-    }
-  });
-
-  if (lastProcessedEnd < text.length) {
-    resultText += text.substring(lastProcessedEnd);
-  }
-
-  return { processedText: resultText, sourceMap: new Map() };
+  return { originalText, formattedSources };
 };
 
 interface GeminiChatProps {
@@ -214,11 +199,10 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
       const model = genAI.getGenerativeModel({
         model: geminiModel,
         generationConfig: { temperature: 0.2 },
-        tools: [ { googleSearch: {} as Record<string, unknown> } ]
       });
       const history = messages.map(msg => ({ role: msg.role, parts: msg.parts }));
       console.log("[GeminiChat] handleRequestJson: Sending message to Gemini model with payload:", payload);
-      const result = await model.generateContent({ contents: [...history, { role: 'user', parts: [{ text: fullMessageString }] }] });
+      const result = await model.generateContent({ contents: [...history, { role: 'user', parts: [{ text: fullMessageString }] }], tools: [{ googleSearch: {} }] });
       const response = result.response;
 
       if (response && response.candidates && response.candidates.length > 0) {
@@ -238,11 +222,13 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
                         if (allChunks && Array.isArray(allChunks) && firstChunkIndex >= 0 && firstChunkIndex < allChunks.length) {
                             const chunk = allChunks[firstChunkIndex] as GroundingChunk;
                             const uri = chunk?.web?.uri || chunk?.uri;
+                            const title = chunk?.web?.title; // Extract title
                             if (uri) {
                                 sources.push({ 
                                     startIndex: parseInt(support.segment.startIndex || '0', 10), 
                                     endIndex: parseInt(support.segment.endIndex || '0', 10), 
-                                    uri: uri
+                                    uri: uri,
+                                    title: title // Add title to CitationSource object
                                 });
                             }
                         }
@@ -364,11 +350,10 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
       const model = genAI.getGenerativeModel({
         model: geminiModel,
         generationConfig: { temperature: 0.2 },
-        tools: [ { googleSearch: {} as Record<string, unknown> } ]
       });
       
       console.log("[GeminiChat] handleStartSession: Sending initial message to Gemini model.");
-      const result = await model.generateContent({ contents: [{ role: 'user', parts: initialMessageParts }] });
+      const result = await model.generateContent({ contents: [{ role: 'user', parts: initialMessageParts }], tools: [{ googleSearch: {} }] });
       const response = result.response;
       if (response && response.candidates && response.candidates.length > 0) {
         const candidate = response.candidates[0];
@@ -388,11 +373,13 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
                         if (allChunks && Array.isArray(allChunks) && firstChunkIndex >= 0 && firstChunkIndex < allChunks.length) {
                             const chunk = allChunks[firstChunkIndex] as GroundingChunk;
                             const uri = chunk?.web?.uri || chunk?.uri;
+                            const title = chunk?.web?.title; // Extract title
                             if (uri) {
                                 sources.push({ 
                                     startIndex: parseInt(support.segment.startIndex || '0', 10), 
                                     endIndex: parseInt(support.segment.endIndex || '0', 10), 
-                                    uri: uri
+                                    uri: uri,
+                                    title: title // Add title to CitationSource object
                                 });
                             } else {
                                 console.warn('[GeminiChat] handleStartSession: Could not find URI in grounding chunk at index:', firstChunkIndex, 'Full chunk structure:', JSON.stringify(chunk, null, 2));
@@ -456,10 +443,9 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
       const model = genAI.getGenerativeModel({
         model: geminiModel,
         generationConfig: { temperature: 0.2 },
-        tools: [ { googleSearch: {} as Record<string, unknown> } ]
       });
       const history = messages.map(msg => ({ role: msg.role, parts: msg.parts }));
-      const result = await model.generateContent({ contents: [...history, { role: 'user', parts: [{ text: currentInput }] }] });
+      const result = await model.generateContent({ contents: [...history, { role: 'user', parts: [{ text: currentInput }] }], tools: [{ googleSearch: {} }] });
       const response = result.response;
 
       if (response && response.candidates && response.candidates.length > 0) {
@@ -481,11 +467,13 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
                         if (allChunks && Array.isArray(allChunks) && firstChunkIndex >= 0 && firstChunkIndex < allChunks.length) {
                             const chunk = allChunks[firstChunkIndex] as GroundingChunk;
                             const uri = chunk?.web?.uri || chunk?.uri;
+                            const title = chunk?.web?.title; // Extract title
                             if (uri) {
                                 sources.push({ 
                                     startIndex: parseInt(support.segment.startIndex || '0', 10), 
                                     endIndex: parseInt(support.segment.endIndex || '0', 10), 
-                                    uri: uri
+                                    uri: uri,
+                                    title: title // Add title to CitationSource object
                                 });
                             } else {
                                 console.warn('[GeminiChat] handleSend: Could not find URI in grounding chunk at index:', firstChunkIndex);
@@ -575,36 +563,58 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
                 <>
                   <span className="inline-block px-3 py-2 rounded-lg max-w-full break-words whitespace-pre-wrap bg-gray-200 text-gray-800">
                     {(() => {
-                      const modelText = msg.parts.map(p => p.text || '').join('');
-                      const citationResult = processTextWithCitations(modelText, msg.citationMetadata?.citationSources);
+                      const modelTextContent = msg.parts.map(p => p.text || '').join('');
+                      const citationData = processTextWithCitations(modelTextContent, msg.citationMetadata?.citationSources);
+                      
+                      const markdownComponents = {
+                        a: ({ node, ...props }: { node?: unknown; [key: string]: unknown }) => (
+                          <a {...props} className="text-blue-600 hover:text-blue-800 underline" target="_blank" rel="noopener noreferrer">{props.children}</a>
+                        ),
+                        ul: ({ node, ...props }: { node?: unknown; [key: string]: unknown }) => (
+                          <ul {...props} className="list-disc pl-6" />
+                        ),
+                        li: ({ node, ...props }: { node?: unknown; [key: string]: unknown }) => (
+                          <li {...props} className="mb-0 leading-tight" />
+                        ),
+                        p: ({ node, ...props }: { node?: unknown; [key: string]: unknown }) => (
+                          <p {...props} className="mb-2" />
+                        ),
+                        strong: ({ node, ...props }: { node?: unknown; [key: string]: unknown }) => (
+                          <strong {...props} className="font-bold" />
+                        ),
+                        em: ({ node, ...props }: { node?: unknown; [key: string]: unknown }) => (
+                          <em {...props} className="italic" />
+                        )
+                      };
+
                       if (process.env.NODE_ENV === 'development') {
-                        console.log('Rendering Model Message:', { /* ... metadata logging ... */ });
+                        console.log('Rendering Model Message:', { 
+                          originalText: citationData.originalText, 
+                          sources: citationData.formattedSources,
+                          fullMessageObject: msg 
+                        });
                       }
+
                       return (
-                        <ReactMarkdown
-                          components={{
-                            a: ({ node, ...props }: { node?: unknown; [key: string]: unknown }) => (
-                              <a {...props} className="text-blue-600 hover:text-blue-800 underline" target="_blank" rel="noopener noreferrer">{props.children}</a>
-                            ),
-                            ul: ({ node, ...props }: { node?: unknown; [key: string]: unknown }) => (
-                              <ul {...props} className="list-disc pl-6" />
-                            ),
-                            li: ({ node, ...props }: { node?: unknown; [key: string]: unknown }) => (
-                              <li {...props} className="mb-0 leading-tight" />
-                            ),
-                            p: ({ node, ...props }: { node?: unknown; [key: string]: unknown }) => (
-                              <p {...props} className="mb-2" />
-                            ),
-                            strong: ({ node, ...props }: { node?: unknown; [key: string]: unknown }) => (
-                              <strong {...props} className="font-bold" />
-                            ),
-                            em: ({ node, ...props }: { node?: unknown; [key: string]: unknown }) => (
-                              <em {...props} className="italic" />
-                            )
-                          }}
-                        >
-                          {citationResult.processedText}
-                        </ReactMarkdown>
+                        <>
+                          <ReactMarkdown components={markdownComponents}>
+                            {citationData.originalText}
+                          </ReactMarkdown>
+                          {citationData.formattedSources.length > 0 && (
+                            <div className="mt-2">
+                              <h4 className="font-semibold text-sm">Lähteet:</h4>
+                              <ul className="list-none pl-0 text-sm">
+                                {citationData.formattedSources.map((sourceMd, sIdx) => (
+                                  <li key={sIdx} className="mb-0 leading-tight">
+                                    <ReactMarkdown components={markdownComponents}>
+                                      {sourceMd}
+                                    </ReactMarkdown>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </>
                       );
                     })()}
                   </span>

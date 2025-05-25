@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, BarChart, X } from "lucide-react";
@@ -18,6 +18,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { generateErrorChartImage } from "@/lib/chartUtils";
 import ForecastErrorChart from "./ForecastErrorChart";
 import { generateTruncatedListString } from "@/lib/utils";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 
 interface ForecastContentProps {
   selectedProduct: string | null;
@@ -37,6 +39,16 @@ interface ChartDataPoint {
   old_forecast_error?: number | null;
   new_forecast_manually_adjusted?: number | null;
   explanation?: string;
+}
+
+interface ErrorOverviewRow {
+  prod_class?: string;
+  prodgroup?: string;
+  prodcode?: string;
+  proddesc1?: string;
+  avgAbsPercentError: number;
+  avgAbsError: number;
+  level: 'class' | 'group' | 'product';
 }
 
 const ForecastContent: React.FC<ForecastContentProps> = ({
@@ -60,10 +72,13 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
   const [selectedProductSubclass, setSelectedProductSubclass] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [chartLevel, setChartLevel] = useState<'class' | 'group' | 'product'>('class');
-  const [activeTab, setActiveTab] = useState<'history' | 'error'>('history');
+  const [activeTab, setActiveTab] = useState<'history' | 'error' | 'overview'>('history');
   const [rawData, setRawData] = useState<any[]>([]);
   const [errorImageUrl, setErrorImageUrl] = useState<string | null>(null);
   const [currentClassProductGroupDetails, setCurrentClassProductGroupDetails] = useState<{ code: string; description: string; }[]>([]);
+  const [errorOverviewData, setErrorOverviewData] = useState<ErrorOverviewRow[]>([]);
+  const [sortField, setSortField] = useState<keyof ErrorOverviewRow>('avgAbsError');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   useEffect(() => {
     const loadData = async () => {
@@ -425,6 +440,103 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
     }
   };
 
+  const calculateErrorOverviewData = (data: any[]): ErrorOverviewRow[] => {
+    if (!data || data.length === 0) return [];
+    
+    console.log(`[calculateErrorOverviewData] Processing ${data.length} rows for top 10 product classes`);
+    
+    // Näytetään aina top 10 tuoteluokkaa
+    const classMap = new Map<string, {
+      prod_class: string;
+      errors: number[];
+      percentErrors: number[];
+    }>();
+
+    data.forEach(row => {
+      const quantity = row.Quantity;
+      const oldForecast = row.old_forecast;
+      
+      if (quantity !== null && quantity !== undefined && 
+          oldForecast !== null && oldForecast !== undefined && 
+          quantity !== 0) {
+        
+        const classKey = row.prod_class;
+        
+        if (!classMap.has(classKey)) {
+          classMap.set(classKey, {
+            prod_class: row.prod_class,
+            errors: [],
+            percentErrors: []
+          });
+        }
+        
+        const classData = classMap.get(classKey)!;
+        const absError = Math.abs(quantity - oldForecast);
+        const absPercentError = Math.abs((quantity - oldForecast) / quantity) * 100;
+        
+        classData.errors.push(absError);
+        classData.percentErrors.push(absPercentError);
+      }
+    });
+
+    const result: ErrorOverviewRow[] = [];
+    classMap.forEach((classData) => {
+      if (classData.errors.length > 0) {
+        const avgAbsError = classData.errors.reduce((sum, err) => sum + err, 0) / classData.errors.length;
+        const avgAbsPercentError = classData.percentErrors.reduce((sum, err) => sum + err, 0) / classData.percentErrors.length;
+        
+        result.push({
+          prod_class: classData.prod_class,
+          avgAbsError,
+          avgAbsPercentError,
+          level: 'class'
+        });
+      }
+    });
+
+    const sortedResult = result.sort((a, b) => b.avgAbsError - a.avgAbsError).slice(0, 10);
+    console.log(`[calculateErrorOverviewData] Found ${classMap.size} unique classes, returning top ${sortedResult.length}`);
+    
+    return sortedResult;
+  };
+
+  const handleSort = (field: keyof ErrorOverviewRow) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('desc');
+    }
+  };
+
+  const getSortedErrorData = (data: ErrorOverviewRow[]): ErrorOverviewRow[] => {
+    if (!data || data.length === 0) return [];
+    
+    return [...data].sort((a, b) => {
+      const aValue = a[sortField];
+      const bValue = b[sortField];
+      
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        const comparison = aValue.localeCompare(bValue);
+        return sortDirection === 'asc' ? comparison : -comparison;
+      } else if (typeof aValue === 'number' && typeof bValue === 'number') {
+        const comparison = aValue - bValue;
+        return sortDirection === 'asc' ? comparison : -comparison;
+      }
+      return 0;
+    });
+  };
+
+  const updateErrorOverviewData = () => {
+    console.log(`[updateErrorOverviewData] Using rawData length: ${rawData.length}`);
+    if (rawData.length === 0) {
+      console.log('[updateErrorOverviewData] No data available yet, skipping update');
+      return;
+    }
+    const errorData = calculateErrorOverviewData(rawData);
+    setErrorOverviewData(errorData);
+  };
+
   const calculateForecastErrorData = (data: any[]): { date: string, meanAbsError: number | null, percentBelow20: number | null }[] => {
     if (!data || data.length === 0) return [];
     console.log(`[ForecastContent] calculateForecastErrorData: Calculating errors for ${data.length} data points.`);
@@ -509,6 +621,7 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
         setErrorImageUrl(null); 
     }
   }, [activeTab, selectedClass, selectedGroup, selectedProduct, rawData]);
+
 
   // Renamed from applyCorrectionFromChat
   async function applyBatchCorrectionsFromChat(corrections: DataService.ForecastCorrection[]) { 
@@ -758,10 +871,11 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
       </Card>
 
       {/* Tabs for chart views */}
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'history' | 'error')} className="w-full">
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'history' | 'error' | 'overview')} className="w-full">
         <TabsList>
           <TabsTrigger value="history">Kysynnän historia ja ennuste</TabsTrigger>
           <TabsTrigger value="error">Ennustevirhe</TabsTrigger>
+          <TabsTrigger value="overview">Virhe yleisnäkymä</TabsTrigger>
         </TabsList>
         <TabsContent value="history">
           <Card>
@@ -875,13 +989,125 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
             </CardContent>
           </Card>
         </TabsContent>
+        <TabsContent value="overview">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <BarChart className="h-5 w-5 text-[#f59e0b] mr-2" />
+                  Virhe yleisnäkymä
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => rawData.length > 0 && updateErrorOverviewData()}
+                  disabled={rawData.length === 0}
+                >
+                  Päivitä data
+                </Button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="flex flex-col items-center justify-center h-64">
+                  <Loader2 className="h-10 w-10 animate-spin text-gray-400 mb-2" />
+                  <span className="text-gray-500">Ladataan dataa, odota hetki...</span>
+                </div>
+              ) : errorOverviewData.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="text-lg font-medium text-gray-700 mb-2">
+                    Top 10 virheanalyysi
+                  </div>
+                  <div className="text-sm text-gray-500 mb-4">
+                    Näyttää top 10 tuoteluokkaa suurimpien keskimääräisten absoluuttisten virheiden mukaan.
+                  </div>
+                  <div className="mt-6">
+                    <div className="text-xs text-gray-400">
+                      Klikkaa "Päivitä data" -nappia nähdäksesi tulokset
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[200px]">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => handleSort('prod_class')}
+                            className="h-auto p-0 font-medium hover:bg-transparent"
+                          >
+                            Tuoteluokka
+                            {sortField === 'prod_class' && (
+                              sortDirection === 'asc' ? <ArrowUp className="ml-1 h-4 w-4" /> : <ArrowDown className="ml-1 h-4 w-4" />
+                            )}
+                            {sortField !== 'prod_class' && <ArrowUpDown className="ml-1 h-4 w-4 text-gray-400" />}
+                          </Button>
+                        </TableHead>
+                        <TableHead className="w-[120px] text-right">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => handleSort('avgAbsPercentError')}
+                            className="h-auto p-0 font-medium hover:bg-transparent"
+                          >
+                            Keskim. ABS % virhe
+                            {sortField === 'avgAbsPercentError' && (
+                              sortDirection === 'asc' ? <ArrowUp className="ml-1 h-4 w-4" /> : <ArrowDown className="ml-1 h-4 w-4" />
+                            )}
+                            {sortField !== 'avgAbsPercentError' && <ArrowUpDown className="ml-1 h-4 w-4 text-gray-400" />}
+                          </Button>
+                        </TableHead>
+                        <TableHead className="w-[120px] text-right">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => handleSort('avgAbsError')}
+                            className="h-auto p-0 font-medium hover:bg-transparent"
+                          >
+                            Keskim. ABS virhe
+                            {sortField === 'avgAbsError' && (
+                              sortDirection === 'asc' ? <ArrowUp className="ml-1 h-4 w-4" /> : <ArrowDown className="ml-1 h-4 w-4" />
+                            )}
+                            {sortField !== 'avgAbsError' && <ArrowUpDown className="ml-1 h-4 w-4 text-gray-400" />}
+                          </Button>
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {getSortedErrorData(errorOverviewData).map((row, index) => (
+                        <TableRow key={`${row.prod_class || 'all'}-${index}`}>
+                          <TableCell className="font-medium">{row.prod_class}</TableCell>
+                          <TableCell className="text-right">
+                            {row.avgAbsPercentError.toFixed(1)}%
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {row.avgAbsError.toFixed(0)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  {errorOverviewData.length === 10 && (
+                    <div className="mt-4 text-center text-sm text-gray-500">
+                      Näytetään top 10 tulosta suurimman keskimääräisen virheen mukaan
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
 
-      {/* Väli ja harmaa yläreunus chatin ja graafin väliin */}
-      <div className="my-20 border-t border-gray-200" />
+      {/* Väli ja harmaa yläreunus chatin ja graafin väliin - piilotetaan overview-välilehdellä */}
+      {activeTab !== 'overview' && <div className="my-20 border-t border-gray-200" />}
 
-      {/* Chat wrapper */}
-      <div className="bg-white shadow rounded-lg p-4 mt-0">
+      {/* Chat wrapper - piilotetaan overview-välilehdellä */}
+      {activeTab !== 'overview' && (
+        <div className="bg-white shadow rounded-lg p-4 mt-0">
         <GeminiChat 
           imageUrl={imageUrl}
           errorImageUrl={errorImageUrl}
@@ -904,7 +1130,8 @@ const ForecastContent: React.FC<ForecastContentProps> = ({
                 : []
           }
         />
-      </div>
+        </div>
+      )}
     </div>
   );
 };

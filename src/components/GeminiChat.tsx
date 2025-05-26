@@ -140,32 +140,7 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
         selectedGroups && selectedGroups.length > 0 ? selectedGroups[0] : 'N/A';
     }
 
-    if (chartLevel === 'product' && selectedProducts && selectedProducts.length > 0) {
-      const currentProductCode = selectedProducts[0].code;
-      try {
-        const dataService = DataService.getInstance();
-        console.log(`[GeminiChat] Getting current new_forecast from cache for product ${currentProductCode}`);
-        const productData = dataService.getDataForProduct(currentProductCode);
-        console.log(`[GeminiChat] Found ${productData.length} cached records for ${currentProductCode}`);
-        if (productData.length > 0) {
-          const forecastData = productData
-            .filter(r => r.new_forecast !== null && r.new_forecast !== undefined)
-            .sort((a, b) => b.Year_Month.localeCompare(a.Year_Month))
-            .slice(0, 1);
-          console.log(`[GeminiChat] Filtered forecast data from cache:`, forecastData);
-          if (forecastData.length > 0) {
-            base.new_forecast = forecastData[0].new_forecast;
-            console.log(`[GeminiChat] Successfully added new_forecast from cache: ${base.new_forecast} for ${currentProductCode}`);
-          } else {
-            console.log(`[GeminiChat] No new_forecast data found in cache for ${currentProductCode}`);
-          }
-        } else {
-          console.log(`[GeminiChat] No cached data found for ${currentProductCode}`);
-        }
-      } catch (error) {
-        console.error(`[GeminiChat] Failed to get new_forecast from cache for ${currentProductCode}:`, error);
-      }
-    }
+    // Skip new_forecast - it's optional and causing issues
 
     if (chartLevel === 'product') {
       base.product_code =
@@ -177,7 +152,7 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
     const ordered: Record<string, string | number> = { prod_class: base.prod_class };
     if (base.product_group) ordered.product_group = base.product_group;
     if (base.product_code) ordered.product_code = base.product_code;
-    if (base.new_forecast !== undefined) ordered.new_forecast = base.new_forecast;
+    // Skip new_forecast as it's optional
     ordered.month = base.month;
     ordered.correction_percent = base.correction_percent;
     ordered.explanation = base.explanation;
@@ -191,7 +166,7 @@ const GeminiChat: React.FC<GeminiChatProps> = ({
     setIsLoading(true);
     const payload = await buildRequestPayload();
     const jsonString = JSON.stringify(payload, null, 2);
-    const fullMessageString = `Anna tutkimukseesi perustuva paras arvauksesi tilastollisen kysyntäennusteen korjauksesta. Luo yksi rivi kullekin kuukaudelle seurvaan 12kk ajalle ( kuluva kk + 11k tulveisuuteen). Tää on sama aika jolle kuvaajassa annettu tilastollinen ennuste.  JSON-muoto on alla:\n\`\`\`json\n${jsonString}\n\`\`\``;
+    const fullMessageString = `Anna tutkimukseesi perustuva paras arvauksesi tilastollisen kysyntäennusteen korjauksesta. Luo yksi rivi kullekin kuukaudelle seuraavan 12kk ajalle ( kuluva kk + 11k tuleveisuuteen). Tää on sama aika jolle kuvaajassa annettu tilastollinen ennuste.  JSON-muoto on alla:\n\`\`\`json\n${jsonString}\n\`\`\``;
     const userMessage: Message = { role: 'user', parts: [{ text: fullMessageString }] };
     setMessages(prev => [...prev, userMessage]);
 

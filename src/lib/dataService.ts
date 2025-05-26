@@ -275,8 +275,8 @@ export class DataService {
   // Helper method to get current data for a specific product and month
   private async getDataForCorrection(productCode: string, month: string): Promise<TimeSeriesData | null> {
     try {
-      // Normalize month to match database format
-      const normalizedMonth = month.length === 7 ? `${month}-01` : month;
+      // Keep month format as yyyy-mm without adding day
+      const normalizedMonth = month.length === 10 ? month.substring(0, 7) : month;
       
       // Check if we have the data in cache first
       const cachedData = this.data.find(d => 
@@ -479,6 +479,9 @@ export class DataService {
       return;
     }
 
+    let skippedCorrections: string[] = [];
+    let successfulCorrections = 0;
+
     try {
       // Process each correction
       for (const correction of corrections) {
@@ -487,8 +490,8 @@ export class DataService {
         // First, get the current forecast data to calculate adjusted forecast
         const currentData = await this.getDataForCorrection(correction.product_code, correction.month);
         
-        // Normalize month to include day for the API
-        const normalizedMonth = correction.month.length === 7 ? `${correction.month}-01` : correction.month;
+        // Keep month format as yyyy-mm without adding day
+        const normalizedMonth = correction.month.length === 10 ? correction.month.substring(0, 7) : correction.month;
 
         // Build URL with query parameters using correct column names
         const queryParams = new URLSearchParams();
@@ -502,38 +505,25 @@ export class DataService {
         let originalForecast: number | null = null;
         
         if (currentData) {
-          // Try different forecast fields in order of preference
-          originalForecast = currentData.new_forecast || currentData.old_forecast || currentData.Quantity;
-          let usedField = 'none';
-          
+          // Only use new_forecast, no fallback to other fields
           if (currentData.new_forecast !== null && currentData.new_forecast > 0) {
             originalForecast = currentData.new_forecast;
-            usedField = 'new_forecast';
-          } else if (currentData.old_forecast !== null && currentData.old_forecast > 0) {
-            originalForecast = currentData.old_forecast;
-            usedField = 'old_forecast';
-          } else if (currentData.Quantity !== null && currentData.Quantity > 0) {
-            originalForecast = currentData.Quantity;
-            usedField = 'Quantity';
-          }
-          
-          if (originalForecast !== null && originalForecast > 0) {
             adjustedForecast = originalForecast * (1 + correction.correction_percent / 100);
             console.log('[DataService] Calculated adjusted forecast:', {
               original: originalForecast,
               correctionPercent: correction.correction_percent,
               adjusted: adjustedForecast,
-              usedField: usedField
+              usedField: 'new_forecast'
             });
           } else {
-            // Use default value of 100 for calculation when no data available
-            const defaultValue = 100;
+            // Use default value of 1 for calculation when new_forecast is 0/null
+            const defaultValue = 1;
             adjustedForecast = defaultValue * (1 + correction.correction_percent / 100);
-            console.log('[DataService] Using default value for calculation (no data available):', {
+            console.log('[DataService] Using default value for calculation (new_forecast is 0/null):', {
               defaultValue: defaultValue,
               correctionPercent: correction.correction_percent,
               adjusted: adjustedForecast,
-              note: 'All forecast fields were null'
+              note: 'new_forecast was 0 or null'
             });
           }
         }
@@ -572,6 +562,33 @@ export class DataService {
           WARNING: 'THIS REQUEST SHOULD ONLY UPDATE CORRECTION FIELDS, NEVER new_forecast'
         });
 
+        // First check if record exists before attempting update
+        const existsResponse = await fetch(apiUrl, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${this.authToken}`,
+            'Accept': 'application/json'
+          }
+        });
+
+        if (!existsResponse.ok) {
+          throw new Error(`Failed to verify record exists: ${existsResponse.status}`);
+        }
+
+        const existsData = await existsResponse.json();
+        const records = existsData.results || [];
+        
+        if (records.length === 0) {
+          console.warn('[DataService] Record not found for update - skipping:', {
+            product_code: correction.product_code,
+            month: normalizedMonth
+          });
+          skippedCorrections.push(`${correction.product_code} (${normalizedMonth})`);
+          continue; // Skip this correction and continue with next one
+        }
+
+        console.log('[DataService] Record exists, proceeding with update...');
+
         // Send the request to the REST API using form encoding as per cURL example
         const response = await fetch(apiUrl, {
           method: 'POST',
@@ -608,6 +625,7 @@ export class DataService {
         }
 
         console.log('[DataService] applyCorrections: Successfully applied correction');
+        successfulCorrections++;
         
         // Debug: Verify what was actually saved
         try {
@@ -635,7 +653,25 @@ export class DataService {
 
       // Clear cache after successful updates
       this.clearCache();
-      console.log('[DataService] applyCorrections: All corrections applied successfully');
+      
+      // Log summary
+      console.log('[DataService] applyCorrections: Processing complete:', {
+        total: corrections.length,
+        successful: successfulCorrections,
+        skipped: skippedCorrections.length,
+        skippedItems: skippedCorrections
+      });
+
+      // Show warning in UI if some corrections were skipped
+      if (skippedCorrections.length > 0) {
+        const skippedMessage = `Ohitettiin ${skippedCorrections.length} korjausta (rivi ei löytynyt): ${skippedCorrections.join(', ')}`;
+        console.warn('[DataService] Some corrections were skipped:', skippedMessage);
+        
+        // Import toast here to avoid circular dependencies
+        import('sonner').then(({ toast }) => {
+          toast.warning(skippedMessage);
+        }).catch(e => console.warn('Could not show toast:', e));
+      }
     } catch (error) {
       console.error('[DataService] applyCorrections: Error applying corrections:', error);
       if (error instanceof Error) {

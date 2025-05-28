@@ -14,7 +14,7 @@ Professional Buyer on tekoälyavusteinen hankinta-assistentti, joka auttaa yrity
 - Keskittyy kolmeen pääetuu: kustannussäästöt, kiinteät maksut, strateginen aika
 
 **2. SearchAgent**
-- Reaaliaikainen webhaku markkinatrendien ja toimittajatietojen hakemiseen
+- Reaaliaikainen webhaку markkinatrendien ja toimittajatietojen hakemiseen
 - Käyttää WebSearchTool-työkalua
 - Aktivoituu kun tarvitaan ajantasaista markkinadataa
 
@@ -37,33 +37,41 @@ Professional Buyer on tekoälyavusteinen hankinta-assistentti, joka auttaa yrity
 
 ### Työkalut (Tools)
 
-**1. po_posting_api**
+**1. get_account_info**
+- Hakee käyttäjätilin tiedot ja hankintatilastot
+- Palauttaa säästöt, sopimukset ja viimeisimmät neuvottelut
+
+**2. po_posting_api**
 - Lähettää ostotilauksen ERP-järjestelmään
 - Ottaa vastaan: toimittaja, tuote, hinta
 - Palauttaa: "PO posted successfully in ERP"
-- Käyttäjä: POPostingAgent
 
-**2. request_po_approval**
+**3. request_po_approval**
 - Pyytää ostotilauksen hyväksyntää
 - Ottaa vastaan: po_number, amount, reason
 - Palauttaa: approval_id, status, arvioitu hyväksyntäaika
-- Käyttäjä: ApprovalSpecialistAgent
 
-**3. send_email**
+**4. send_email**
 - Lähettää sähköpostiviestejä sidosryhmille
 - Ottaa vastaan: recipient, subject, message
 - Palauttaa: email_id, delivery_status
-- Käyttäjä: ApprovalSpecialistAgent
 
-**4. WebSearchTool**
-- Reaaliaikainen webhaku
+**5. save_po_to_erp**
+- Tallentaa monipuolisia ostotilauksia ERP/P2P-järjestelmään
+- Sisältää hyväksyntälogiikan ja seurantaa
+
+**6. save_to_vector_store**
+- Tallentaa strukturoitua hankintadataa vector storeen
+- Käyttää VECTOR_STORE_ID ympäristömuuttujaa
+- Tukee metadatan tallentamista JSON-muodossa
+
+**7. WebSearchTool**
+- Reaaliaikainen webhaку
 - Markkinatrendien ja toimittajatietojen haku
-- Käyttäjä: SearchAgent
 
-**5. FileSearchTool**
+**8. FileSearchTool**
 - Hakee tietoa vector storesta
 - Toimittaja katalogit, kilpailutetut sopimukset, hinnat ja tuotteet
-- Käyttäjä: InternalKnowledgeSearchAgent
 
 ## Asennus
 
@@ -158,4 +166,4 @@ Sovellus käyttää seuraavia pääkomponentteja:
 - python-dotenv==1.1.0
 - agents library (OpenAI)
 
-Koko listan riippuvuuksista löydät requirements.txt tiedostosta.
+Koko listan riippuvuuksista löydät requirements.txt tiedostosta. 

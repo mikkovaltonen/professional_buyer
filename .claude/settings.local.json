@@ -11,7 +11,11 @@
       "Bash(mkdir:*)",
       "Bash(cp:*)",
       "Bash(grep:*)",
-      "Bash(rg:*)"
+      "Bash(rg:*)",
+      "Bash(git mv:*)",
+      "Bash(gcloud auth:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(python:*)"
     ],
     "deny": []
   }

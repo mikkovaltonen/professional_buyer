@@ -5,6 +5,41 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Panel - Professional Buyer</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase.js"></script>
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "{{ config.FIREBASE_API_KEY }}",
+            authDomain: "{{ config.FIREBASE_AUTH_DOMAIN }}",
+            projectId: "{{ config.FIREBASE_PROJECT_ID }}",
+            storageBucket: "{{ config.FIREBASE_STORAGE_BUCKET }}",
+            messagingSenderId: "{{ config.FIREBASE_MESSAGING_SENDER_ID }}",
+            appId: "{{ config.FIREBASE_APP_ID }}",
+            measurementId: "{{ config.FIREBASE_MEASUREMENT_ID }}"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
+        // Sign in with email and password
+        auth.signInWithEmailAndPassword('{{ config.FIREBASE_USER }}', '{{ config.FIREBASE_USER_PW }}')
+            .then(() => {
+                console.log('Firebase authentication successful');
+                console.log('Firebase db object:', db);
+                // Only load SearchAgent initially for testing
+                setTimeout(() => {
+                    console.log('About to load SearchAgent history...');
+                    loadInstructionHistory('SearchAgent');
+                }, 1000);
+            })
+            .catch(error => {
+                console.error('Firebase authentication failed:', error);
+            });
+    </script>
     <style>
         * {
             margin: 0;
@@ -139,6 +174,181 @@
             border-radius: 5px;
             margin: 10px 0;
         }
+
+        .instruction-management {
+            margin-top: 20px;
+        }
+
+        .agent-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .tab-button {
+            background: #f7fafc;
+            border: none;
+            padding: 12px 20px;
+            margin-right: 5px;
+            cursor: pointer;
+            border-radius: 5px 5px 0 0;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .tab-button.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+            background: white;
+            padding: 20px;
+            border-radius: 0 10px 10px 10px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .instruction-form {
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .form-group textarea {
+            height: 120px;
+            resize: vertical;
+        }
+
+        .btn {
+            background: #667eea;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        .btn:hover {
+            background: #5a67d8;
+        }
+
+        .btn-danger {
+            background: #e53e3e;
+        }
+
+        .btn-danger:hover {
+            background: #c53030;
+        }
+
+        .instruction-history {
+            margin-top: 30px;
+        }
+
+        .history-item {
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .history-meta {
+            font-size: 12px;
+            color: #718096;
+        }
+
+        .history-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-small {
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 10px;
+            width: 80%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 10px;
+        }
+
+        .close {
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: #000;
+        }
+
+        .edit-btn {
+            background: #38a169;
+        }
+
+        .edit-btn:hover {
+            background: #2f855a;
+        }
     </style>
 </head>
 <body>
@@ -180,44 +390,58 @@
             <div class="section-content">
                 
                 <div class="agent-card">
-                    <div class="agent-name"><i class="fas fa-search"></i> SearchAgent</div>
+                    <div class="agent-name">
+                        <i class="fas fa-search"></i> SearchAgent
+                        <button class="btn btn-small edit-btn" onclick="openEditModal('SearchAgent')" style="float: right;">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                    </div>
                     <p><strong>Purpose:</strong> Real-time web search for market data and external supplier research</p>
-                    <p><strong>Instructions:</strong> "You immediately provide an input to the WebSearchTool to find up-to-date information on the user's query. Log: 'SearchAgent activated for real-time web search'"</p>
+                    <p><strong>Current Instructions:</strong> <span id="current_SearchAgent">Loading...</span></p>
                 </div>
 
                 <div class="agent-card">
-                    <div class="agent-name"><i class="fas fa-database"></i> InternalKnowledgeSearchAgent</div>
+                    <div class="agent-name">
+                        <i class="fas fa-database"></i> InternalKnowledgeSearchAgent
+                        <button class="btn btn-small edit-btn" onclick="openEditModal('InternalKnowledgeSearchAgent')" style="float: right;">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                    </div>
                     <p><strong>Purpose:</strong> Search internal procurement data and documents</p>
-                    <p><strong>Instructions:</strong> Searches internal vector store for:</p>
-                    <ul style="margin: 10px 0 10px 20px;">
-                        <li>Toimittaja katalogit (supplier catalogs)</li>
-                        <li>Kilpailutetut sopimukset (competitive contracts)</li>
-                        <li>Kilpailutetut hinnat (competitive pricing)</li>
-                        <li>Tuotteet (products)</li>
-                    </ul>
+                    <p><strong>Current Instructions:</strong> <span id="current_InternalKnowledgeSearchAgent">Loading...</span></p>
                 </div>
 
                 <div class="agent-card">
-                    <div class="agent-name"><i class="fas fa-check-circle"></i> ApprovalSpecialistAgent</div>
+                    <div class="agent-name">
+                        <i class="fas fa-check-circle"></i> ApprovalSpecialistAgent
+                        <button class="btn btn-small edit-btn" onclick="openEditModal('ApprovalSpecialistAgent')" style="float: right;">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                    </div>
                     <p><strong>Purpose:</strong> Handle purchase order approvals and notifications</p>
-                    <p><strong>Instructions:</strong> Responsible for approval workflows, authorization processes, and stakeholder communication</p>
+                    <p><strong>Current Instructions:</strong> <span id="current_ApprovalSpecialistAgent">Loading...</span></p>
                 </div>
 
                 <div class="agent-card">
-                    <div class="agent-name"><i class="fas fa-paper-plane"></i> POPostingAgent</div>
+                    <div class="agent-name">
+                        <i class="fas fa-paper-plane"></i> POPostingAgent
+                        <button class="btn btn-small edit-btn" onclick="openEditModal('POPostingAgent')" style="float: right;">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                    </div>
                     <p><strong>Purpose:</strong> Post purchase orders to ERP system</p>
-                    <p><strong>Instructions:</strong> Handles PO creation and posting with supplier, product, and pricing data</p>
+                    <p><strong>Current Instructions:</strong> <span id="current_POPostingAgent">Loading...</span></p>
                 </div>
 
                 <div class="agent-card">
-                    <div class="agent-name"><i class="fas fa-route"></i> ProfessionalBuyerAssistant (Triage Agent)</div>
+                    <div class="agent-name">
+                        <i class="fas fa-route"></i> ProfessionalBuyerAssistant (Triage Agent)
+                        <button class="btn btn-small edit-btn" onclick="openEditModal('ProfessionalBuyerAssistant')" style="float: right;">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                    </div>
                     <p><strong>Purpose:</strong> Main orchestrator that routes requests to specialist agents</p>
-                    <p><strong>Core Benefits Focus:</strong></p>
-                    <ol style="margin: 10px 0 10px 20px;">
-                        <li>Save money by aligning with negotiated contracts</li>
-                        <li>Save fixed fees from internal procurement services</li>
-                        <li>Reallocate professional buyer time from operational transactions to strategic savings</li>
-                    </ol>
+                    <p><strong>Current Instructions:</strong> <span id="current_ProfessionalBuyerAssistant">Loading...</span></p>
                 </div>
             </div>
         </div>
@@ -260,6 +484,487 @@
             </div>
         </div>
 
+        <div class="section">
+            <div class="section-header">
+                <i class="fas fa-edit"></i> Agent Instructions Management
+            </div>
+            <div class="section-content">
+                <div class="instruction-management">
+                    <div class="agent-tabs">
+                        <button class="tab-button active" onclick="switchTab('SearchAgent')">SearchAgent</button>
+                        <button class="tab-button" onclick="switchTab('InternalKnowledgeSearchAgent')">Internal Knowledge</button>
+                        <button class="tab-button" onclick="switchTab('ApprovalSpecialistAgent')">Approval Specialist</button>
+                        <button class="tab-button" onclick="switchTab('POPostingAgent')">PO Posting</button>
+                        <button class="tab-button" onclick="switchTab('ProfessionalBuyerAssistant')">Triage Agent</button>
+                    </div>
+
+                    <div id="SearchAgent" class="tab-content active">
+                        <div class="instruction-form">
+                            <h3>Add New Instruction for SearchAgent</h3>
+                            <form onsubmit="saveInstruction(event, 'SearchAgent')">
+                                <div class="form-group">
+                                    <label for="instructions_SearchAgent">Instructions (Prompti):</label>
+                                    <textarea id="instructions_SearchAgent" name="instructions" required placeholder="Enter agent instructions..."></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label for="evaluointi_SearchAgent">Evaluointi:</label>
+                                    <textarea id="evaluointi_SearchAgent" name="evaluointi" placeholder="Enter evaluation notes..."></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label for="trace_id_SearchAgent">Trace ID:</label>
+                                    <input type="text" id="trace_id_SearchAgent" name="trace_id" placeholder="Optional trace ID">
+                                </div>
+                                <div class="form-group">
+                                    <label for="version_SearchAgent">Version:</label>
+                                    <select id="version_SearchAgent" name="version" required>
+                                        <option value="Production">Production</option>
+                                        <option value="Test">Test</option>
+                                        <option value="old">Old</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn">Save Instruction</button>
+                            </form>
+                        </div>
+                        <div class="instruction-history">
+                            <h3>Instruction History</h3>
+                            <div id="history_SearchAgent">Loading...</div>
+                        </div>
+                    </div>
+
+                    <div id="InternalKnowledgeSearchAgent" class="tab-content">
+                        <div class="instruction-form">
+                            <h3>Add New Instruction for InternalKnowledgeSearchAgent</h3>
+                            <form onsubmit="saveInstruction(event, 'InternalKnowledgeSearchAgent')">
+                                <div class="form-group">
+                                    <label for="instructions_InternalKnowledgeSearchAgent">Instructions (Prompti):</label>
+                                    <textarea id="instructions_InternalKnowledgeSearchAgent" name="instructions" required placeholder="Enter agent instructions..."></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label for="evaluointi_InternalKnowledgeSearchAgent">Evaluointi:</label>
+                                    <textarea id="evaluointi_InternalKnowledgeSearchAgent" name="evaluointi" placeholder="Enter evaluation notes..."></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label for="trace_id_InternalKnowledgeSearchAgent">Trace ID:</label>
+                                    <input type="text" id="trace_id_InternalKnowledgeSearchAgent" name="trace_id" placeholder="Optional trace ID">
+                                </div>
+                                <div class="form-group">
+                                    <label for="version_InternalKnowledgeSearchAgent">Version:</label>
+                                    <select id="version_InternalKnowledgeSearchAgent" name="version" required>
+                                        <option value="Production">Production</option>
+                                        <option value="Test">Test</option>
+                                        <option value="old">Old</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn">Save Instruction</button>
+                            </form>
+                        </div>
+                        <div class="instruction-history">
+                            <h3>Instruction History</h3>
+                            <div id="history_InternalKnowledgeSearchAgent">Loading...</div>
+                        </div>
+                    </div>
+
+                    <div id="ApprovalSpecialistAgent" class="tab-content">
+                        <div class="instruction-form">
+                            <h3>Add New Instruction for ApprovalSpecialistAgent</h3>
+                            <form onsubmit="saveInstruction(event, 'ApprovalSpecialistAgent')">
+                                <div class="form-group">
+                                    <label for="instructions_ApprovalSpecialistAgent">Instructions (Prompti):</label>
+                                    <textarea id="instructions_ApprovalSpecialistAgent" name="instructions" required placeholder="Enter agent instructions..."></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label for="evaluointi_ApprovalSpecialistAgent">Evaluointi:</label>
+                                    <textarea id="evaluointi_ApprovalSpecialistAgent" name="evaluointi" placeholder="Enter evaluation notes..."></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label for="trace_id_ApprovalSpecialistAgent">Trace ID:</label>
+                                    <input type="text" id="trace_id_ApprovalSpecialistAgent" name="trace_id" placeholder="Optional trace ID">
+                                </div>
+                                <div class="form-group">
+                                    <label for="version_ApprovalSpecialistAgent">Version:</label>
+                                    <select id="version_ApprovalSpecialistAgent" name="version" required>
+                                        <option value="Production">Production</option>
+                                        <option value="Test">Test</option>
+                                        <option value="old">Old</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn">Save Instruction</button>
+                            </form>
+                        </div>
+                        <div class="instruction-history">
+                            <h3>Instruction History</h3>
+                            <div id="history_ApprovalSpecialistAgent">Loading...</div>
+                        </div>
+                    </div>
+
+                    <div id="POPostingAgent" class="tab-content">
+                        <div class="instruction-form">
+                            <h3>Add New Instruction for POPostingAgent</h3>
+                            <form onsubmit="saveInstruction(event, 'POPostingAgent')">
+                                <div class="form-group">
+                                    <label for="instructions_POPostingAgent">Instructions (Prompti):</label>
+                                    <textarea id="instructions_POPostingAgent" name="instructions" required placeholder="Enter agent instructions..."></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label for="evaluointi_POPostingAgent">Evaluointi:</label>
+                                    <textarea id="evaluointi_POPostingAgent" name="evaluointi" placeholder="Enter evaluation notes..."></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label for="trace_id_POPostingAgent">Trace ID:</label>
+                                    <input type="text" id="trace_id_POPostingAgent" name="trace_id" placeholder="Optional trace ID">
+                                </div>
+                                <div class="form-group">
+                                    <label for="version_POPostingAgent">Version:</label>
+                                    <select id="version_POPostingAgent" name="version" required>
+                                        <option value="Production">Production</option>
+                                        <option value="Test">Test</option>
+                                        <option value="old">Old</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn">Save Instruction</button>
+                            </form>
+                        </div>
+                        <div class="instruction-history">
+                            <h3>Instruction History</h3>
+                            <div id="history_POPostingAgent">Loading...</div>
+                        </div>
+                    </div>
+
+                    <div id="ProfessionalBuyerAssistant" class="tab-content">
+                        <div class="instruction-form">
+                            <h3>Add New Instruction for ProfessionalBuyerAssistant</h3>
+                            <form onsubmit="saveInstruction(event, 'ProfessionalBuyerAssistant')">
+                                <div class="form-group">
+                                    <label for="instructions_ProfessionalBuyerAssistant">Instructions (Prompti):</label>
+                                    <textarea id="instructions_ProfessionalBuyerAssistant" name="instructions" required placeholder="Enter agent instructions..."></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label for="evaluointi_ProfessionalBuyerAssistant">Evaluointi:</label>
+                                    <textarea id="evaluointi_ProfessionalBuyerAssistant" name="evaluointi" placeholder="Enter evaluation notes..."></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label for="trace_id_ProfessionalBuyerAssistant">Trace ID:</label>
+                                    <input type="text" id="trace_id_ProfessionalBuyerAssistant" name="trace_id" placeholder="Optional trace ID">
+                                </div>
+                                <div class="form-group">
+                                    <label for="version_ProfessionalBuyerAssistant">Version:</label>
+                                    <select id="version_ProfessionalBuyerAssistant" name="version" required>
+                                        <option value="Production">Production</option>
+                                        <option value="Test">Test</option>
+                                        <option value="old">Old</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn">Save Instruction</button>
+                            </form>
+                        </div>
+                        <div class="instruction-history">
+                            <h3>Instruction History</h3>
+                            <div id="history_ProfessionalBuyerAssistant">Loading...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
+
+    <!-- Edit Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Edit Agent Instructions</h2>
+                <span class="close" onclick="closeEditModal()">&times;</span>
+            </div>
+            <form id="editForm">
+                <div class="form-group">
+                    <label for="editInstructions">Instructions (Prompti):</label>
+                    <textarea id="editInstructions" name="instructions" rows="15" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="editEvaluointi">Evaluointi:</label>
+                    <textarea id="editEvaluointi" name="evaluointi" rows="5"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="editTraceId">Trace ID:</label>
+                    <input type="text" id="editTraceId" name="trace_id">
+                </div>
+                <div class="form-group">
+                    <label for="editVersion">Version:</label>
+                    <select id="editVersion" name="version" required>
+                        <option value="Production">Production</option>
+                        <option value="Test">Test</option>
+                        <option value="old">Old</option>
+                    </select>
+                </div>
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button type="button" class="btn" onclick="closeEditModal()">Cancel</button>
+                    <button type="submit" class="btn">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function switchTab(agentName) {
+            // Hide all tab contents
+            const tabContents = document.querySelectorAll('.tab-content');
+            tabContents.forEach(content => content.classList.remove('active'));
+            
+            // Remove active class from all tab buttons
+            const tabButtons = document.querySelectorAll('.tab-button');
+            tabButtons.forEach(button => button.classList.remove('active'));
+            
+            // Show selected tab content
+            document.getElementById(agentName).classList.add('active');
+            
+            // Add active class to clicked button
+            event.target.classList.add('active');
+            
+            // Load history for this agent
+            loadInstructionHistory(agentName);
+        }
+
+        async function saveInstruction(event, agentName) {
+            event.preventDefault();
+            
+            const instructions = document.getElementById(`instructions_${agentName}`).value;
+            const evaluointi = document.getElementById(`evaluointi_${agentName}`).value;
+            const trace_id = document.getElementById(`trace_id_${agentName}`).value;
+            const version = document.getElementById(`version_${agentName}`).value;
+            
+            try {
+                const docData = {
+                    agent_name: agentName,
+                    tallennus_paiva: firebase.firestore.Timestamp.now(),
+                    tallentajan_nimi: '{{ username }}', // Current logged in user
+                    instructions: instructions,
+                    evaluointi: evaluointi,
+                    trace_id: trace_id,
+                    version: version
+                };
+                
+                await db.collection('agent_instructions').add(docData);
+                
+                alert('Instruction saved successfully!');
+                
+                // Clear form
+                document.getElementById(`instructions_${agentName}`).value = '';
+                document.getElementById(`evaluointi_${agentName}`).value = '';
+                document.getElementById(`trace_id_${agentName}`).value = '';
+                document.getElementById(`version_${agentName}`).value = 'Production';
+                
+                // Reload history
+                loadInstructionHistory(agentName);
+                
+            } catch (error) {
+                console.error('Error saving instruction:', error);
+                alert('Error saving instruction: ' + error.message);
+            }
+        }
+
+        async function loadInstructionHistory(agentName) {
+            try {
+                // Simplified query - get all and filter client-side
+                const querySnapshot = await db.collection('agent_instructions').get();
+                
+                const instructions = [];
+                
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    // Filter by agent name client-side
+                    if (data.agent_name === agentName) {
+                        data.id = doc.id;
+                        instructions.push(data);
+                    }
+                });
+                
+                // Sort client-side by date (newest first)
+                instructions.sort((a, b) => {
+                    if (a.tallennus_paiva && b.tallennus_paiva) {
+                        return b.tallennus_paiva.toDate() - a.tallennus_paiva.toDate();
+                    }
+                    return 0;
+                });
+                
+                // Limit to 50 results
+                instructions.splice(50);
+                
+                const historyDiv = document.getElementById(`history_${agentName}`);
+                if (instructions.length > 0) {
+                    historyDiv.innerHTML = instructions.map(instruction => `
+                        <div class="history-item">
+                            <div class="history-header">
+                                <div class="history-meta">
+                                    <strong>${instruction.tallentajan_nimi}</strong> - 
+                                    ${instruction.tallennus_paiva.toDate().toLocaleString('fi-FI')}
+                                    ${instruction.trace_id ? `- Trace: ${instruction.trace_id}` : ''}
+                                    ${instruction.version ? `- Version: ${instruction.version}` : ''}
+                                </div>
+                                <div class="history-actions">
+                                    <button class="btn btn-small" onclick="editInstruction('${agentName}', '${instruction.id}')">Edit</button>
+                                    <button class="btn btn-danger btn-small" onclick="deleteInstruction('${agentName}', '${instruction.id}')">Delete</button>
+                                </div>
+                            </div>
+                            <div><strong>Instructions:</strong> ${instruction.instructions}</div>
+                            ${instruction.evaluointi ? `<div><strong>Evaluointi:</strong> ${instruction.evaluointi}</div>` : ''}
+                        </div>
+                    `).join('');
+                } else {
+                    historyDiv.innerHTML = '<p>No instructions found for this agent.</p>';
+                }
+            } catch (error) {
+                console.error('Error loading instructions:', error);
+                document.getElementById(`history_${agentName}`).innerHTML = '<p>Error loading instructions: ' + error.message + '</p>';
+            }
+        }
+
+        function editInstruction(agentName, instructionId) {
+            // Implementation for editing instructions
+            alert('Edit functionality - to be implemented');
+        }
+
+        async function deleteInstruction(agentName, instructionId) {
+            if (confirm('Are you sure you want to delete this instruction?')) {
+                try {
+                    await db.collection('agent_instructions').doc(instructionId).delete();
+                    
+                    alert('Instruction deleted successfully!');
+                    loadInstructionHistory(agentName);
+                } catch (error) {
+                    console.error('Error deleting instruction:', error);
+                    alert('Error deleting instruction: ' + error.message);
+                }
+            }
+        }
+
+        // Modal functions
+        let currentEditingAgent = null;
+
+        function openEditModal(agentName) {
+            currentEditingAgent = agentName;
+            document.getElementById('modalTitle').textContent = `Edit ${agentName} Instructions`;
+            
+            // Load current instructions
+            loadCurrentInstructions(agentName);
+            
+            document.getElementById('editModal').style.display = 'block';
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').style.display = 'none';
+            currentEditingAgent = null;
+        }
+
+        async function loadCurrentInstructions(agentName) {
+            try {
+                console.log('Loading current instructions for:', agentName);
+                console.log('db object:', db);
+                
+                // Simplified query - get all and filter client-side
+                const querySnapshot = await db.collection('agent_instructions').get();
+                
+                let latestInstruction = null;
+                let latestDate = null;
+                
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    if (data.agent_name === agentName && data.tallennus_paiva) {
+                        const docDate = data.tallennus_paiva.toDate();
+                        if (!latestDate || docDate > latestDate) {
+                            latestDate = docDate;
+                            latestInstruction = data;
+                        }
+                    }
+                });
+                
+                if (latestInstruction) {
+                    const data = latestInstruction;
+                    
+                    document.getElementById('editInstructions').value = data.instructions || '';
+                    document.getElementById('editEvaluointi').value = data.evaluointi || '';
+                    document.getElementById('editTraceId').value = data.trace_id || '';
+                    document.getElementById('editVersion').value = data.version || 'Production';
+                    
+                    // Update the current instructions display
+                    const currentSpan = document.getElementById(`current_${agentName}`);
+                    if (currentSpan) {
+                        const truncated = data.instructions.length > 200 
+                            ? data.instructions.substring(0, 200) + '...' 
+                            : data.instructions;
+                        currentSpan.textContent = truncated;
+                    }
+                } else {
+                    // No instructions found
+                    document.getElementById('editInstructions').value = '';
+                    document.getElementById('editEvaluointi').value = '';
+                    document.getElementById('editTraceId').value = '';
+                    document.getElementById('editVersion').value = 'Production';
+                    
+                    const currentSpan = document.getElementById(`current_${agentName}`);
+                    if (currentSpan) {
+                        currentSpan.textContent = 'No instructions found';
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading current instructions:', error);
+                console.error('Error details:', error);
+                // Don't show alert for now, just log
+                // alert('Error loading current instructions: ' + error.message);
+            }
+        }
+
+        // Handle edit form submission
+        document.getElementById('editForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            if (!currentEditingAgent) return;
+            
+            const instructions = document.getElementById('editInstructions').value;
+            const evaluointi = document.getElementById('editEvaluointi').value;
+            const trace_id = document.getElementById('editTraceId').value;
+            const version = document.getElementById('editVersion').value;
+            
+            try {
+                const docData = {
+                    agent_name: currentEditingAgent,
+                    tallennus_paiva: firebase.firestore.Timestamp.now(),
+                    tallentajan_nimi: '{{ username }}',
+                    instructions: instructions,
+                    evaluointi: evaluointi,
+                    trace_id: trace_id,
+                    version: version
+                };
+                
+                await db.collection('agent_instructions').add(docData);
+                
+                alert('Instructions updated successfully!');
+                closeEditModal();
+                
+                // Reload current instructions display
+                loadCurrentInstructions(currentEditingAgent);
+                
+                // Reload history if on that tab
+                const activeTab = document.querySelector('.tab-content.active');
+                if (activeTab && activeTab.id === currentEditingAgent) {
+                    loadInstructionHistory(currentEditingAgent);
+                }
+                
+            } catch (error) {
+                console.error('Error updating instructions:', error);
+                alert('Error updating instructions: ' + error.message);
+            }
+        });
+
+        // Load initial history when page loads and current instructions for all agents
+        // Note: This is now handled after Firebase authentication in the auth callback
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('editModal');
+            if (event.target === modal) {
+                closeEditModal();
+            }
+        }
+    </script>
 </body>
 </html>

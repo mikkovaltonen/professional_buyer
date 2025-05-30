@@ -3,7 +3,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, j
 from dotenv import load_dotenv
 import asyncio
 from agents import Runner, trace
-from my_agents import triage_agent
+from agents_config import triage_agent
 
 load_dotenv()
 
@@ -73,12 +73,55 @@ def chat():
 def admin():
     if not session.get('logged_in'):
         return redirect(url_for('login'))
-    return render_template('admin.html', username=session.get('username'))
+    
+    # Firebase config for template
+    firebase_config = {
+        'FIREBASE_API_KEY': os.getenv('FIREBASE_API_KEY'),
+        'FIREBASE_AUTH_DOMAIN': os.getenv('FIREBASE_AUTH_DOMAIN'),
+        'FIREBASE_PROJECT_ID': os.getenv('FIREBASE_PROJECT_ID'),
+        'FIREBASE_STORAGE_BUCKET': os.getenv('FIREBASE_STORAGE_BUCKET'),
+        'FIREBASE_MESSAGING_SENDER_ID': os.getenv('FIREBASE_MESSAGING_SENDER_ID'),
+        'FIREBASE_APP_ID': os.getenv('FIREBASE_APP_ID'),
+        'FIREBASE_MEASUREMENT_ID': os.getenv('FIREBASE_MEASUREMENT_ID'),
+        'FIREBASE_USER': os.getenv('FIREBASE_USER'),
+        'FIREBASE_USER_PW': os.getenv('FIREBASE_USER_PW')
+    }
+    
+    return render_template('admin.html', 
+                         username=session.get('username'),
+                         config=firebase_config)
 
 @app.route('/logout')
 def logout():
     session.clear()
     return redirect(url_for('landing'))
+
+@app.route('/test_firebase')
+def test_firebase():
+    firebase_config = {
+        'FIREBASE_API_KEY': os.getenv('FIREBASE_API_KEY'),
+        'FIREBASE_AUTH_DOMAIN': os.getenv('FIREBASE_AUTH_DOMAIN'),
+        'FIREBASE_PROJECT_ID': os.getenv('FIREBASE_PROJECT_ID'),
+        'FIREBASE_STORAGE_BUCKET': os.getenv('FIREBASE_STORAGE_BUCKET'),
+        'FIREBASE_MESSAGING_SENDER_ID': os.getenv('FIREBASE_MESSAGING_SENDER_ID'),
+        'FIREBASE_APP_ID': os.getenv('FIREBASE_APP_ID'),
+        'FIREBASE_MEASUREMENT_ID': os.getenv('FIREBASE_MEASUREMENT_ID')
+    }
+    return render_template('test_firebase.html', firebase_config=firebase_config)
+
+@app.route('/firebase_read_test')
+def firebase_read_test():
+    firebase_config = {
+        'FIREBASE_API_KEY': os.getenv('FIREBASE_API_KEY'),
+        'FIREBASE_AUTH_DOMAIN': os.getenv('FIREBASE_AUTH_DOMAIN'),
+        'FIREBASE_PROJECT_ID': os.getenv('FIREBASE_PROJECT_ID'),
+        'FIREBASE_STORAGE_BUCKET': os.getenv('FIREBASE_STORAGE_BUCKET'),
+        'FIREBASE_MESSAGING_SENDER_ID': os.getenv('FIREBASE_MESSAGING_SENDER_ID'),
+        'FIREBASE_APP_ID': os.getenv('FIREBASE_APP_ID'),
+        'FIREBASE_MEASUREMENT_ID': os.getenv('FIREBASE_MEASUREMENT_ID')
+    }
+    return render_template('firebase_read_test.html', firebase_config=firebase_config)
+
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))

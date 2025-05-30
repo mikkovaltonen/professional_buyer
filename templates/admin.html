@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Professional Buyer</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f8fafc;
+        }
+
+        .header {
+            background: #2d3748;
+            color: white;
+            padding: 1rem 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            margin-left: 20px;
+            padding: 8px 16px;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+
+        .nav-links a:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .welcome {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .section {
+            background: white;
+            margin-bottom: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .section-header {
+            background: #667eea;
+            color: white;
+            padding: 15px 20px;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .section-content {
+            padding: 20px;
+        }
+
+        .credentials-box {
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+
+        .agent-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+        }
+
+        .agent-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 10px;
+        }
+
+        .tool-item {
+            background: #edf2f7;
+            padding: 10px;
+            margin: 8px 0;
+            border-radius: 5px;
+            border-left: 4px solid #667eea;
+        }
+
+        .workflow-image {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        code {
+            background: #edf2f7;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .highlight {
+            background: #fef5e7;
+            padding: 10px;
+            border-left: 4px solid #f6ad55;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <i class="fas fa-cogs"></i> Admin Panel
+            </div>
+            <nav class="nav-links">
+                <a href="/workbench"><i class="fas fa-desktop"></i> Workbench</a>
+                <a href="/logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            </nav>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="welcome">
+            <h1><i class="fas fa-user-shield"></i> Welcome, {{ username }}!</h1>
+            <p>Professional Buyer Admin Documentation & System Overview</p>
+        </div>
+
+
+        <div class="section">
+            <div class="section-header">
+                <i class="fas fa-sitemap"></i> Agentic Workflow & Tools
+            </div>
+            <div class="section-content">
+                <img src="/static/Agentic workflow and tools.png" alt="Agentic Workflow and Tools Diagram" class="workflow-image">
+                <p style="margin-top: 15px; font-style: italic; color: #718096;">
+                    This diagram shows the complete agentic workflow and tool integration for the Professional Buyer system.
+                </p>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-header">
+                <i class="fas fa-robot"></i> Agent Prompts & Configuration
+            </div>
+            <div class="section-content">
+                
+                <div class="agent-card">
+                    <div class="agent-name"><i class="fas fa-search"></i> SearchAgent</div>
+                    <p><strong>Purpose:</strong> Real-time web search for market data and external supplier research</p>
+                    <p><strong>Instructions:</strong> "You immediately provide an input to the WebSearchTool to find up-to-date information on the user's query. Log: 'SearchAgent activated for real-time web search'"</p>
+                </div>
+
+                <div class="agent-card">
+                    <div class="agent-name"><i class="fas fa-database"></i> InternalKnowledgeSearchAgent</div>
+                    <p><strong>Purpose:</strong> Search internal procurement data and documents</p>
+                    <p><strong>Instructions:</strong> Searches internal vector store for:</p>
+                    <ul style="margin: 10px 0 10px 20px;">
+                        <li>Toimittaja katalogit (supplier catalogs)</li>
+                        <li>Kilpailutetut sopimukset (competitive contracts)</li>
+                        <li>Kilpailutetut hinnat (competitive pricing)</li>
+                        <li>Tuotteet (products)</li>
+                    </ul>
+                </div>
+
+                <div class="agent-card">
+                    <div class="agent-name"><i class="fas fa-check-circle"></i> ApprovalSpecialistAgent</div>
+                    <p><strong>Purpose:</strong> Handle purchase order approvals and notifications</p>
+                    <p><strong>Instructions:</strong> Responsible for approval workflows, authorization processes, and stakeholder communication</p>
+                </div>
+
+                <div class="agent-card">
+                    <div class="agent-name"><i class="fas fa-paper-plane"></i> POPostingAgent</div>
+                    <p><strong>Purpose:</strong> Post purchase orders to ERP system</p>
+                    <p><strong>Instructions:</strong> Handles PO creation and posting with supplier, product, and pricing data</p>
+                </div>
+
+                <div class="agent-card">
+                    <div class="agent-name"><i class="fas fa-route"></i> ProfessionalBuyerAssistant (Triage Agent)</div>
+                    <p><strong>Purpose:</strong> Main orchestrator that routes requests to specialist agents</p>
+                    <p><strong>Core Benefits Focus:</strong></p>
+                    <ol style="margin: 10px 0 10px 20px;">
+                        <li>Save money by aligning with negotiated contracts</li>
+                        <li>Save fixed fees from internal procurement services</li>
+                        <li>Reallocate professional buyer time from operational transactions to strategic savings</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-header">
+                <i class="fas fa-tools"></i> Available Tools & Functions
+            </div>
+            <div class="section-content">
+                
+                <div class="tool-item">
+                    <strong><i class="fas fa-globe"></i> WebSearchTool</strong><br>
+                    <em>Used by SearchAgent</em><br>
+                    Real-time web search for market trends, supplier information, and competitive intelligence
+                </div>
+
+                <div class="tool-item">
+                    <strong><i class="fas fa-file-search"></i> FileSearchTool</strong><br>
+                    <em>Used by InternalKnowledgeSearchAgent</em><br>
+                    Search internal vector store (ID: configured via VECTOR_STORE_ID env var)
+                </div>
+
+                <div class="tool-item">
+                    <strong><i class="fas fa-clipboard-check"></i> request_po_approval(po_number, amount, reason)</strong><br>
+                    <em>Used by ApprovalSpecialistAgent</em><br>
+                    Request approval for purchase orders with automatic routing based on amount thresholds
+                </div>
+
+                <div class="tool-item">
+                    <strong><i class="fas fa-envelope"></i> send_email(recipient, subject, message)</strong><br>
+                    <em>Used by ApprovalSpecialistAgent</em><br>
+                    Send email notifications to stakeholders and approvers
+                </div>
+
+                <div class="tool-item">
+                    <strong><i class="fas fa-upload"></i> po_posting_api(toimittaja, tuote, hinta)</strong><br>
+                    <em>Used by POPostingAgent</em><br>
+                    Post purchase orders to ERP system with supplier, product, and pricing information
+                </div>
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>

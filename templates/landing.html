@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professional Buyer - Smart Procurement Solutions</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 0;
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #4a5568;
+        }
+
+        .cta-header {
+            background: #667eea;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .cta-header:hover {
+            background: #5a67d8;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .hero {
+            margin-top: 80px;
+            padding: 100px 0;
+            text-align: center;
+            color: white;
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            margin-bottom: 1rem;
+            font-weight: 700;
+        }
+
+        .hero p {
+            font-size: 1.3rem;
+            margin-bottom: 2rem;
+            opacity: 0.9;
+        }
+
+        .cta-main {
+            background: white;
+            color: #667eea;
+            padding: 18px 36px;
+            border: none;
+            border-radius: 30px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(255, 255, 255, 0.3);
+        }
+
+        .cta-main:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(255, 255, 255, 0.4);
+        }
+
+        .benefits {
+            background: white;
+            padding: 100px 0;
+        }
+
+        .benefits h2 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 3rem;
+            color: #4a5568;
+        }
+
+        .benefits-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 3rem;
+            margin-top: 2rem;
+        }
+
+        .benefit-card {
+            background: #f8fafc;
+            padding: 2.5rem;
+            border-radius: 15px;
+            text-align: center;
+            transition: transform 0.3s ease;
+            border: 1px solid #e2e8f0;
+        }
+
+        .benefit-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .benefit-icon {
+            font-size: 3rem;
+            color: #667eea;
+            margin-bottom: 1.5rem;
+        }
+
+        .benefit-card h3 {
+            font-size: 1.4rem;
+            margin-bottom: 1rem;
+            color: #2d3748;
+        }
+
+        .benefit-card p {
+            color: #718096;
+            line-height: 1.6;
+        }
+
+        .stats {
+            background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
+            color: white;
+            padding: 80px 0;
+            text-align: center;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 2rem;
+        }
+
+        .stat-item h3 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            color: #81e6d9;
+        }
+
+        .footer {
+            background: #2d3748;
+            color: white;
+            padding: 2rem 0;
+            text-align: center;
+        }
+
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+            
+            .benefits-grid {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <nav class="container">
+            <div class="logo">
+                <i class="fas fa-shopping-cart"></i> Professional Buyer
+            </div>
+            <div>
+                <a href="/admin" class="cta-header" style="margin-right: 10px;">Admin</a>
+                <a href="/login" class="cta-header">Get Started</a>
+            </div>
+        </nav>
+    </header>
+
+    <section class="hero">
+        <div class="container">
+            <h1>Transform Your Procurement Strategy</h1>
+            <p>Leverage AI-powered professional buying services to optimize costs and streamline operations</p>
+            <a href="/login" class="cta-main">Start Saving Today</a>
+        </div>
+    </section>
+
+    <section class="benefits">
+        <div class="container">
+            <h2>Why Choose Professional Buyer?</h2>
+            <div class="benefits-grid">
+                <div class="benefit-card">
+                    <div class="benefit-icon">
+                        <i class="fas fa-handshake"></i>
+                    </div>
+                    <h3>Save money by aligning with negotiated contracts</h3>
+                    <p>Access pre-negotiated supplier agreements and volume discounts that reduce your procurement costs while maintaining quality standards.</p>
+                </div>
+                
+                <div class="benefit-card">
+                    <div class="benefit-icon">
+                        <i class="fas fa-dollar-sign"></i>
+                    </div>
+                    <h3>Save fixed fees from internal procurement services</h3>
+                    <p>Eliminate overhead costs associated with maintaining internal procurement teams and processes while getting professional expertise.</p>
+                </div>
+                
+                <div class="benefit-card">
+                    <div class="benefit-icon">
+                        <i class="fas fa-chess-rook"></i>
+                    </div>
+                    <h3>Reallocate professional buyer time from operational transaction processing into strategic and tactical savings</h3>
+                    <p>Free up your team to focus on high-value strategic initiatives while we handle routine procurement transactions efficiently.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="stats">
+        <div class="container">
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <h3>25%</h3>
+                    <p>Average Cost Reduction</p>
+                </div>
+                <div class="stat-item">
+                    <h3>60%</h3>
+                    <p>Time Savings</p>
+                </div>
+                <div class="stat-item">
+                    <h3>500+</h3>
+                    <p>Satisfied Clients</p>
+                </div>
+                <div class="stat-item">
+                    <h3>24/7</h3>
+                    <p>AI Support</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2024 Professional Buyer. All rights reserved.</p>
+        </div>
+    </footer>
+</body>
+</html>

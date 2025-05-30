@@ -1,0 +1,7 @@
+runtime: python311
+entrypoint: gunicorn -b :$PORT app:app
+
+env_variables:
+  PYTHONUNBUFFERED: "true"
+
+instance_class: F1 

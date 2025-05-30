@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip install:*)",
+      "Bash(timeout:*)",
+      "Bash(source:*)",
+      "Bash(./venv/Scripts/pip.exe install openai-agents==0.0.14)",
+      "Bash(./venv/Scripts/pip.exe list)",
+      "Bash(mv:*)",
+      "Bash(rm:*)",
+      "Bash(mkdir:*)",
+      "Bash(cp:*)",
+      "Bash(grep:*)",
+      "Bash(rg:*)"
+    ],
+    "deny": []
+  }
+}

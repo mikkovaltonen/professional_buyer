@@ -74,7 +74,7 @@ def admin():
     if not session.get('logged_in'):
         return redirect(url_for('login'))
     
-    # Firebase config for template
+    # Firebase config for template - use app credentials, not env vars for user/pw
     firebase_config = {
         'FIREBASE_API_KEY': os.getenv('FIREBASE_API_KEY'),
         'FIREBASE_AUTH_DOMAIN': os.getenv('FIREBASE_AUTH_DOMAIN'),
@@ -83,8 +83,8 @@ def admin():
         'FIREBASE_MESSAGING_SENDER_ID': os.getenv('FIREBASE_MESSAGING_SENDER_ID'),
         'FIREBASE_APP_ID': os.getenv('FIREBASE_APP_ID'),
         'FIREBASE_MEASUREMENT_ID': os.getenv('FIREBASE_MEASUREMENT_ID'),
-        'FIREBASE_USER': os.getenv('FIREBASE_USER'),
-        'FIREBASE_USER_PW': os.getenv('FIREBASE_USER_PW')
+        'FIREBASE_USER': 'demo@professionalbuyer.com',  # Hardcoded demo user
+        'FIREBASE_USER_PW': 'demo123456'  # Hardcoded demo password
     }
     
     return render_template('admin.html', 

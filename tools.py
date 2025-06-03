@@ -39,31 +39,69 @@ def vector_search_tool(query: str, max_results: int = 10) -> Dict:
         
         print(f"LOG: Performing vector search for: {query}")
         
-        # Search the vector store
-        response = client.beta.vector_stores.files.list(
-            vector_store_id=VECTOR_STORE_ID,
-            limit=max_results
+        # Create a temporary assistant with vector store for search
+        assistant = client.beta.assistants.create(
+            name="Temp Search Assistant",
+            instructions="You are a search assistant for internal procurement documents.",
+            model="gpt-4o-mini",
+            tools=[{"type": "file_search"}],
+            tool_resources={
+                "file_search": {
+                    "vector_store_ids": [VECTOR_STORE_ID]
+                }
+            }
         )
         
-        # This is a simplified implementation
-        # In practice, you would use the search functionality with embeddings
-        results = []
-        for file in response.data:
-            results.append({
-                "file_id": file.id,
-                "filename": getattr(file, 'filename', 'Unknown'),
-                "relevance_score": 0.95,  # Placeholder score
-                "content_preview": f"Relevant content from internal knowledge base regarding {query}"
-            })
+        # Create a thread for the search
+        thread = client.beta.threads.create()
         
-        print(f"LOG: Found {len(results)} relevant documents")
+        # Add the search query as a message
+        client.beta.threads.messages.create(
+            thread_id=thread.id,
+            role="user",
+            content=f"Search for: {query}. Provide relevant information from the documents."
+        )
+        
+        # Run the assistant
+        run = client.beta.threads.runs.create(
+            thread_id=thread.id,
+            assistant_id=assistant.id
+        )
+        
+        # Wait for completion and get response
+        import time
+        while run.status in ['queued', 'in_progress']:
+            time.sleep(1)
+            run = client.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
+        
+        if run.status == 'completed':
+            messages = client.beta.threads.messages.list(thread_id=thread.id)
+            latest_message = messages.data[0]
+            
+            search_results = []
+            if hasattr(latest_message.content[0], 'text'):
+                content = latest_message.content[0].text.value
+                search_results.append({
+                    "content": content,
+                    "relevance_score": 0.95,
+                    "source": "Internal Vector Store"
+                })
+        
+        # Cleanup
+        try:
+            client.beta.assistants.delete(assistant.id)
+            client.beta.threads.delete(thread.id)
+        except:
+            pass
+        
+        print(f"LOG: Found {len(search_results)} relevant results")
         
         return {
             "success": True,
             "query": query,
-            "results": results,
-            "total_results": len(results),
-            "message": f"Found {len(results)} relevant documents for '{query}'"
+            "results": search_results,
+            "total_results": len(search_results),
+            "message": f"Found {len(search_results)} relevant results for '{query}'"
         }
         
     except Exception as e:

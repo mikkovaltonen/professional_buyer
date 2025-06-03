@@ -42,7 +42,15 @@ def vector_search_tool(query: str, max_results: int = 10) -> Dict:
         # Create a temporary assistant with vector store for search
         assistant = client.beta.assistants.create(
             name="Temp Search Assistant",
-            instructions="You are a search assistant for internal procurement documents.",
+            instructions="""You are a search assistant for internal procurement documents. 
+            
+            When providing search results:
+            1. Structure your response with clear sections
+            2. Use bullet points for key information
+            3. Include document names/sources when possible
+            4. Provide specific quotes or references
+            5. Keep sections concise and actionable
+            6. If multiple documents are relevant, organize by document/topic""",
             model="gpt-4o-mini",
             tools=[{"type": "file_search"}],
             tool_resources={
@@ -59,7 +67,16 @@ def vector_search_tool(query: str, max_results: int = 10) -> Dict:
         client.beta.threads.messages.create(
             thread_id=thread.id,
             role="user",
-            content=f"Search for: {query}. Provide relevant information from the documents."
+            content=f"""Search for information about: {query}
+
+Please provide:
+- Specific sections or policies that apply
+- Key requirements or guidelines
+- Any relevant process steps
+- Document sources/references
+- Actionable recommendations
+
+Format the response with clear headings and bullet points for easy reading."""
         )
         
         # Run the assistant
@@ -81,10 +98,23 @@ def vector_search_tool(query: str, max_results: int = 10) -> Dict:
             search_results = []
             if hasattr(latest_message.content[0], 'text'):
                 content = latest_message.content[0].text.value
+                
+                # Extract file citations if available
+                citations = []
+                if hasattr(latest_message.content[0].text, 'annotations'):
+                    for annotation in latest_message.content[0].text.annotations:
+                        if hasattr(annotation, 'file_citation'):
+                            citations.append({
+                                "file_id": annotation.file_citation.file_id,
+                                "quote": getattr(annotation.file_citation, 'quote', '')
+                            })
+                
                 search_results.append({
                     "content": content,
                     "relevance_score": 0.95,
-                    "source": "Internal Vector Store"
+                    "source": "Internal Vector Store",
+                    "citations": citations,
+                    "formatted": True
                 })
         
         # Cleanup

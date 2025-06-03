@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Professional Buyer - AI Assistant</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Marked.js for Markdown rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -150,6 +152,68 @@
         .assistant .message-content {
             background: #f8fafc;
             border: 1px solid #e2e8f0;
+        }
+
+        /* Markdown styling for assistant messages */
+        .assistant .message-content h1,
+        .assistant .message-content h2,
+        .assistant .message-content h3,
+        .assistant .message-content h4,
+        .assistant .message-content h5,
+        .assistant .message-content h6 {
+            color: #1a202c;
+            margin: 16px 0 8px 0;
+            font-weight: 600;
+        }
+
+        .assistant .message-content h1 { font-size: 1.5rem; }
+        .assistant .message-content h2 { font-size: 1.3rem; }
+        .assistant .message-content h3 { font-size: 1.1rem; }
+
+        .assistant .message-content ul,
+        .assistant .message-content ol {
+            margin: 12px 0;
+            padding-left: 24px;
+        }
+
+        .assistant .message-content li {
+            margin: 4px 0;
+        }
+
+        .assistant .message-content p {
+            margin: 8px 0;
+        }
+
+        .assistant .message-content strong {
+            font-weight: 600;
+            color: #1a202c;
+        }
+
+        .assistant .message-content em {
+            font-style: italic;
+        }
+
+        .assistant .message-content code {
+            background: #edf2f7;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        .assistant .message-content pre {
+            background: #edf2f7;
+            padding: 12px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 12px 0;
+        }
+
+        .assistant .message-content blockquote {
+            border-left: 4px solid #667eea;
+            padding-left: 16px;
+            margin: 12px 0;
+            color: #4a5568;
         }
 
         .typing-indicator {
@@ -470,7 +534,13 @@
             
             const content = document.createElement('div');
             content.className = 'message-content';
-            content.textContent = text;
+            
+            // Render Markdown for assistant messages, plain text for user messages
+            if (sender === 'assistant' && typeof marked !== 'undefined') {
+                content.innerHTML = marked.parse(text);
+            } else {
+                content.textContent = text;
+            }
             
             messageDiv.appendChild(avatar);
             messageDiv.appendChild(content);

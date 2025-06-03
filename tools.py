@@ -4,6 +4,10 @@ import json
 import requests
 from datetime import datetime
 from typing import List, Dict, Optional
+try:
+    from googlesearch import search as google_search
+except ImportError:
+    google_search = None
 
 # OpenAI Configuration for Vector Search
 try:
@@ -140,6 +144,106 @@ Format the response with clear headings and bullet points for easy reading."""
             "success": False,
             "error": str(e),
             "message": "Error performing vector search"
+        }
+
+# --- Web Search Tool (Public Information) ---
+@function_tool  
+def web_search_tool(query: str, max_results: int = 5) -> Dict:
+    """Search the web for public information about vendors, products, and pricing using OpenAI's web search.
+    
+    Args:
+        query: Search query for public information
+        max_results: Maximum number of search results to return (default: 5)
+    
+    Returns:
+        Dictionary containing web search results
+    """
+    try:
+        print(f"LOG: Performing OpenAI web search for: {query}")
+        
+        if not client:
+            return {
+                "success": False,
+                "error": "OpenAI client not configured",
+                "message": "Web search not available - check OPENAI_API_KEY"
+            }
+        
+        # Create a temporary assistant with web search capability
+        assistant = client.beta.assistants.create(
+            name="Web Search Assistant",
+            instructions=f"""You are a web search assistant for procurement research. 
+            
+            Search the web for information about: {query}
+            
+            Focus on:
+            - Vendor/supplier information
+            - Product specifications and pricing
+            - Market analysis and trends
+            - Professional procurement sources
+            
+            Provide factual, current information with sources.""",
+            model="gpt-4o",
+            tools=[{"type": "web_search"}]
+        )
+        
+        # Create a thread for the search
+        thread = client.beta.threads.create()
+        
+        # Add the search query as a message
+        client.beta.threads.messages.create(
+            thread_id=thread.id,
+            role="user",
+            content=f"Search the web for: {query}. Provide current information about vendors, pricing, and market trends."
+        )
+        
+        # Run the assistant
+        run = client.beta.threads.runs.create(
+            thread_id=thread.id,
+            assistant_id=assistant.id
+        )
+        
+        # Wait for completion and get response
+        import time
+        while run.status in ['queued', 'in_progress']:
+            time.sleep(1)
+            run = client.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
+        
+        if run.status == 'completed':
+            messages = client.beta.threads.messages.list(thread_id=thread.id)
+            latest_message = messages.data[0]
+            
+            search_results = []
+            if hasattr(latest_message.content[0], 'text'):
+                content = latest_message.content[0].text.value
+                search_results.append({
+                    "content": content,
+                    "source": "OpenAI Web Search",
+                    "query": query
+                })
+        
+        # Cleanup
+        try:
+            client.beta.assistants.delete(assistant.id)
+            client.beta.threads.delete(thread.id)
+        except:
+            pass
+        
+        print(f"LOG: Found web search results using OpenAI")
+        
+        return {
+            "success": True,
+            "query": query,
+            "results": search_results,
+            "total_results": len(search_results),
+            "message": f"Found web search results for '{query}' using OpenAI"
+        }
+        
+    except Exception as e:
+        print(f"LOG: Exception in web_search_tool: {str(e)}")
+        return {
+            "success": False,
+            "error": str(e),
+            "message": "Error performing web search"
         }
 
 # --- Tool 1: GetPurchaseOrders() - Dummy MS Dynamics BC API ---

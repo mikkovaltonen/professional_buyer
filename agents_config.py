@@ -1,9 +1,9 @@
 import os
 from dotenv import load_dotenv
-from agents import Agent, FileSearchTool, set_default_openai_key
+from agents import Agent, FileSearchTool, WebSearchTool, set_default_openai_key
 from agents.extensions.handoff_prompt import prompt_with_handoff_instructions
 from tools import (
-    vector_search_tool, get_purchase_orders, get_posted_purchase_invoices
+    vector_search_tool, web_search_tool, get_purchase_orders, get_posted_purchase_invoices
 )
 from firestore_service import get_agent_instructions
 
@@ -26,7 +26,7 @@ def get_search_agent():
         _search_agent = Agent(
             name="SearchAgent",
             instructions=instructions,
-            tools=[],
+            tools=[WebSearchTool()],
         )
     return _search_agent
 

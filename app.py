@@ -3,12 +3,14 @@ from flask import Flask, render_template, request, redirect, url_for, session, j
 from dotenv import load_dotenv
 import asyncio
 from agents import Runner, trace
-from agents_config import triage_agent
 
 load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
+
+# Global storage for agent instructions
+agent_instructions_cache = {}
 
 # Hardcoded credentials
 VALID_USERNAME = "admin"
@@ -39,6 +41,11 @@ def workbench():
         return redirect(url_for('login'))
     return render_template('workbench.html', username=session.get('username'))
 
+def get_triage_agent():
+    """Lazy loading of triage agent to avoid circular imports"""
+    from agents_config import triage_agent
+    return triage_agent
+
 @app.route('/chat', methods=['POST'])
 def chat():
     if not session.get('logged_in'):
@@ -55,6 +62,8 @@ def chat():
         
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
+        
+        triage_agent = get_triage_agent()
         
         with trace("Professional Buyer Assistant"):
             result = loop.run_until_complete(Runner.run(triage_agent, user_message))
@@ -90,6 +99,43 @@ def admin():
     return render_template('admin.html', 
                          username=session.get('username'),
                          config=firebase_config)
+
+@app.route('/api/load_agent_instructions', methods=['POST'])
+def load_agent_instructions():
+    """API endpoint to receive agent instructions from frontend and store in server memory"""
+    if not session.get('logged_in'):
+        return jsonify({'error': 'Not authenticated'}), 401
+    
+    try:
+        data = request.json
+        agent_name = data.get('agent_name')
+        instructions = data.get('instructions')
+        
+        if not agent_name or not instructions:
+            return jsonify({'error': 'Missing agent_name or instructions'}), 400
+        
+        # Store in global cache
+        agent_instructions_cache[agent_name] = instructions
+        
+        # Also store in firestore_service cache
+        from firestore_service import set_agent_instructions
+        set_agent_instructions(agent_name, instructions)
+        
+        print(f"✅ Instructions updated for {agent_name} - ready for next chat!")
+        
+        return jsonify({'success': True, 'message': f'Instructions loaded for {agent_name}'})
+        
+    except Exception as e:
+        print(f"Error loading agent instructions: {str(e)}")
+        return jsonify({'error': f'Error loading instructions: {str(e)}'}), 500
+
+@app.route('/api/refresh_instructions', methods=['POST'])
+def refresh_instructions():
+    """API endpoint to manually refresh all agent instructions"""
+    if not session.get('logged_in'):
+        return jsonify({'error': 'Not authenticated'}), 401
+    
+    return jsonify({'success': True, 'message': 'Visit /admin page to refresh all instructions automatically'})
 
 @app.route('/logout')
 def logout():

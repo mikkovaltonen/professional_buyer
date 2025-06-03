@@ -63,6 +63,8 @@
                             setTimeout(() => {
                                 console.log('About to load SearchAgent history...');
                                 loadInstructionHistory('SearchAgent');
+                                // Load all agents' current instructions to server memory
+                                loadAllAgentsToServer();
                             }, 1000);
                         })
                         .catch(error => {
@@ -76,6 +78,8 @@
                                     setTimeout(() => {
                                         console.log('About to load SearchAgent history (anonymous)...');
                                         loadInstructionHistory('SearchAgent');
+                                        // Load all agents' current instructions to server memory
+                                        loadAllAgentsToServer();
                                     }, 1000);
                                 })
                                 .catch(anonError => {
@@ -476,52 +480,44 @@
                             <i class="fas fa-edit"></i> Edit
                         </button>
                     </div>
-                    <p><strong>Purpose:</strong> Real-time web search for market data and external supplier research</p>
+                    <p><strong>Purpose:</strong> Find public info about vendors and products and prices</p>
+                    <p><strong>Tools:</strong> Unstructured data (Purchase policies, PO posting rules)</p>
                     <p><strong>Current Instructions:</strong> <span id="current_SearchAgent">Loading...</span></p>
                 </div>
 
                 <div class="agent-card">
                     <div class="agent-name">
-                        <i class="fas fa-database"></i> InternalKnowledgeSearchAgent
-                        <button class="btn btn-small edit-btn" onclick="openEditModal('InternalKnowledgeSearchAgent')" style="float: right;">
+                        <i class="fas fa-database"></i> InternalKnowledgeSearch
+                        <button class="btn btn-small edit-btn" onclick="openEditModal('InternalKnowledgeSearch')" style="float: right;">
                             <i class="fas fa-edit"></i> Edit
                         </button>
                     </div>
-                    <p><strong>Purpose:</strong> Search internal procurement data and documents</p>
-                    <p><strong>Current Instructions:</strong> <span id="current_InternalKnowledgeSearchAgent">Loading...</span></p>
+                    <p><strong>Purpose:</strong> Search internal knowledge base with RAG</p>
+                    <p><strong>Tools:</strong> Vector Search Tool</p>
+                    <p><strong>Current Instructions:</strong> <span id="current_InternalKnowledgeSearch">Loading...</span></p>
                 </div>
 
                 <div class="agent-card">
                     <div class="agent-name">
-                        <i class="fas fa-check-circle"></i> ApprovalSpecialistAgent
-                        <button class="btn btn-small edit-btn" onclick="openEditModal('ApprovalSpecialistAgent')" style="float: right;">
+                        <i class="fas fa-history"></i> PurchaseHistorySearchAgent
+                        <button class="btn btn-small edit-btn" onclick="openEditModal('PurchaseHistorySearchAgent')" style="float: right;">
                             <i class="fas fa-edit"></i> Edit
                         </button>
                     </div>
-                    <p><strong>Purpose:</strong> Handle purchase order approvals and notifications</p>
-                    <p><strong>Current Instructions:</strong> <span id="current_ApprovalSpecialistAgent">Loading...</span></p>
+                    <p><strong>Purpose:</strong> Search purchase history - where was similar products purchased earlier</p>
+                    <p><strong>Tools:</strong> GetPurchaseOrders(), get_purchase_invoices()</p>
+                    <p><strong>Current Instructions:</strong> <span id="current_PurchaseHistorySearchAgent">Loading...</span></p>
                 </div>
 
                 <div class="agent-card">
                     <div class="agent-name">
-                        <i class="fas fa-paper-plane"></i> POPostingAgent
-                        <button class="btn btn-small edit-btn" onclick="openEditModal('POPostingAgent')" style="float: right;">
+                        <i class="fas fa-route"></i> GeneralistProcurementAgent (Triage Agent)
+                        <button class="btn btn-small edit-btn" onclick="openEditModal('GeneralistProcurementAgent')" style="float: right;">
                             <i class="fas fa-edit"></i> Edit
                         </button>
                     </div>
-                    <p><strong>Purpose:</strong> Post purchase orders to ERP system</p>
-                    <p><strong>Current Instructions:</strong> <span id="current_POPostingAgent">Loading...</span></p>
-                </div>
-
-                <div class="agent-card">
-                    <div class="agent-name">
-                        <i class="fas fa-route"></i> ProfessionalBuyerAssistant (Triage Agent)
-                        <button class="btn btn-small edit-btn" onclick="openEditModal('ProfessionalBuyerAssistant')" style="float: right;">
-                            <i class="fas fa-edit"></i> Edit
-                        </button>
-                    </div>
-                    <p><strong>Purpose:</strong> Main orchestrator that routes requests to specialist agents</p>
-                    <p><strong>Current Instructions:</strong> <span id="current_ProfessionalBuyerAssistant">Loading...</span></p>
+                    <p><strong>Purpose:</strong> Main coordinator that routes requests to the three specialist agents</p>
+                    <p><strong>Current Instructions:</strong> <span id="current_GeneralistProcurementAgent">Loading...</span></p>
                 </div>
             </div>
         </div>
@@ -532,34 +528,24 @@
             </div>
             <div class="section-content">
                 
+                <h4 style="color: #667eea; margin-top: 20px;"><i class="fas fa-tools"></i> Available Tools (3 Total)</h4>
+                
                 <div class="tool-item">
-                    <strong><i class="fas fa-globe"></i> WebSearchTool</strong><br>
-                    <em>Used by SearchAgent</em><br>
-                    Real-time web search for market trends, supplier information, and competitive intelligence
+                    <strong><i class="fas fa-search"></i> vector_search_tool</strong><br>
+                    <em>Used by InternalKnowledgeSearch</em><br>
+                    RAG search for internal vector database with procurement policies and procedures
                 </div>
 
                 <div class="tool-item">
-                    <strong><i class="fas fa-file-search"></i> FileSearchTool</strong><br>
-                    <em>Used by InternalKnowledgeSearchAgent</em><br>
-                    Search internal vector store (ID: configured via VECTOR_STORE_ID env var)
+                    <strong><i class="fas fa-shopping-cart"></i> get_purchase_orders(filter_params)</strong><br>
+                    <em>Used by PurchaseHistorySearchAgent</em><br>
+                    Dummy MS Dynamics BC API - Returns all existing purchase orders, filtered by optional query parameters
                 </div>
 
                 <div class="tool-item">
-                    <strong><i class="fas fa-clipboard-check"></i> request_po_approval(po_number, amount, reason)</strong><br>
-                    <em>Used by ApprovalSpecialistAgent</em><br>
-                    Request approval for purchase orders with automatic routing based on amount thresholds
-                </div>
-
-                <div class="tool-item">
-                    <strong><i class="fas fa-envelope"></i> send_email(recipient, subject, message)</strong><br>
-                    <em>Used by ApprovalSpecialistAgent</em><br>
-                    Send email notifications to stakeholders and approvers
-                </div>
-
-                <div class="tool-item">
-                    <strong><i class="fas fa-upload"></i> po_posting_api(toimittaja, tuote, hinta)</strong><br>
-                    <em>Used by POPostingAgent</em><br>
-                    Post purchase orders to ERP system with supplier, product, and pricing information
+                    <strong><i class="fas fa-file-invoice-dollar"></i> get_posted_purchase_invoices(filter_params)</strong><br>
+                    <em>Used by PurchaseHistorySearchAgent</em><br>
+                    Dummy MS Dynamics BC API - Fetches purchase invoices that have already been posted to the ledger for reporting or archiving
                 </div>
             </div>
         </div>
@@ -572,10 +558,9 @@
                 <div class="instruction-management">
                     <div class="agent-tabs">
                         <button class="tab-button active" onclick="switchTab('SearchAgent')">SearchAgent</button>
-                        <button class="tab-button" onclick="switchTab('InternalKnowledgeSearchAgent')">Internal Knowledge</button>
-                        <button class="tab-button" onclick="switchTab('ApprovalSpecialistAgent')">Approval Specialist</button>
-                        <button class="tab-button" onclick="switchTab('POPostingAgent')">PO Posting</button>
-                        <button class="tab-button" onclick="switchTab('ProfessionalBuyerAssistant')">Triage Agent</button>
+                        <button class="tab-button" onclick="switchTab('InternalKnowledgeSearch')">InternalKnowledgeSearch</button>
+                        <button class="tab-button" onclick="switchTab('PurchaseHistorySearchAgent')">PurchaseHistorySearchAgent</button>
+                        <button class="tab-button" onclick="switchTab('GeneralistProcurementAgent')">Main Orchestrator</button>
                     </div>
 
                     <div id="SearchAgent" class="tab-content active">
@@ -611,25 +596,25 @@
                         </div>
                     </div>
 
-                    <div id="InternalKnowledgeSearchAgent" class="tab-content">
+                    <div id="InternalKnowledgeSearch" class="tab-content">
                         <div class="instruction-form">
-                            <h3>Add New Instruction for InternalKnowledgeSearchAgent</h3>
-                            <form onsubmit="saveInstruction(event, 'InternalKnowledgeSearchAgent')">
+                            <h3>Add New Instruction for InternalKnowledgeSearch</h3>
+                            <form onsubmit="saveInstruction(event, 'InternalKnowledgeSearch')">
                                 <div class="form-group">
-                                    <label for="instructions_InternalKnowledgeSearchAgent">Instructions (Prompti):</label>
-                                    <textarea id="instructions_InternalKnowledgeSearchAgent" name="instructions" required placeholder="Enter agent instructions..."></textarea>
+                                    <label for="instructions_InternalKnowledgeSearch">Instructions (Prompti):</label>
+                                    <textarea id="instructions_InternalKnowledgeSearch" name="instructions" required placeholder="Enter agent instructions..."></textarea>
                                 </div>
                                 <div class="form-group">
-                                    <label for="evaluointi_InternalKnowledgeSearchAgent">Evaluointi:</label>
-                                    <textarea id="evaluointi_InternalKnowledgeSearchAgent" name="evaluointi" placeholder="Enter evaluation notes..."></textarea>
+                                    <label for="evaluointi_InternalKnowledgeSearch">Evaluointi:</label>
+                                    <textarea id="evaluointi_InternalKnowledgeSearch" name="evaluointi" placeholder="Enter evaluation notes..."></textarea>
                                 </div>
                                 <div class="form-group">
-                                    <label for="trace_id_InternalKnowledgeSearchAgent">Trace ID:</label>
-                                    <input type="text" id="trace_id_InternalKnowledgeSearchAgent" name="trace_id" placeholder="Optional trace ID">
+                                    <label for="trace_id_InternalKnowledgeSearch">Trace ID:</label>
+                                    <input type="text" id="trace_id_InternalKnowledgeSearch" name="trace_id" placeholder="Optional trace ID">
                                 </div>
                                 <div class="form-group">
-                                    <label for="version_InternalKnowledgeSearchAgent">Version:</label>
-                                    <select id="version_InternalKnowledgeSearchAgent" name="version" required>
+                                    <label for="version_InternalKnowledgeSearch">Version:</label>
+                                    <select id="version_InternalKnowledgeSearch" name="version" required>
                                         <option value="Production">Production</option>
                                         <option value="Test">Test</option>
                                         <option value="old">Old</option>
@@ -640,29 +625,29 @@
                         </div>
                         <div class="instruction-history">
                             <h3>Instruction History</h3>
-                            <div id="history_InternalKnowledgeSearchAgent">Loading...</div>
+                            <div id="history_InternalKnowledgeSearch">Loading...</div>
                         </div>
                     </div>
 
-                    <div id="ApprovalSpecialistAgent" class="tab-content">
+                    <div id="PurchaseHistorySearchAgent" class="tab-content">
                         <div class="instruction-form">
-                            <h3>Add New Instruction for ApprovalSpecialistAgent</h3>
-                            <form onsubmit="saveInstruction(event, 'ApprovalSpecialistAgent')">
+                            <h3>Add New Instruction for PurchaseHistorySearchAgent</h3>
+                            <form onsubmit="saveInstruction(event, 'PurchaseHistorySearchAgent')">
                                 <div class="form-group">
-                                    <label for="instructions_ApprovalSpecialistAgent">Instructions (Prompti):</label>
-                                    <textarea id="instructions_ApprovalSpecialistAgent" name="instructions" required placeholder="Enter agent instructions..."></textarea>
+                                    <label for="instructions_PurchaseHistorySearchAgent">Instructions (Prompti):</label>
+                                    <textarea id="instructions_PurchaseHistorySearchAgent" name="instructions" required placeholder="Enter agent instructions..."></textarea>
                                 </div>
                                 <div class="form-group">
-                                    <label for="evaluointi_ApprovalSpecialistAgent">Evaluointi:</label>
-                                    <textarea id="evaluointi_ApprovalSpecialistAgent" name="evaluointi" placeholder="Enter evaluation notes..."></textarea>
+                                    <label for="evaluointi_PurchaseHistorySearchAgent">Evaluointi:</label>
+                                    <textarea id="evaluointi_PurchaseHistorySearchAgent" name="evaluointi" placeholder="Enter evaluation notes..."></textarea>
                                 </div>
                                 <div class="form-group">
-                                    <label for="trace_id_ApprovalSpecialistAgent">Trace ID:</label>
-                                    <input type="text" id="trace_id_ApprovalSpecialistAgent" name="trace_id" placeholder="Optional trace ID">
+                                    <label for="trace_id_PurchaseHistorySearchAgent">Trace ID:</label>
+                                    <input type="text" id="trace_id_PurchaseHistorySearchAgent" name="trace_id" placeholder="Optional trace ID">
                                 </div>
                                 <div class="form-group">
-                                    <label for="version_ApprovalSpecialistAgent">Version:</label>
-                                    <select id="version_ApprovalSpecialistAgent" name="version" required>
+                                    <label for="version_PurchaseHistorySearchAgent">Version:</label>
+                                    <select id="version_PurchaseHistorySearchAgent" name="version" required>
                                         <option value="Production">Production</option>
                                         <option value="Test">Test</option>
                                         <option value="old">Old</option>
@@ -673,29 +658,29 @@
                         </div>
                         <div class="instruction-history">
                             <h3>Instruction History</h3>
-                            <div id="history_ApprovalSpecialistAgent">Loading...</div>
+                            <div id="history_PurchaseHistorySearchAgent">Loading...</div>
                         </div>
                     </div>
 
-                    <div id="POPostingAgent" class="tab-content">
+                    <div id="GeneralistProcurementAgent" class="tab-content">
                         <div class="instruction-form">
-                            <h3>Add New Instruction for POPostingAgent</h3>
-                            <form onsubmit="saveInstruction(event, 'POPostingAgent')">
+                            <h3>Add New Instruction for GeneralistProcurementAgent</h3>
+                            <form onsubmit="saveInstruction(event, 'GeneralistProcurementAgent')">
                                 <div class="form-group">
-                                    <label for="instructions_POPostingAgent">Instructions (Prompti):</label>
-                                    <textarea id="instructions_POPostingAgent" name="instructions" required placeholder="Enter agent instructions..."></textarea>
+                                    <label for="instructions_GeneralistProcurementAgent">Instructions (Prompti):</label>
+                                    <textarea id="instructions_GeneralistProcurementAgent" name="instructions" required placeholder="Enter agent instructions..."></textarea>
                                 </div>
                                 <div class="form-group">
-                                    <label for="evaluointi_POPostingAgent">Evaluointi:</label>
-                                    <textarea id="evaluointi_POPostingAgent" name="evaluointi" placeholder="Enter evaluation notes..."></textarea>
+                                    <label for="evaluointi_GeneralistProcurementAgent">Evaluointi:</label>
+                                    <textarea id="evaluointi_GeneralistProcurementAgent" name="evaluointi" placeholder="Enter evaluation notes..."></textarea>
                                 </div>
                                 <div class="form-group">
-                                    <label for="trace_id_POPostingAgent">Trace ID:</label>
-                                    <input type="text" id="trace_id_POPostingAgent" name="trace_id" placeholder="Optional trace ID">
+                                    <label for="trace_id_GeneralistProcurementAgent">Trace ID:</label>
+                                    <input type="text" id="trace_id_GeneralistProcurementAgent" name="trace_id" placeholder="Optional trace ID">
                                 </div>
                                 <div class="form-group">
-                                    <label for="version_POPostingAgent">Version:</label>
-                                    <select id="version_POPostingAgent" name="version" required>
+                                    <label for="version_GeneralistProcurementAgent">Version:</label>
+                                    <select id="version_GeneralistProcurementAgent" name="version" required>
                                         <option value="Production">Production</option>
                                         <option value="Test">Test</option>
                                         <option value="old">Old</option>
@@ -706,40 +691,7 @@
                         </div>
                         <div class="instruction-history">
                             <h3>Instruction History</h3>
-                            <div id="history_POPostingAgent">Loading...</div>
-                        </div>
-                    </div>
-
-                    <div id="ProfessionalBuyerAssistant" class="tab-content">
-                        <div class="instruction-form">
-                            <h3>Add New Instruction for ProfessionalBuyerAssistant</h3>
-                            <form onsubmit="saveInstruction(event, 'ProfessionalBuyerAssistant')">
-                                <div class="form-group">
-                                    <label for="instructions_ProfessionalBuyerAssistant">Instructions (Prompti):</label>
-                                    <textarea id="instructions_ProfessionalBuyerAssistant" name="instructions" required placeholder="Enter agent instructions..."></textarea>
-                                </div>
-                                <div class="form-group">
-                                    <label for="evaluointi_ProfessionalBuyerAssistant">Evaluointi:</label>
-                                    <textarea id="evaluointi_ProfessionalBuyerAssistant" name="evaluointi" placeholder="Enter evaluation notes..."></textarea>
-                                </div>
-                                <div class="form-group">
-                                    <label for="trace_id_ProfessionalBuyerAssistant">Trace ID:</label>
-                                    <input type="text" id="trace_id_ProfessionalBuyerAssistant" name="trace_id" placeholder="Optional trace ID">
-                                </div>
-                                <div class="form-group">
-                                    <label for="version_ProfessionalBuyerAssistant">Version:</label>
-                                    <select id="version_ProfessionalBuyerAssistant" name="version" required>
-                                        <option value="Production">Production</option>
-                                        <option value="Test">Test</option>
-                                        <option value="old">Old</option>
-                                    </select>
-                                </div>
-                                <button type="submit" class="btn">Save Instruction</button>
-                            </form>
-                        </div>
-                        <div class="instruction-history">
-                            <h3>Instruction History</h3>
-                            <div id="history_ProfessionalBuyerAssistant">Loading...</div>
+                            <div id="history_GeneralistProcurementAgent">Loading...</div>
                         </div>
                     </div>
                 </div>
@@ -997,6 +949,9 @@
                             : data.instructions;
                         currentSpan.textContent = truncated;
                     }
+                    
+                    // Send instructions to server memory
+                    sendInstructionsToServer(agentName, data.instructions);
                 } else {
                     // No instructions found
                     document.getElementById('editInstructions').value = '';
@@ -1066,6 +1021,39 @@
 
         // Load initial history when page loads and current instructions for all agents
         // Note: This is now handled after Firebase authentication in the auth callback
+
+        // Function to send instructions to server memory
+        async function sendInstructionsToServer(agentName, instructions) {
+            try {
+                const response = await fetch('/api/load_agent_instructions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        agent_name: agentName,
+                        instructions: instructions
+                    })
+                });
+                
+                if (response.ok) {
+                    console.log(`Instructions sent to server for ${agentName}`);
+                } else {
+                    console.error(`Failed to send instructions for ${agentName}`);
+                }
+            } catch (error) {
+                console.error('Error sending instructions to server:', error);
+            }
+        }
+
+        // Function to load all agents' instructions to server memory
+        async function loadAllAgentsToServer() {
+            const agents = ['SearchAgent', 'InternalKnowledgeSearch', 'PurchaseHistorySearchAgent', 'GeneralistProcurementAgent'];
+            
+            for (const agentName of agents) {
+                await loadCurrentInstructions(agentName);
+            }
+        }
 
         // Close modal when clicking outside
         window.onclick = function(event) {

@@ -15,7 +15,9 @@
       "Bash(git mv:*)",
       "Bash(gcloud auth:*)",
       "WebFetch(domain:github.com)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(./venv/Scripts/pip install firebase-admin)",
+      "Bash(./venv/bin/pip install firebase-admin)"
     ],
     "deny": []
   }

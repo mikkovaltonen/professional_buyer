@@ -7,6 +7,16 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <!-- Marked.js for Markdown rendering -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Firebase SDK v9 for loading instructions -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js';
+        import { getAuth, signInWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js';
+        import { getFirestore, collection, getDocs } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js';
+        
+        window.firebaseApp = initializeApp;
+        window.firebaseAuth = { getAuth, signInWithEmailAndPassword };
+        window.firebaseFirestore = { getFirestore, collection, getDocs };
+    </script>
     <style>
         * {
             margin: 0;
@@ -475,6 +485,14 @@
         const messageInput = document.getElementById('messageInput');
         const sendBtn = document.getElementById('sendBtn');
         const typingIndicator = document.getElementById('typingIndicator');
+        
+        // Global flag to track if agents are ready
+        let agentsReady = false;
+        
+        // Initially disable send button
+        sendBtn.disabled = true;
+        sendBtn.style.opacity = '0.5';
+        sendBtn.title = 'Loading agent configurations...';
 
         messageInput.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
@@ -490,6 +508,12 @@
         async function sendMessage() {
             const message = messageInput.value.trim();
             if (!message) return;
+            
+            // Check if agents are ready
+            if (!agentsReady) {
+                addMessage('⏳ Please wait, the system is still loading agent configurations...', 'assistant');
+                return;
+            }
 
             // Add user message to chat
             addMessage(message, 'user');
@@ -513,7 +537,13 @@
                 if (response.ok) {
                     addMessage(data.response, 'assistant');
                 } else {
-                    addMessage('Sorry, I encountered an error. Please try again.', 'assistant');
+                    // Check if it's a specific error about instructions not loaded
+                    if (data.action === 'loading') {
+                        const errorMessage = `⏳ **Loading Agent Configurations...**\n\n${data.message}\n\nThe system is preparing in the background. Please try your message again in a few seconds.`;
+                        addMessage(errorMessage, 'assistant');
+                    } else {
+                        addMessage('Sorry, I encountered an error. Please try again.', 'assistant');
+                    }
                 }
             } catch (error) {
                 addMessage('Sorry, I encountered a connection error. Please try again.', 'assistant');
@@ -587,6 +617,136 @@
                 event.target.value = '';
             }
         }
+    </script>
+
+    <script>
+        // Firebase configuration for auto-loading instructions
+        const firebaseConfig = {
+            apiKey: "{{ config.FIREBASE_API_KEY if config else '' }}",
+            authDomain: "{{ config.FIREBASE_AUTH_DOMAIN if config else '' }}",
+            projectId: "{{ config.FIREBASE_PROJECT_ID if config else '' }}",
+            storageBucket: "{{ config.FIREBASE_STORAGE_BUCKET if config else '' }}",
+            messagingSenderId: "{{ config.FIREBASE_MESSAGING_SENDER_ID if config else '' }}",
+            appId: "{{ config.FIREBASE_APP_ID if config else '' }}"
+        };
+
+        async function loadAgentInstructionsOnStartup() {
+            console.log('🔄 Loading agent instructions for workbench...');
+            
+            try {
+                // Initialize Firebase
+                if (!window.firebaseApp || !firebaseConfig.projectId) {
+                    console.warn('Firebase not configured - skipping auto-load');
+                    return;
+                }
+
+                const app = window.firebaseApp(firebaseConfig);
+                const db = window.firebaseFirestore.getFirestore(app);
+                const auth = window.firebaseAuth.getAuth(app);
+
+                // Authenticate with demo credentials
+                await window.firebaseAuth.signInWithEmailAndPassword(auth, 'demo@professionalbuyer.com', 'demo123456');
+
+                // Load instructions for all agents
+                const agents = ['SearchAgent', 'InternalKnowledgeSearch', 'PurchaseHistorySearchAgent', 'GeneralistProcurementAgent'];
+                
+                // Show loading status
+                showLoadingStatus('Loading agent configurations...');
+                
+                for (const agentName of agents) {
+                    showLoadingStatus(`Loading ${agentName}...`);
+                    await loadInstructionsForAgent(db, agentName);
+                }
+
+                console.log('✅ All agent instructions loaded successfully');
+                agentsReady = true;
+                
+                // Enable send button
+                sendBtn.disabled = false;
+                sendBtn.style.opacity = '1';
+                sendBtn.title = 'Send message';
+                
+                showLoadingStatus('✅ Ready for chat!');
+                setTimeout(() => hideLoadingStatus(), 2000);
+
+            } catch (error) {
+                console.error('Error loading agent instructions:', error);
+            }
+        }
+
+        async function loadInstructionsForAgent(db, agentName) {
+            try {
+                const querySnapshot = await window.firebaseFirestore.getDocs(window.firebaseFirestore.collection(db, 'agent_instructions'));
+                
+                let latestInstruction = null;
+                let latestDate = null;
+                
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    if (data.agent_name === agentName && data.version === 'Production' && data.tallennus_paiva) {
+                        const docDate = data.tallennus_paiva.toDate();
+                        if (!latestDate || docDate > latestDate) {
+                            latestDate = docDate;
+                            latestInstruction = data;
+                        }
+                    }
+                });
+                
+                if (latestInstruction) {
+                    // Send to server
+                    await fetch('/api/load_agent_instructions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            agent_name: agentName,
+                            instructions: latestInstruction.instructions
+                        })
+                    });
+                    console.log(`✅ Loaded instructions for ${agentName}`);
+                } else {
+                    console.warn(`⚠️ No production instructions found for ${agentName}`);
+                }
+            } catch (error) {
+                console.error(`Error loading instructions for ${agentName}:`, error);
+            }
+        }
+
+        // Loading status functions
+        function showLoadingStatus(message) {
+            let statusDiv = document.getElementById('loading-status');
+            if (!statusDiv) {
+                statusDiv = document.createElement('div');
+                statusDiv.id = 'loading-status';
+                statusDiv.style.cssText = `
+                    position: fixed;
+                    top: 70px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background: #667eea;
+                    color: white;
+                    padding: 8px 16px;
+                    border-radius: 20px;
+                    font-size: 14px;
+                    z-index: 1000;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                `;
+                document.body.appendChild(statusDiv);
+            }
+            statusDiv.textContent = message;
+            statusDiv.style.display = 'block';
+        }
+        
+        function hideLoadingStatus() {
+            const statusDiv = document.getElementById('loading-status');
+            if (statusDiv) {
+                statusDiv.style.display = 'none';
+            }
+        }
+
+        // Auto-load agent instructions when page loads
+        window.addEventListener('load', loadAgentInstructionsOnStartup);
     </script>
 </body>
 </html>

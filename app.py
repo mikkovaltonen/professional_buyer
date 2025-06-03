@@ -39,12 +39,25 @@ def login():
 def workbench():
     if not session.get('logged_in'):
         return redirect(url_for('login'))
-    return render_template('workbench.html', username=session.get('username'))
+    
+    # Firebase config for auto-loading instructions
+    firebase_config = {
+        'FIREBASE_API_KEY': os.getenv('FIREBASE_API_KEY'),
+        'FIREBASE_AUTH_DOMAIN': os.getenv('FIREBASE_AUTH_DOMAIN'),
+        'FIREBASE_PROJECT_ID': os.getenv('FIREBASE_PROJECT_ID'),
+        'FIREBASE_STORAGE_BUCKET': os.getenv('FIREBASE_STORAGE_BUCKET'),
+        'FIREBASE_MESSAGING_SENDER_ID': os.getenv('FIREBASE_MESSAGING_SENDER_ID'),
+        'FIREBASE_APP_ID': os.getenv('FIREBASE_APP_ID')
+    }
+    
+    return render_template('workbench.html', 
+                         username=session.get('username'),
+                         config=firebase_config)
 
 def get_triage_agent():
     """Lazy loading of triage agent to avoid circular imports"""
-    from agents_config import triage_agent
-    return triage_agent
+    from agents_config import get_triage_agent as get_agent
+    return get_agent()
 
 @app.route('/chat', methods=['POST'])
 def chat():
@@ -56,14 +69,34 @@ def chat():
         return jsonify({'error': 'No message provided'}), 400
 
     try:
+        # Check if ALL agent instructions are loaded
+        from firestore_service import _agent_instructions_cache
+        required_agents = ['SearchAgent', 'InternalKnowledgeSearch', 'PurchaseHistorySearchAgent', 'GeneralistProcurementAgent']
+        missing_agents = [agent for agent in required_agents if agent not in _agent_instructions_cache]
+        
+        if missing_agents:
+            return jsonify({
+                'error': 'Agent instructions loading', 
+                'message': f'Loading configurations for: {", ".join(missing_agents)}. Please wait a moment and try again.',
+                'action': 'loading'
+            }), 503
+
         print(f"\n=== Professional Buyer Chat ===")
         print(f"User: {user_message}")
+        print(f"Cache contents: {list(_agent_instructions_cache.keys())}")
         print(f"Calling triage agent...")
+        
+        try:
+            triage_agent = get_triage_agent()
+            print(f"Triage agent created successfully")
+        except Exception as agent_error:
+            print(f"Error creating triage agent: {agent_error}")
+            import traceback
+            traceback.print_exc()
+            return jsonify({'error': f'Agent creation failed: {str(agent_error)}'}), 500
         
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        
-        triage_agent = get_triage_agent()
         
         with trace("Professional Buyer Assistant"):
             result = loop.run_until_complete(Runner.run(triage_agent, user_message))
@@ -76,6 +109,8 @@ def chat():
         return jsonify({'response': result.final_output})
     except Exception as e:
         print(f"Error in chat: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': f'Error processing message: {str(e)}'}), 500
 
 @app.route('/admin')
@@ -121,6 +156,17 @@ def load_agent_instructions():
         from firestore_service import set_agent_instructions
         set_agent_instructions(agent_name, instructions)
         
+        # Clear agent cache to force reload with new instructions
+        import agents_config
+        if agent_name == "SearchAgent":
+            agents_config._search_agent = None
+        elif agent_name == "InternalKnowledgeSearch":
+            agents_config._internal_knowledge_search = None
+        elif agent_name == "PurchaseHistorySearchAgent":
+            agents_config._purchase_history_search_agent = None
+        elif agent_name == "GeneralistProcurementAgent":
+            agents_config._triage_agent = None
+        
         print(f"✅ Instructions updated for {agent_name} - ready for next chat!")
         
         return jsonify({'success': True, 'message': f'Instructions loaded for {agent_name}'})
@@ -128,6 +174,21 @@ def load_agent_instructions():
     except Exception as e:
         print(f"Error loading agent instructions: {str(e)}")
         return jsonify({'error': f'Error loading instructions: {str(e)}'}), 500
+
+@app.route('/api/load_all_instructions', methods=['POST'])
+def load_all_instructions():
+    """API endpoint to load all agent instructions automatically"""
+    if not session.get('logged_in'):
+        return jsonify({'error': 'Not authenticated'}), 401
+    
+    try:
+        # This endpoint will be called by workbench frontend to trigger loading
+        # The actual loading happens via Firebase in the frontend
+        return jsonify({'success': True, 'message': 'Ready to receive instructions'})
+        
+    except Exception as e:
+        print(f"Error in load_all_instructions: {str(e)}")
+        return jsonify({'error': f'Error: {str(e)}'}), 500
 
 @app.route('/api/refresh_instructions', methods=['POST'])
 def refresh_instructions():

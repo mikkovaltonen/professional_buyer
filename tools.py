@@ -4,264 +4,120 @@ import json
 import requests
 from datetime import datetime
 from typing import List, Dict, Optional
-try:
-    from googlesearch import search as google_search
-except ImportError:
-    google_search = None
 
-# OpenAI Configuration for Vector Search
-try:
-    from openai import OpenAI
-    OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
-    VECTOR_STORE_ID = os.getenv('VECTOR_STORE_ID')
-    client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
-except ImportError:
-    OpenAI = None
-    client = None
-    OPENAI_API_KEY = None
-    VECTOR_STORE_ID = None
+# MS Dynamics Business Central Configuration
+BC_BASE_URL = "https://api.businesscentral.dynamics.com/v2.0"
+BC_TENANT_ID = os.getenv('BC_TENANT_ID')
+BC_CLIENT_ID = os.getenv('BC_CLIENT_ID') 
+BC_CLIENT_SECRET = os.getenv('BC_CLIENT_SECRET')
+BC_ENVIRONMENT = os.getenv('BC_ENVIRONMENT', 'production')
+BC_COMPANY_NAME = os.getenv('BC_COMPANY_NAME', 'CRONUS FI')
 
-# --- Vector Search Tool (Internal Knowledge) ---
-@function_tool
-def vector_search_tool(query: str, max_results: int = 10) -> Dict:
-    """Search internal vector store for procurement policies, procedures, and historical data.
+def get_bc_config():
+    """Get BC configuration with fresh token from environment"""
+    from dotenv import load_dotenv
+    import os
     
-    Args:
-        query: Search query for internal knowledge
-        max_results: Maximum number of results to return (default: 10)
+    # Force reload .env from the current working directory
+    env_path = os.path.join(os.getcwd(), '.env')
+    load_dotenv(dotenv_path=env_path, override=True)
     
-    Returns:
-        Dictionary containing search results from vector store
-    """
+    token = os.getenv('BC_ACCESS_TOKEN', '').strip('"').strip("'")
+    
+    # Debug what we're getting
+    print(f"DEBUG: Raw token from env: '{os.getenv('BC_ACCESS_TOKEN', 'NOT_FOUND')}'")
+    print(f"DEBUG: Stripped token length: {len(token)}")
+    print(f"DEBUG: Working directory: {os.getcwd()}")
+    print(f"DEBUG: .env file exists: {os.path.exists(env_path)}")
+    
+    return {
+        'access_token': token,
+        'tenant_id': BC_TENANT_ID,
+        'environment': BC_ENVIRONMENT,
+        'company_name': BC_COMPANY_NAME,
+        'base_url': BC_BASE_URL
+    }
+
+def get_bc_access_token():
+    """Get OAuth2 access token for Business Central API"""
     try:
-        if not client or not VECTOR_STORE_ID:
-            return {
-                "success": False,
-                "error": "OpenAI client or Vector Store ID not configured",
-                "message": "Vector search not available - check OPENAI_API_KEY and VECTOR_STORE_ID"
-            }
-        
-        print(f"LOG: Performing vector search for: {query}")
-        
-        # Create a temporary assistant with vector store for search
-        assistant = client.beta.assistants.create(
-            name="Temp Search Assistant",
-            instructions="""You are a search assistant for internal procurement documents. 
+        if not all([BC_TENANT_ID, BC_CLIENT_ID, BC_CLIENT_SECRET]):
+            return None
             
-            When providing search results:
-            1. Structure your response with clear sections
-            2. Use bullet points for key information
-            3. Include document names/sources when possible
-            4. Provide specific quotes or references
-            5. Keep sections concise and actionable
-            6. If multiple documents are relevant, organize by document/topic""",
-            model="gpt-4o-mini",
-            tools=[{"type": "file_search"}],
-            tool_resources={
-                "file_search": {
-                    "vector_store_ids": [VECTOR_STORE_ID]
-                }
-            }
-        )
+        auth_url = f"https://login.microsoftonline.com/{BC_TENANT_ID}/oauth2/v2.0/token"
         
-        # Create a thread for the search
-        thread = client.beta.threads.create()
-        
-        # Add the search query as a message
-        client.beta.threads.messages.create(
-            thread_id=thread.id,
-            role="user",
-            content=f"""Search for information about: {query}
-
-Please provide:
-- Specific sections or policies that apply
-- Key requirements or guidelines
-- Any relevant process steps
-- Document sources/references
-- Actionable recommendations
-
-Format the response with clear headings and bullet points for easy reading."""
-        )
-        
-        # Run the assistant
-        run = client.beta.threads.runs.create(
-            thread_id=thread.id,
-            assistant_id=assistant.id
-        )
-        
-        # Wait for completion and get response
-        import time
-        while run.status in ['queued', 'in_progress']:
-            time.sleep(1)
-            run = client.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
-        
-        if run.status == 'completed':
-            messages = client.beta.threads.messages.list(thread_id=thread.id)
-            latest_message = messages.data[0]
-            
-            search_results = []
-            if hasattr(latest_message.content[0], 'text'):
-                content = latest_message.content[0].text.value
-                
-                # Extract file citations if available
-                citations = []
-                if hasattr(latest_message.content[0].text, 'annotations'):
-                    for annotation in latest_message.content[0].text.annotations:
-                        if hasattr(annotation, 'file_citation'):
-                            citations.append({
-                                "file_id": annotation.file_citation.file_id,
-                                "quote": getattr(annotation.file_citation, 'quote', '')
-                            })
-                
-                search_results.append({
-                    "content": content,
-                    "relevance_score": 0.95,
-                    "source": "Internal Vector Store",
-                    "citations": citations,
-                    "formatted": True
-                })
-        
-        # Cleanup
-        try:
-            client.beta.assistants.delete(assistant.id)
-            client.beta.threads.delete(thread.id)
-        except:
-            pass
-        
-        print(f"LOG: Found {len(search_results)} relevant results")
-        
-        return {
-            "success": True,
-            "query": query,
-            "results": search_results,
-            "total_results": len(search_results),
-            "message": f"Found {len(search_results)} relevant results for '{query}'"
+        payload = {
+            'grant_type': 'client_credentials',
+            'client_id': BC_CLIENT_ID,
+            'client_secret': BC_CLIENT_SECRET,
+            'scope': 'https://api.businesscentral.dynamics.com/.default'
         }
         
+        response = requests.post(auth_url, data=payload)
+        if response.status_code == 200:
+            return response.json()['access_token']
+        else:
+            print(f"BC Auth failed: {response.status_code}")
+            return None
     except Exception as e:
-        print(f"LOG: Exception in vector_search_tool: {str(e)}")
-        return {
-            "success": False,
-            "error": str(e),
-            "message": "Error performing vector search"
-        }
+        print(f"BC Auth error: {e}")
+        return None
 
-# --- Web Search Tool (Public Information) ---
-@function_tool  
-def web_search_tool(query: str, max_results: int = 5) -> Dict:
-    """Search the web for public information about vendors, products, and pricing using OpenAI's web search.
-    
-    Args:
-        query: Search query for public information
-        max_results: Maximum number of search results to return (default: 5)
-    
-    Returns:
-        Dictionary containing web search results
-    """
-    try:
-        print(f"LOG: Performing OpenAI web search for: {query}")
-        
-        if not client:
-            return {
-                "success": False,
-                "error": "OpenAI client not configured",
-                "message": "Web search not available - check OPENAI_API_KEY"
-            }
-        
-        # Create a temporary assistant with web search capability
-        assistant = client.beta.assistants.create(
-            name="Web Search Assistant",
-            instructions=f"""You are a web search assistant for procurement research. 
-            
-            Search the web for information about: {query}
-            
-            Focus on:
-            - Vendor/supplier information
-            - Product specifications and pricing
-            - Market analysis and trends
-            - Professional procurement sources
-            
-            Provide factual, current information with sources.""",
-            model="gpt-4o",
-            tools=[{"type": "web_search"}]
-        )
-        
-        # Create a thread for the search
-        thread = client.beta.threads.create()
-        
-        # Add the search query as a message
-        client.beta.threads.messages.create(
-            thread_id=thread.id,
-            role="user",
-            content=f"Search the web for: {query}. Provide current information about vendors, pricing, and market trends."
-        )
-        
-        # Run the assistant
-        run = client.beta.threads.runs.create(
-            thread_id=thread.id,
-            assistant_id=assistant.id
-        )
-        
-        # Wait for completion and get response
-        import time
-        while run.status in ['queued', 'in_progress']:
-            time.sleep(1)
-            run = client.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
-        
-        if run.status == 'completed':
-            messages = client.beta.threads.messages.list(thread_id=thread.id)
-            latest_message = messages.data[0]
-            
-            search_results = []
-            if hasattr(latest_message.content[0], 'text'):
-                content = latest_message.content[0].text.value
-                search_results.append({
-                    "content": content,
-                    "source": "OpenAI Web Search",
-                    "query": query
-                })
-        
-        # Cleanup
-        try:
-            client.beta.assistants.delete(assistant.id)
-            client.beta.threads.delete(thread.id)
-        except:
-            pass
-        
-        print(f"LOG: Found web search results using OpenAI")
-        
-        return {
-            "success": True,
-            "query": query,
-            "results": search_results,
-            "total_results": len(search_results),
-            "message": f"Found web search results for '{query}' using OpenAI"
-        }
-        
-    except Exception as e:
-        print(f"LOG: Exception in web_search_tool: {str(e)}")
-        return {
-            "success": False,
-            "error": str(e),
-            "message": "Error performing web search"
-        }
-
-# --- Tool 1: GetPurchaseOrders() - Dummy MS Dynamics BC API ---
+# --- Tool 1: GetPurchaseOrders() - MS Dynamics BC API ---
 @function_tool
 def get_purchase_orders(filter_params: Optional[str] = None) -> Dict:
-    """Returns all existing purchase orders, filtered by optional query parameters such as date or vendor.
+    """Returns all existing purchase orders from MS Dynamics Business Central, filtered by optional query parameters.
     
     Args:
-        filter_params: Optional filter parameters (e.g., "vendor eq 'Acme Corp'" or "date gt '2024-01-01'")
+        filter_params: Optional OData filter parameters (e.g., "vendorName eq 'Acme Corp'" or "orderDate gt 2024-01-01")
     
     Returns:
-        Dictionary containing mock purchase orders data
+        Dictionary containing purchase orders data from Business Central
     """
     try:
-        print(f"LOG: Fetching purchase orders (DUMMY API)")
+        print(f"LOG: Fetching purchase orders from Business Central")
         if filter_params:
             print(f"LOG: Filter parameters: {filter_params}")
         
+        # Try to get real data from Business Central
+        access_token = get_bc_access_token()
+        
+        if access_token:
+            headers = {
+                'Authorization': f'Bearer {access_token}',
+                'Accept': 'application/json'
+            }
+            
+            # Get company ID first
+            company_url = f"{BC_BASE_URL}/{BC_TENANT_ID}/sandbox/api/v2.0/companies"
+            company_response = requests.get(company_url, headers=headers)
+            
+            if company_response.status_code == 200:
+                companies = company_response.json().get('value', [])
+                target_company = next((c for c in companies if c['name'] == BC_COMPANY_NAME), None)
+                
+                if target_company:
+                    company_id = target_company['id']
+                    
+                    # Get purchase orders
+                    po_url = f"{BC_BASE_URL}/{BC_TENANT_ID}/sandbox/api/v2.0/companies({company_id})/purchaseOrders"
+                    if filter_params:
+                        po_url += f"?$filter={filter_params}"
+                    
+                    po_response = requests.get(po_url, headers=headers)
+                    
+                    if po_response.status_code == 200:
+                        orders = po_response.json().get('value', [])
+                        print(f"LOG: Successfully retrieved {len(orders)} purchase orders from BC")
+                        return {
+                            "success": True,
+                            "data": orders,
+                            "count": len(orders),
+                            "message": f"Purchase orders retrieved successfully from Business Central"
+                        }
+        
+        # Fallback to mock data if BC API fails
+        print(f"LOG: Using fallback mock data")
         # Mock purchase orders data
         mock_orders = [
             {
@@ -318,81 +174,207 @@ def get_purchase_orders(filter_params: Optional[str] = None) -> Dict:
         }
 
 
-# --- Tool 2: get_purchase_invoices() - Dummy MS Dynamics BC API ---
+
+# --- Tool 3: get_purchase_documents() - Working BC API ---
 @function_tool
-def get_posted_purchase_invoices(filter_params: Optional[str] = None) -> Dict:
-    """Fetches purchase invoices that have already been posted to the ledger for reporting or archiving.
+def get_purchase_documents(document_type: Optional[str] = None, filter_params: Optional[str] = None) -> Dict:
+    """Get purchase documents (orders, invoices, quotes) from Business Central using the working purchaseDocuments endpoint.
     
     Args:
-        filter_params: Optional filter parameters (e.g., "vendor eq 'Acme Corp'" or "postingDate gt '2024-01-01'")
+        document_type: Filter by document type ('Order', 'Invoice', 'Quote'). If None, returns all types.
+        filter_params: Additional OData filter parameters (e.g., "buyFromVendorNumber eq '10000'")
     
     Returns:
-        Dictionary containing mock posted purchase invoices data
+        Dictionary containing purchase documents data from Business Central
     """
     try:
-        print(f"LOG: Fetching posted purchase invoices (DUMMY API)")
+        print(f"LOG: Fetching purchase documents from Business Central")
+        if document_type:
+            print(f"LOG: Document type filter: {document_type}")
+        if filter_params:
+            print(f"LOG: Additional filter parameters: {filter_params}")
+        
+        # Get fresh BC configuration
+        config = get_bc_config()
+        access_token = config['access_token']
+        
+        # Debug environment variables
+        print(f"LOG: BC_ACCESS_TOKEN length: {len(access_token) if access_token else 0}")
+        print(f"LOG: BC_TENANT_ID: {config['tenant_id']}")
+        print(f"LOG: BC_ENVIRONMENT: {config['environment']}")
+        print(f"LOG: BC_COMPANY_NAME: {config['company_name']}")
+        
+        if not access_token:
+            print("LOG: No BC_ACCESS_TOKEN found, using mock data")
+            return {
+                "success": False,
+                "error": "BC_ACCESS_TOKEN not configured",
+                "message": "Business Central access token not found in environment"
+            }
+        
+        # Build headers
+        headers = {
+            'Authorization': f'Bearer {access_token}',
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        }
+        
+        # Build URL with company name encoding
+        import urllib.parse
+        encoded_company = urllib.parse.quote(config['company_name'])
+        url = f"{config['base_url']}/{config['tenant_id']}/{config['environment']}/ODataV4/Company('{encoded_company}')/purchaseDocuments"
+        
+        # Build filters
+        filters = []
+        if document_type:
+            filters.append(f"documentType eq '{document_type}'")
+        if filter_params:
+            filters.append(filter_params)
+        
+        if filters:
+            url += "?$filter=" + " and ".join(filters)
+        
+        print(f"LOG: Making request to: {url}")
+        
+        # Make API call
+        response = requests.get(url, headers=headers)
+        print(f"LOG: Response status: {response.status_code}")
+        
+        if response.status_code == 200:
+            data = response.json()
+            documents = data.get('value', [])
+            print(f"LOG: Successfully retrieved {len(documents)} purchase documents from BC")
+            
+            return {
+                "success": True,
+                "data": documents,
+                "count": len(documents),
+                "document_type": document_type or "All types",
+                "message": f"Retrieved {len(documents)} purchase documents from Business Central"
+            }
+        
+        elif response.status_code == 401:
+            # Include debug info in error message
+            debug_info = f"Token length: {len(access_token)}, URL: {url}, Headers: Authorization Bearer [token], Accept: application/json"
+            return {
+                "success": False,
+                "error": "Authentication failed",
+                "message": f"BC_ACCESS_TOKEN is invalid or expired. Debug: {debug_info}"
+            }
+        
+        else:
+            print(f"LOG: API call failed: {response.text}")
+            return {
+                "success": False,
+                "error": f"API call failed with status {response.status_code}",
+                "message": f"Business Central API returned error: {response.text[:200]}"
+            }
+        
+    except Exception as e:
+        print(f"LOG: Exception in get_purchase_documents: {str(e)}")
+        print(f"LOG: Exception type: {type(e)}")
+        import traceback
+        print(f"LOG: Full traceback: {traceback.format_exc()}")
+        return {
+            "success": False,
+            "error": f"Exception: {str(e)}",
+            "message": f"Error retrieving purchase documents: {str(e)}"
+        }
+
+# --- Tool 4: get_purchase_document_lines() - Item Level Data ---
+@function_tool
+def get_purchase_document_lines(filter_params: Optional[str] = None) -> Dict:
+    """Get purchase document lines (item-level data) from Business Central for detailed product analysis.
+    
+    Args:
+        filter_params: OData filter parameters for searching products and quantities
+                      Examples: "contains(description,'coffee')", "quantity gt 5", "type eq 'Item'"
+    
+    Returns:
+        Dictionary containing purchase document lines with item details, quantities, and pricing
+    """
+    try:
+        print(f"LOG: Fetching purchase document lines from Business Central")
         if filter_params:
             print(f"LOG: Filter parameters: {filter_params}")
         
-        # Mock posted invoices data
-        mock_invoices = [
-            {
-                "invoice_id": "INV-2024-001",
-                "po_reference": "PO-2024-001",
-                "vendor": "Acme Corp",
-                "posting_date": "2024-01-18",
-                "amount": 15000.00,
-                "currency": "EUR",
-                "status": "Posted",
-                "description": "Office supplies and equipment - Invoice posted to ledger",
-                "gl_account": "6100"
-            },
-            {
-                "invoice_id": "INV-2024-002",
-                "po_reference": "PO-2023-089",
-                "vendor": "TechSupply Ltd",
-                "posting_date": "2024-01-25",
-                "amount": 8500.00,
-                "currency": "EUR",
-                "status": "Posted",
-                "description": "IT hardware and software licenses - Posted for archiving",
-                "gl_account": "6200"
-            },
-            {
-                "invoice_id": "INV-2024-003",
-                "po_reference": "PO-2023-095",
-                "vendor": "Office Depot",
-                "posting_date": "2024-02-05",
-                "amount": 2300.00,
-                "currency": "EUR",
-                "status": "Posted",
-                "description": "Office furniture and equipment - Archived",
-                "gl_account": "6100"
+        # Get fresh BC configuration
+        config = get_bc_config()
+        access_token = config['access_token']
+        
+        # Debug environment variables
+        print(f"LOG: BC_ACCESS_TOKEN length: {len(access_token) if access_token else 0}")
+        print(f"LOG: BC_TENANT_ID: {config['tenant_id']}")
+        print(f"LOG: BC_ENVIRONMENT: {config['environment']}")
+        print(f"LOG: BC_COMPANY_NAME: {config['company_name']}")
+        
+        if not access_token:
+            print("LOG: No BC_ACCESS_TOKEN found")
+            return {
+                "success": False,
+                "error": "BC_ACCESS_TOKEN not configured",
+                "message": "Business Central access token not found in environment"
             }
-        ]
         
-        # Simple filtering simulation
-        filtered_invoices = mock_invoices
-        if filter_params:
-            if "Acme" in filter_params:
-                filtered_invoices = [inv for inv in mock_invoices if "Acme" in inv["vendor"]]
-            elif "2024-02" in filter_params:
-                filtered_invoices = [inv for inv in mock_invoices if "2024-02" in inv["posting_date"]]
-        
-        print(f"LOG: Successfully retrieved {len(filtered_invoices)} posted purchase invoices")
-        return {
-            "success": True,
-            "data": filtered_invoices,
-            "count": len(filtered_invoices),
-            "message": "Posted purchase invoices retrieved successfully (DUMMY DATA)"
+        # Build headers
+        headers = {
+            'Authorization': f'Bearer {access_token}',
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
         }
         
+        # Build URL with company name encoding
+        import urllib.parse
+        encoded_company = urllib.parse.quote(config['company_name'])
+        url = f"{config['base_url']}/{config['tenant_id']}/{config['environment']}/ODataV4/Company('{encoded_company}')/purchaseDocumentLines"
+        
+        # Add filters if provided
+        if filter_params:
+            url += f"?$filter={filter_params}"
+        
+        print(f"LOG: Making request to: {url}")
+        
+        # Make API call
+        response = requests.get(url, headers=headers)
+        print(f"LOG: Response status: {response.status_code}")
+        
+        if response.status_code == 200:
+            data = response.json()
+            lines = data.get('value', [])
+            print(f"LOG: Successfully retrieved {len(lines)} purchase document lines from BC")
+            
+            return {
+                "success": True,
+                "data": lines,
+                "count": len(lines),
+                "message": f"Retrieved {len(lines)} purchase document lines from Business Central"
+            }
+        
+        elif response.status_code == 401:
+            # Include debug info in error message
+            debug_info = f"Token length: {len(access_token)}, URL: {url}"
+            return {
+                "success": False,
+                "error": "Authentication failed",
+                "message": f"BC_ACCESS_TOKEN is invalid or expired. Debug: {debug_info}"
+            }
+        
+        else:
+            print(f"LOG: API call failed: {response.text}")
+            return {
+                "success": False,
+                "error": f"API call failed with status {response.status_code}",
+                "message": f"Business Central API returned error: {response.text[:200]}"
+            }
+        
     except Exception as e:
-        print(f"LOG: Exception in get_posted_purchase_invoices: {str(e)}")
+        print(f"LOG: Exception in get_purchase_document_lines: {str(e)}")
+        import traceback
+        print(f"LOG: Full traceback: {traceback.format_exc()}")
         return {
             "success": False,
-            "error": str(e),
-            "message": "Error retrieving posted purchase invoices"
+            "error": f"Exception: {str(e)}",
+            "message": f"Error retrieving purchase document lines: {str(e)}"
         }
 
 

@@ -17,7 +17,12 @@
       "WebFetch(domain:github.com)",
       "Bash(python:*)",
       "Bash(./venv/Scripts/pip install firebase-admin)",
-      "Bash(./venv/bin/pip install firebase-admin)"
+      "Bash(./venv/bin/pip install firebase-admin)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(az account get-access-token:*)",
+      "WebFetch(domain:platform.openai.com)",
+      "Bash(find:*)",
+      "Bash(ls:*)"
     ],
     "deny": []
   }

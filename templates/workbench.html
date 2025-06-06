@@ -421,8 +421,8 @@
 
     <div class="chat-container">
         <div class="welcome-message">
-            <h1><i class="fas fa-robot"></i> Professional Buyer AI Assistant</h1>
-            <p>Get expert procurement advice, use prenegotiated prices from best suppliers, and do professional level procurement with ease</p>
+            <h1><i class="fas fa-robot"></i> Operatiivisen Hankinnan Assistentti</h1>
+            <p>Autan sinua ostamaan oikein päivittäisissä hankintatilanteissa. Tulkitsen ostopolitiikkaa, auktoriteetitarvetta ja aiempia ostoja - en strategiaa tai sopimusneuvotteluja.</p>
         </div>
 
         <div class="chat-controls">
@@ -436,17 +436,17 @@
         </div>
 
         <div class="quick-actions">
-            <button class="quick-action" onclick="sendQuickMessage('How can I use prenegotiated discount prices?')">
-                Use prenegotiated discount prices
+            <button class="quick-action" onclick="sendQuickMessage('Mistä on aiemmin ostettu toimistotarvikkeita?')">
+                Mistä on aiemmin ostettu toimistotarvikkeita?
             </button>
-            <button class="quick-action" onclick="sendQuickMessage('How to get approvals easily and from correct person?')">
-                Get approvals easily and from correct person
+            <button class="quick-action" onclick="sendQuickMessage('Keneltä tarvitsen luvan tähän ostoon?')">
+                Keneltä tarvitsen luvan tähän ostoon?
             </button>
-            <button class="quick-action" onclick="sendQuickMessage('Help me find preferred supplier and best price/quality')">
-                Find preferred supplier and best price/quality
+            <button class="quick-action" onclick="sendQuickMessage('Mitä ostopolitiikka sanoo tästä hankinnasta?')">
+                Mitä ostopolitiikka sanoo tästä hankinnasta?
             </button>
-            <button class="quick-action" onclick="sendQuickMessage('How to create purchase orders easily and correctly?')">
-                Create purchase orders easily and correctly
+            <button class="quick-action" onclick="sendQuickMessage('Miten muut ovat toimineet samassa tilanteessa?')">
+                Miten muut ovat toimineet samassa tilanteessa?
             </button>
         </div>
 
@@ -456,7 +456,12 @@
                     <i class="fas fa-robot"></i>
                 </div>
                 <div class="message-content">
-                    Hello! I'm your Professional Buyer AI Assistant. I'm here to help you optimize your procurement processes, negotiate better deals, and achieve significant cost savings. What can I help you with today?
+                    Tervetuloa! Olen operatiivisen hankinnan assistenttisi. Autan sinua <strong>ostamaan oikein</strong> päivittäisissä hankintatilanteissa:<br><br>
+                    📋 <strong>Ostopolitiikan tulkinta</strong> - Mitä sääntöjä noudattaa?<br>
+                    👥 <strong>Lupakysymykset</strong> - Keneltä kysyä hyväksyntää?<br>
+                    🔍 <strong>Toimittajan löytäminen</strong> - Kuka on aiemmin toimittanut?<br>
+                    📊 <strong>Aiemmat ostot</strong> - Miten muut ovat toimineet?<br><br>
+                    <em>En auta strategiassa tai sopimusneuvotteluissa, vaan käytännön ostotoiminnassa.</em>
                 </div>
             </div>
         </div>
@@ -473,7 +478,7 @@
         </div>
 
         <div class="chat-input-container">
-            <input type="text" class="chat-input" id="messageInput" placeholder="Ask about procurement strategies, cost optimization, supplier management..." />
+            <input type="text" class="chat-input" id="messageInput" placeholder="Kysy ostopolitiikasta, toimittajista, luvista tai aiemmista ostoista..." />
             <button class="send-btn" id="sendBtn" onclick="sendMessage()">
                 <i class="fas fa-paper-plane"></i>
             </button>

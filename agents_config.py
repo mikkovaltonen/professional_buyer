@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 from agents import Agent, FileSearchTool, WebSearchTool, set_default_openai_key
 from agents.extensions.handoff_prompt import prompt_with_handoff_instructions
 from tools import (
-    vector_search_tool, web_search_tool, get_purchase_orders, get_posted_purchase_invoices
+    get_purchase_orders, get_purchase_documents, get_purchase_document_lines
 )
 from firestore_service import get_agent_instructions
 
@@ -22,11 +22,13 @@ def get_search_agent():
     if _search_agent is None:
         instructions = get_agent_instructions("SearchAgent")
         if not instructions:
-            raise ValueError("SearchAgent instructions not loaded")
+            # Use default instructions if not loaded from Firestore
+            instructions = "You immediately provide an input to the WebSearchTool to find up-to-date information on the user's query."
         _search_agent = Agent(
             name="SearchAgent",
             instructions=instructions,
             tools=[WebSearchTool()],
+            model="gpt-4.1",
         )
     return _search_agent
 
@@ -36,10 +38,19 @@ def get_internal_knowledge_search():
         instructions = get_agent_instructions("InternalKnowledgeSearch")
         if not instructions:
             raise ValueError("InternalKnowledgeSearch instructions not loaded")
+        
+        vector_store_id = os.getenv('VECTOR_STORE_ID')
+        if not vector_store_id:
+            raise ValueError("VECTOR_STORE_ID not found in environment variables")
+            
         _internal_knowledge_search = Agent(
             name="InternalKnowledgeSearch",
             instructions=instructions,
-            tools=[vector_search_tool],
+            tools=[FileSearchTool(
+                max_num_results=10,
+                vector_store_ids=[vector_store_id],
+            )],
+            model="gpt-4.1",
         )
     return _internal_knowledge_search
 
@@ -52,7 +63,8 @@ def get_purchase_history_search_agent():
         _purchase_history_search_agent = Agent(
             name="PurchaseHistorySearchAgent",
             instructions=instructions,
-            tools=[get_purchase_orders, get_posted_purchase_invoices],
+            tools=[get_purchase_documents, get_purchase_document_lines],
+            model="gpt-4.1",
         )
     return _purchase_history_search_agent
 
@@ -72,6 +84,7 @@ def get_triage_agent():
             name="GeneralistProcurementAgent",
             instructions=prompt_with_handoff_instructions(instructions),
             handoffs=[search, internal, history],
+            model="gpt-4.1",
         )
     return _triage_agent
 

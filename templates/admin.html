@@ -480,8 +480,8 @@
                             <i class="fas fa-edit"></i> Edit
                         </button>
                     </div>
-                    <p><strong>Purpose:</strong> Find public info about vendors and products and prices</p>
-                    <p><strong>Tools:</strong> Unstructured data (Purchase policies, PO posting rules)</p>
+                    <p><strong>Tarkoitus:</strong> Harvinainen julkinen haku toimittajista ja tuotteista - käytetään vain jos sisäinen tieto ei riitä</p>
+                    <p><strong>Työkalut:</strong> Web-haku julkisesta tiedosta</p>
                     <p><strong>Current Instructions:</strong> <span id="current_SearchAgent">Loading...</span></p>
                 </div>
 
@@ -492,8 +492,8 @@
                             <i class="fas fa-edit"></i> Edit
                         </button>
                     </div>
-                    <p><strong>Purpose:</strong> Search internal knowledge base with RAG</p>
-                    <p><strong>Tools:</strong> Vector Search Tool</p>
+                    <p><strong>Tarkoitus:</strong> Hae sisäisiä hankintaohjeita ja -käytäntöjä vektorihakutekniikalla</p>
+                    <p><strong>Työkalut:</strong> Vektorihaku sisäisestä tietokannasta</p>
                     <p><strong>Current Instructions:</strong> <span id="current_InternalKnowledgeSearch">Loading...</span></p>
                 </div>
 
@@ -504,8 +504,8 @@
                             <i class="fas fa-edit"></i> Edit
                         </button>
                     </div>
-                    <p><strong>Purpose:</strong> Search purchase history - where was similar products purchased earlier</p>
-                    <p><strong>Tools:</strong> GetPurchaseOrders(), get_purchase_invoices()</p>
+                    <p><strong>Tarkoitus:</strong> Etsi ostoshistoriaa - missä vastaavia tuotteita on ostettu aiemmin ja keneltä</p>
+                    <p><strong>Tools:</strong> GetPurchaseOrders(), get_purchase_document_lines(), get_purchase_invoices()</p>
                     <p><strong>Current Instructions:</strong> <span id="current_PurchaseHistorySearchAgent">Loading...</span></p>
                 </div>
 
@@ -516,7 +516,7 @@
                             <i class="fas fa-edit"></i> Edit
                         </button>
                     </div>
-                    <p><strong>Purpose:</strong> Main coordinator that routes requests to the three specialist agents</p>
+                    <p><strong>Tarkoitus:</strong> Päätriageagentti joka ohjaa pyynnöt kolmelle erikoisagentille operatiivisen hankinnan tueksi</p>
                     <p><strong>Current Instructions:</strong> <span id="current_GeneralistProcurementAgent">Loading...</span></p>
                 </div>
             </div>

@@ -1,39 +1,32 @@
-# Professional Buyer - AI-Powered Procurement Assistant
+# Operatiivisen Hankinnan AI-Assistentti (Professional Buyer)
 
-Professional Buyer is an AI-powered procurement assistant that helps companies optimize their purchasing processes and achieve cost savings. The application integrates with Firebase for data storage and management.
+Operatiivisen hankinnan AI-assistentti auttaa sivutoimisia ostajia tekemään oikeita ostopäätöksiä päivittäisessä työssään. Järjestelmä integroi Microsoft Dynamics Business Central ERP:iin ja Firebase-tietokantaan.
 
 ## System Architecture
 
 ![Agentic Workflow](static/Agentic%20workflow%20and%20tools.png)
 
-### Agents
+### Agentit
 
-**1. ProfessionalBuyerAssistant (Triage Agent)**
-- Main agent that routes user queries to specialized agents
-- Provides procurement expertise and guidance
-- Focuses on three main benefits: cost savings, fixed payments, strategic time
+**1. GeneralistProcurementAgent (Triage Agent)**
+- Pääagentti joka ohjaa käyttäjien kyselyt erikoisagenteille
+- Operatiivisen hankinnan asiantuntija ja koordinaattori
+- Keskittyy päivittäisten ostopäätösten tukemiseen
 
 **2. SearchAgent**
-- Real-time web search for market trends and supplier information
-- Uses WebSearchTool for external data retrieval
-- Activated when current market data is needed
+- Harvinainen julkinen haku toimittajista ja tuotteista
+- Käytetään vain jos sisäinen tieto ei riitä
+- Reaaliaikainen web-haku markkinatrendeihin
 
-**3. InternalKnowledgeSearchAgent**
-- Internal procurement document search agent
-- Searches supplier catalogs, competed contracts, prices and products
-- Uses FileSearchTool with vector store integration
-- Specialized in internal data search for contract terms, pricing, and supplier information
+**3. InternalKnowledgeSearch**
+- Sisäisten hankintaohjeiden ja -käytäntöjen haku
+- Etsii vektorihakutekniikalla sopimuksia, hintoja ja tuotteita
+- Käyttää FileSearchTool-vektorihakua
 
-**4. ApprovalSpecialistAgent**
-- Purchase order approval and authorization agent
-- Handles approval workflows and stakeholder communication
-- Uses request_po_approval and send_email tools
-- Processes approval workflows and automated notifications
-
-**5. POPostingAgent (PO Posting Agent)**
-- Specialized in posting purchase orders to ERP systems
-- Uses po_posting_api tool
-- Handles supplier, product, and price parameters
+**4. PurchaseHistorySearchAgent**
+- Ostoshistorian haku - missä vastaavia tuotteita on ostettu aiemmin
+- Integroi MS Dynamics Business Central ERP:iin
+- Käyttää GetPurchaseOrders(), get_purchase_document_lines(), get_purchase_invoices() työkaluja
 
 ### Tools
 
@@ -88,12 +81,16 @@ pip install -r requirements.txt
 ## Environment Variables
 
 Create a `.env` file in the project root and add the following variables:
+
+### Core Application Settings
 ```
 OPENAI_API_KEY="your_openai_api_key_here"
 VECTOR_STORE_ID="your_vector_store_id_here"
 SECRET_KEY="your_flask_secret_key_here"
+```
 
-# Firebase Configuration
+### Firebase Configuration
+```
 FIREBASE_API_KEY="your_firebase_api_key"
 FIREBASE_AUTH_DOMAIN="your_project.firebaseapp.com"
 FIREBASE_PROJECT_ID="your_project_id"
@@ -101,10 +98,51 @@ FIREBASE_STORAGE_BUCKET="your_project.appspot.com"
 FIREBASE_MESSAGING_SENDER_ID="your_sender_id"
 FIREBASE_APP_ID="your_app_id"
 FIREBASE_MEASUREMENT_ID="your_measurement_id"
+```
 
-# Note: Firebase user credentials are hardcoded in the application
-# Firebase user: admin@professionalbuyer.com
-# Firebase password: password123 (same as app login)
+### Microsoft Dynamics Business Central Integration
+```
+BC_BASE_URL="https://api.businesscentral.dynamics.com/v2.0"
+BC_TENANT_ID="your_azure_tenant_id"
+BC_ENVIRONMENT="Production"  # or "Sandbox"
+BC_COMPANY_NAME="your_company_name"
+BC_CLIENT_ID="your_azure_app_client_id"
+BC_CLIENT_SECRET="your_azure_app_client_secret"
+BC_ACCESS_TOKEN="your_current_access_token"
+```
+
+## Business Central Setup
+
+### 1. Azure AD App Registration
+1. Go to [Azure Portal](https://portal.azure.com) → Azure Active Directory
+2. Navigate to "App registrations" → "New registration"
+3. Name: "Professional Buyer API"
+4. Supported account types: "Accounts in this organizational directory only"
+5. Copy the "Application (client) ID" → `BC_CLIENT_ID`
+
+### 2. Generate Client Secret
+1. In your app registration → "Certificates & secrets"
+2. Click "New client secret"
+3. Copy the secret value → `BC_CLIENT_SECRET`
+
+### 3. Configure API Permissions
+1. In app registration → "API permissions" → "Add a permission"
+2. Choose "Dynamics 365 Business Central"
+3. Add permissions: `Financials.ReadWrite.All`, `user_impersonation`
+4. Click "Grant admin consent"
+
+### 4. Get Access Token
+Using Azure CLI:
+```bash
+az login
+az account get-access-token --resource https://api.businesscentral.dynamics.com/
+```
+
+### 5. Test Connection
+```python
+from tools import get_purchase_orders
+result = get_purchase_orders()
+print(result)
 ```
 
 ## Deployment

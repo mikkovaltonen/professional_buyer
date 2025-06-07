@@ -1,7 +1,7 @@
 # Claude Code Instructions
 
 ## Project Overview
-This is a demand forecasting assistant application built with React, TypeScript, and Vite. It provides AI-powered demand forecasting capabilities with data visualization and user authentication.
+This is a Procurement AI Agent Evaluator application built with React, TypeScript, and Vite. It provides AI-powered document analysis and procurement intelligence evaluation capabilities with user authentication.
 
 ## Development Commands
 
@@ -33,11 +33,11 @@ npm run preview
 ## Key Technologies
 - **Frontend**: React 18, TypeScript, Vite
 - **UI**: Tailwind CSS, shadcn/ui components
-- **Charts**: Chart.js, Recharts
-- **AI Integration**: Google Gemini, Anthropic Claude, OpenAI
-- **State Management**: React Query
+- **AI Integration**: Google Gemini
+- **State Management**: React Hooks
 - **Authentication**: Custom auth system
-- **File Processing**: PapaParse for CSV handling
+- **File Processing**: Support for PDF, Excel, CSV, Word documents
+- **Database**: Firebase Firestore for prompt versioning
 
 ## Project Structure
 - `src/components/` - React components
@@ -50,15 +50,16 @@ npm run preview
 
 ## Important Notes
 - The project uses environment variables for API keys (see .env.example)
-- API calls are proxied through Vercel functions for security
-- The application supports multiple AI providers for forecasting
+- The application uses Google Gemini for AI document analysis
 - Authentication is required for most features
-- Data processing includes CSV parsing and normalization
+- Data processing includes document upload and AI analysis
+- System prompt versioning is stored in Firebase Firestore
 
 ## Known Issues
 - Some TypeScript `any` types need to be properly typed
 - ESLint warnings for React hooks dependencies
 - Some UI components have empty interface types
+- Firebase configuration is required for prompt versioning feature
 
 ## Development Guidelines
 - Always run type checking before committing
@@ -66,41 +67,32 @@ npm run preview
 - Follow the established component patterns
 - Use proper TypeScript types instead of `any`
 - Test AI integrations thoroughly
+- Ensure Firebase configuration is properly set up for prompt versioning
 
-## API Testing & Debugging
+## Document Analysis Features
 
-### Console Debug Functions
-- `debugApiCall()` - Test API with default payload
-- `debugApiCall({prod_class: "test"})` - Test with custom data
+### File Processing
+- **Supported formats**: PDF, Excel (.xlsx, .xls), CSV, Word (.doc, .docx)
+- **Upload methods**: Drag & drop or file picker
+- **File validation**: Type and size checking
+- **Preview capability**: For supported document types
 
-### API Debugging Steps
-1. Use "Test API" button in UI
-2. Check browser console for detailed logs
-3. Verify form-encoded data format (not JSON)
-4. Check Laravel API expects `application/x-www-form-urlencoded`
+### AI Analysis
+- **Document intelligence**: Extract key information from procurement documents
+- **Structured output**: Format data for easy consumption
+- **Interactive chat**: Natural language questions about documents
+- **Quick actions**: Pre-built analysis prompts
 
-### Common Issues
-- **Error 500**: Usually incorrect Content-Type or payload format
-- **Auth errors**: Check Bearer token in .env
-- **CORS errors**: Verify proxy configuration
+### System Prompt Versioning
+- **Version management**: Automatic versioning with sequential numbers
+- **Evaluation tracking**: User notes and assessments for each version
+- **History browsing**: View and compare all previous versions
+- **Model selection**: Choose different AI models for testing
 
-## Forecast Correction Features
-
-### Data Processing
-- **Automatic calculation**: `new_forecast_manually_adjusted = new_forecast * (1 + correction_percent/100)`
-- **Comment storage**: Saves explanation from Gemini chat
-- **Timestamp tracking**: Records when corrections were made
-- **Data validation**: Fetches current forecast before calculating adjustments
-
-### Database Fields Updated
-- `correction_percent` - The percentage adjustment
-- `new_forecast_manually_adjusted` - Calculated adjusted forecast value
-- `explanation` - Comment/reasoning for the correction
-- `correction_timestamp` - When the correction was applied
-
-### Workflow
-1. User gets JSON recommendation from Gemini
-2. "Tallenna JSON" button processes corrections
-3. System fetches current `new_forecast` values
-4. Calculates adjusted forecasts automatically
-5. Saves all data to database in one operation
+### Database Schema (Firebase)
+- `version` - Sequential version number
+- `systemPrompt` - The prompt text
+- `evaluation` - User's assessment notes
+- `savedDate` - Timestamp of creation
+- `aiModel` - AI model used
+- `userId` - User identifier

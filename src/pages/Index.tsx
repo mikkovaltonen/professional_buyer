@@ -1,75 +1,81 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { BarChart3, FileText, Brain } from "lucide-react";
+import { DollarSign, FileText, Brain, Upload } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const Index = () => {
   return (
-    <div className="min-h-screen bg-white">
-      <nav className="flex justify-between items-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+      <nav className="flex justify-between items-center p-6 bg-white/80 backdrop-blur-sm border-b border-indigo-100">
         <Link to="/" className="flex flex-col">
-          <span className="text-3xl font-bold tracking-wider">WISESTEIN</span>
-          <span className="text-[#4ADE80] text-sm">Supply Chain Management At Its Best.</span>
+          <span className="text-3xl font-bold tracking-wider bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">PROCUREMENT AI</span>
+          <span className="text-indigo-600 text-sm font-medium">Agent Evaluator</span>
         </Link>
         <div className="flex gap-4">
-          <Button variant="ghost" asChild>
-            <Link to="/login">Kirjaudu sisään</Link>
+          <Button 
+            variant="ghost" 
+            className="text-indigo-600 hover:bg-indigo-50"
+            asChild
+          >
+            <Link to="/login">Login</Link>
           </Button>
         </div>
       </nav>
 
       <main className="container mx-auto px-4 py-16 text-center">
-        <h1 className="text-4xl font-bold mb-6">
-          AI Kysyntäennuste<span className="text-[#4ADE80]">avustaja</span>
+        <h1 className="text-5xl font-bold mb-6">
+          <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Procurement AI Agent</span>
+          <br />
+          <span className="text-indigo-600">Evaluator</span>
         </h1>
-        <p className="text-xl mb-4">
-          Ennusta kysyntää tuotteille, joilla ei ole riittävää tilastollista dataa.
+        <p className="text-xl mb-4 text-gray-700">
+          Evaluate and test AI-powered procurement capabilities with real documents.
         </p>
-        <p className="text-xl mb-8">
-          Tehosta ostoprosessiasi ja paranna varastonhallintaa älykkään kysynnän ennusteen avulla.
+        <p className="text-xl mb-8 text-gray-600">
+          Upload procurement policies and simulate ERP/P2P integration by loading sample data via excels and evaluate AI Agent performance with your own data
         </p>
         <Button 
-          className="bg-[#4ADE80] hover:bg-[#22C55E] text-white px-8 py-6 rounded-lg text-lg"
-          onClick={() => window.open('https://wisestein.fi/yhteystiedot', '_blank', 'noopener,noreferrer')}
+          className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-8 py-6 rounded-lg text-lg shadow-lg hover:shadow-xl transition-all"
+          asChild
         >
-          Varaa esittely
+          <Link to="/login">Start Evaluation</Link>
         </Button>
 
         <section className="mt-24">
-          <h2 className="text-3xl font-bold mb-12">Älykkäämpi tapa ennustaa kysyntää</h2>
+          <h2 className="text-3xl font-bold mb-12 text-gray-800">Key Evaluation Benefits</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <Card className="p-6">
+            <Card className="p-6 border-indigo-200 shadow-lg hover:shadow-xl transition-shadow">
               <CardContent className="space-y-4">
-                <div className="h-12 w-12 bg-[#4ADE80]/10 rounded-lg flex items-center justify-center">
-                  <BarChart3 className="h-6 w-6 text-[#4ADE80]" />
+                <div className="h-12 w-12 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
+                  <DollarSign className="h-6 w-6 text-white" />
                 </div>
-                <h3 className="text-xl font-semibold">Tekoälyavusteinen ennustaminen</h3>
+                <h3 className="text-xl font-semibold text-gray-800">Cost Savings Potential</h3>
                 <p className="text-gray-600">
-                  Hyödynnä edistynyttä tekoälyä tuotteiden kysynnän ennustamiseen, erityisesti kun tilastollista dataa on vähän.
+                  Evaluate how AI can align purchases with negotiated contracts and reduce operational costs by automating procurement processes.
                 </p>
               </CardContent>
             </Card>
 
-            <Card className="p-6">
+            <Card className="p-6 border-purple-200 shadow-lg hover:shadow-xl transition-shadow">
               <CardContent className="space-y-4">
-                <div className="h-12 w-12 bg-[#4ADE80]/10 rounded-lg flex items-center justify-center">
-                  <FileText className="h-6 w-6 text-[#4ADE80]" />
+                <div className="h-12 w-12 bg-gradient-to-r from-purple-500 to-pink-600 rounded-lg flex items-center justify-center">
+                  <Upload className="h-6 w-6 text-white" />
                 </div>
-                <h3 className="text-xl font-semibold">Dokumentoi ja opi</h3>
+                <h3 className="text-xl font-semibold text-gray-800">Document Intelligence</h3>
                 <p className="text-gray-600">
-                  Tallenna vaikeat päätösongelmat ja väärät mitoitukset. Hae helposti arkistosta aiemmat tapaukset ja nopeuta oppimista.
+                  Test AI's ability to extract and analyze data from your procurement documents, contracts, and supplier catalogs.
                 </p>
               </CardContent>
             </Card>
 
-            <Card className="p-6">
+            <Card className="p-6 border-green-200 shadow-lg hover:shadow-xl transition-shadow">
               <CardContent className="space-y-4">
-                <div className="h-12 w-12 bg-[#4ADE80]/10 rounded-lg flex items-center justify-center">
-                  <Brain className="h-6 w-6 text-[#4ADE80]" />
+                <div className="h-12 w-12 bg-gradient-to-r from-green-500 to-teal-600 rounded-lg flex items-center justify-center">
+                  <Brain className="h-6 w-6 text-white" />
                 </div>
-                <h3 className="text-xl font-semibold">Syvähaku signaaleista</h3>
+                <h3 className="text-xl font-semibold text-gray-800">Professional Buyer Intelligence</h3>
                 <p className="text-gray-600">
-                  Löydä automaattisesti kaikki tuotteesi kysyntään vaikuttavat uutiset ja signaalit internetistä. Tee tietoon perustuvia päätöksiä.
+                  Experience how AI can transform every employee into a professional buyer by providing intelligent procurement guidance and automation.
                 </p>
               </CardContent>
             </Card>
@@ -77,22 +83,22 @@ const Index = () => {
         </section>
 
         <section className="mt-24 mb-16">
-          <h2 className="text-3xl font-bold mb-6">
-            Ota käyttöön <span className="text-[#4ADE80]">tekoälyavusteinen ennustaminen</span>
+          <h2 className="text-3xl font-bold mb-6 text-gray-800">
+            Start Your <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Procurement AI Evaluation</span>
           </h2>
           <div className="flex justify-center gap-4">
             <Button 
-              className="bg-[#4ADE80] hover:bg-[#22C55E] text-white px-8 py-6 rounded-lg text-lg"
-              onClick={() => window.open('https://wisestein.fi/yhteystiedot', '_blank', 'noopener,noreferrer')}
+              className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-8 py-6 rounded-lg text-lg shadow-lg hover:shadow-xl transition-all"
+              asChild
             >
-              Varaa esittely
+              <Link to="/login">Begin Evaluation</Link>
             </Button>
             <Button 
               variant="outline" 
-              className="px-8 py-6 rounded-lg text-lg"
-              asChild
+              className="px-8 py-6 rounded-lg text-lg border-indigo-200 text-indigo-600 hover:bg-indigo-50"
+              onClick={() => window.open('https://github.com/mikkovaltonen/professional_buyer', '_blank', 'noopener,noreferrer')}
             >
-              <Link to="/login">Kirjaudu sisään →</Link>
+              View Full Solution →
             </Button>
           </div>
         </section>
@@ -102,46 +108,32 @@ const Index = () => {
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div>
-              <h3 className="font-semibold text-lg mb-4">Palvelut</h3>
+              <h3 className="font-semibold text-lg mb-4">Services</h3>
               <ul className="space-y-2">
-                <li><a href="https://wisestein.fi/palvelut/#koulutuspalvelut" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-gray-900">Koulutuspalvelut</a></li>
-                <li><a href="https://wisestein.fi/palvelut/#konsultointipalvelut" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-gray-900">Konsultointipalvelut</a></li>
+                <li><a href="https://www.zealsourcing.fi/services" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-gray-900">Procurement Services</a></li>
+                <li><a href="https://www.zealsourcing.fi/about-4" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-gray-900">Procurement Strategy</a></li>
+                <li><a href="https://www.zealsourcing.fi/copy-of-create-procurement-strategy" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-gray-900">Procurement & Tools</a></li>
               </ul>
             </div>
 
             <div>
-              <h3 className="font-semibold text-lg mb-4">Ratkaisut</h3>
+              <h3 className="font-semibold text-lg mb-4">Resources</h3>
               <ul className="space-y-2">
-                <li><a href="https://wisestein.fi/ratkaisut/myynnille" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-gray-900">Myynnille</a></li>
-                <li><a href="https://wisestein.fi/ratkaisut/ostolle" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-gray-900">Ostolle</a></li>
-                <li><a href="https://wisestein.fi/ratkaisut/#markkinoinnille" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-gray-900">Markkinoinnille</a></li>
-                <li><a href="https://wisestein.fi/ratkaisut/valmistukselle" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-gray-900">Valmistukselle</a></li>
-                <li><a href="https://wisestein.fi/ratkaisut/taloushallinnolle" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-gray-900">Taloushallinnolle</a></li>
-                <li><a href="https://wisestein.fi/ratkaisut/logistiikalle" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-gray-900">Logistiikalle</a></li>
+                <li><a href="https://www.zealsourcing.fi/insights" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-gray-900">Insights</a></li>
               </ul>
             </div>
 
             <div>
-              <h3 className="font-semibold text-lg mb-4">Yritys</h3>
+              <h3 className="font-semibold text-lg mb-4">Contact</h3>
               <ul className="space-y-2">
-                <li><a href="https://wisestein.fi/yritys#historia" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-gray-900">Historia</a></li>
-                <li><a href="https://wisestein.fi/yritys#tiimi" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-gray-900">Tiimi</a></li>
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="font-semibold text-lg mb-4">Yhteystiedot</h3>
-              <ul className="space-y-2">
-                <li><a href="https://wisestein.fi/yhteystiedot#toimistomme" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-gray-900">Toimistomme</a></li>
-                <li><a href="https://wisestein.fi/yhteystiedot#asiakastuki" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-gray-900">Asiakastuki</a></li>
-                <li><a href="https://wisestein.fi/yhteystiedot#laskutus" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-gray-900">Laskutus</a></li>
+                <li><a href="https://www.zealsourcing.fi/team" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-gray-900">Our Team</a></li>
               </ul>
             </div>
           </div>
 
           <div className="mt-16 pt-8 border-t border-gray-200">
             <div className="text-center">
-              <p className="text-gray-600">© {new Date().getFullYear()} Wisestein. Kaikki oikeudet pidätetään.</p>
+              <p className="text-gray-600">Developed by Mikko Valtonen for open source use</p>
             </div>
           </div>
         </div>

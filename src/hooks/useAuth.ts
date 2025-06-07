@@ -43,9 +43,9 @@ export const useAuth = () => {
     setLoading(true);
     
     try {
-      if (email === 'forecasting@kemppi.com' && password === 'laatu') {
+      if (email === 'evaluator' && password === 'go_nogo_decision') {
         const userData = {
-          email: 'forecasting@kemppi.com',
+          email: 'evaluator',
           isAuthenticated: true
         };
         
@@ -67,7 +67,6 @@ export const useAuth = () => {
   };
 
   const logout = () => {
-    setLoading(true);
     try {
       // Clear localStorage first
       localStorage.removeItem('user');
@@ -75,8 +74,6 @@ export const useAuth = () => {
       setUser(null);
     } catch (error) {
       console.error('[useAuth] Error during logout:', error);
-    } finally {
-      setLoading(false);
     }
   };
 

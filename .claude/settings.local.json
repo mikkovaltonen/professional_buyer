@@ -8,7 +8,17 @@
       "Bash(true)",
       "Bash(git stash:*)",
       "Bash(grep:*)",
-      "Bash(npm run dev:*)"
+      "Bash(npm run dev:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(rm:*)",
+      "Bash(find:*)",
+      "Bash(npm install)",
+      "Bash(npx vite build:*)",
+      "Bash(node test-apis.js)",
+      "Bash(mv:*)",
+      "Bash(node:*)",
+      "Bash(npm cache clean:*)",
+      "Bash(npm install:*)"
     ],
     "deny": []
   }

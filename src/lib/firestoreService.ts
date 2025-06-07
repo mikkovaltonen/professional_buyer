@@ -1,32 +1,287 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { getFirestore, doc, setDoc, getDoc, collection, query, orderBy, limit, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyB_kPjjBfqtcnj38p_okBygFYNV2cr4m-4',
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'airbnb-assistant-app.firebaseapp.com',
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'airbnb-assistant-app',
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'airbnb-assistant-app.firebasestorage.app',
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '929654225196',
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:929654225196:web:e173d2c32421298ee99489',
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || 'G-4WWWC5G727',
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+// Debug: Log environment variables and config
+console.log('Environment variables:', {
+  VITE_FIREBASE_API_KEY: import.meta.env.VITE_FIREBASE_API_KEY,
+  VITE_FIREBASE_PROJECT_ID: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  VITE_FIREBASE_AUTH_DOMAIN: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+});
 
-export const savePrompt = async (userId: string, promptText: string): Promise<void> => {
-  const promptDocRef = doc(db, 'userPrompts', userId);
-  await setDoc(promptDocRef, { 
-    text: promptText,
-    lastSavedAt: serverTimestamp() // Add this line
+console.log('Firebase config:', {
+  ...firebaseConfig,
+  apiKey: firebaseConfig.apiKey ? `${firebaseConfig.apiKey.substring(0, 10)}...` : 'undefined'
+});
+
+let app;
+let db;
+
+try {
+  if (!firebaseConfig.projectId) {
+    throw new Error('Firebase project ID is missing');
+  }
+  app = initializeApp(firebaseConfig);
+  db = getFirestore(app);
+} catch (error) {
+  console.error('Firebase initialization failed:', error);
+  // Create a mock database for fallback
+  db = null;
+}
+
+export interface SystemPromptVersion {
+  id?: string;
+  version: number;
+  systemPrompt: string;
+  evaluation: string;
+  savedDate: Date;
+  aiModel: string;
+  userId: string;
+}
+
+// LocalStorage fallback functions
+const getLocalStorageKey = (userId: string) => `promptVersions_${userId}`;
+
+const saveToLocalStorage = (userId: string, promptVersion: SystemPromptVersion): void => {
+  const key = getLocalStorageKey(userId);
+  const existing = JSON.parse(localStorage.getItem(key) || '[]');
+  existing.push({
+    ...promptVersion,
+    id: `local_${Date.now()}`,
+    savedDate: new Date().toISOString()
   });
+  localStorage.setItem(key, JSON.stringify(existing));
+};
+
+const getFromLocalStorage = (userId: string): SystemPromptVersion[] => {
+  const key = getLocalStorageKey(userId);
+  const data = localStorage.getItem(key);
+  if (!data) return [];
+  
+  return JSON.parse(data).map((item: any) => ({
+    ...item,
+    savedDate: new Date(item.savedDate)
+  }));
+};
+
+const getNextLocalVersion = (userId: string): number => {
+  const existing = getFromLocalStorage(userId);
+  if (existing.length === 0) return 1;
+  return Math.max(...existing.map(v => v.version)) + 1;
+};
+
+// Save a new version of system prompt
+export const savePromptVersion = async (
+  userId: string, 
+  promptText: string, 
+  evaluation: string = '',
+  aiModel: string = 'gemini-2.5-flash-preview-04-17'
+): Promise<number> => {
+  try {
+    if (!db) {
+      console.warn('Firebase not initialized, using localStorage fallback');
+      const nextVersion = getNextLocalVersion(userId);
+      const promptVersion: SystemPromptVersion = {
+        version: nextVersion,
+        systemPrompt: promptText,
+        evaluation: evaluation,
+        savedDate: new Date(),
+        aiModel: aiModel,
+        userId: userId
+      };
+      saveToLocalStorage(userId, promptVersion);
+      console.log(`[LocalStorage] Saved prompt version ${nextVersion}`);
+      return nextVersion;
+    }
+
+    // Try Firebase first
+    const nextVersion = await getNextVersionNumber(userId);
+    
+    const promptVersion: Omit<SystemPromptVersion, 'id'> = {
+      version: nextVersion,
+      systemPrompt: promptText,
+      evaluation: evaluation,
+      savedDate: new Date(),
+      aiModel: aiModel,
+      userId: userId
+    };
+
+    const docRef = await addDoc(collection(db, 'systemPromptVersions'), {
+      ...promptVersion,
+      savedDate: serverTimestamp()
+    });
+    
+    console.log(`[FirestoreService] Saved prompt version ${nextVersion} with ID: ${docRef.id}`);
+    return nextVersion;
+  } catch (error) {
+    console.warn('Firebase save failed, falling back to localStorage:', error);
+    const nextVersion = getNextLocalVersion(userId);
+    const promptVersion: SystemPromptVersion = {
+      version: nextVersion,
+      systemPrompt: promptText,
+      evaluation: evaluation,
+      savedDate: new Date(),
+      aiModel: aiModel,
+      userId: userId
+    };
+    saveToLocalStorage(userId, promptVersion);
+    console.log(`[LocalStorage] Saved prompt version ${nextVersion} (fallback)`);
+    return nextVersion;
+  }
+};
+
+// Get the next version number for a user
+const getNextVersionNumber = async (userId: string): Promise<number> => {
+  if (!db) {
+    return 1;
+  }
+
+  const q = query(
+    collection(db, 'systemPromptVersions'),
+    orderBy('version', 'desc'),
+    limit(1)
+  );
+  
+  const querySnapshot = await getDocs(q);
+  
+  if (querySnapshot.empty) {
+    return 1;
+  }
+  
+  const latestDoc = querySnapshot.docs[0];
+  const latestVersion = latestDoc.data().version || 0;
+  return latestVersion + 1;
+};
+
+// Load the latest version of system prompt for a user
+export const loadLatestPrompt = async (userId: string): Promise<string | null> => {
+  try {
+    if (!db) {
+      console.warn('Firebase not initialized, using localStorage fallback');
+      const versions = getFromLocalStorage(userId);
+      if (versions.length === 0) return null;
+      const latest = versions.sort((a, b) => b.version - a.version)[0];
+      return latest.systemPrompt || null;
+    }
+
+    const q = query(
+      collection(db, 'systemPromptVersions'),
+      orderBy('version', 'desc'),
+      limit(1)
+    );
+    
+    const querySnapshot = await getDocs(q);
+    
+    if (querySnapshot.empty) {
+      return null;
+    }
+    
+    const latestDoc = querySnapshot.docs[0];
+    return latestDoc.data().systemPrompt || null;
+  } catch (error) {
+    console.warn('Firebase load failed, falling back to localStorage:', error);
+    const versions = getFromLocalStorage(userId);
+    if (versions.length === 0) return null;
+    const latest = versions.sort((a, b) => b.version - a.version)[0];
+    return latest.systemPrompt || null;
+  }
+};
+
+// Get all versions for a user (for history browsing)
+export const getPromptHistory = async (userId: string): Promise<SystemPromptVersion[]> => {
+  try {
+    if (!db) {
+      console.warn('Firebase not initialized, using localStorage fallback');
+      return getFromLocalStorage(userId).sort((a, b) => b.version - a.version);
+    }
+
+    const q = query(
+      collection(db, 'systemPromptVersions'),
+      orderBy('version', 'desc')
+    );
+    
+    const querySnapshot = await getDocs(q);
+    
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      savedDate: doc.data().savedDate?.toDate() || new Date()
+    })) as SystemPromptVersion[];
+  } catch (error) {
+    console.warn('Firebase history load failed, falling back to localStorage:', error);
+    return getFromLocalStorage(userId).sort((a, b) => b.version - a.version);
+  }
+};
+
+// Get specific version
+export const getPromptVersion = async (versionId: string): Promise<SystemPromptVersion | null> => {
+  try {
+    if (!db) {
+      console.warn('Firebase not initialized, using localStorage fallback');
+      const allVersions = getFromLocalStorage('evaluator'); // Using default user for localStorage
+      return allVersions.find(v => v.id === versionId) || null;
+    }
+
+    const docRef = doc(db, 'systemPromptVersions', versionId);
+    const docSnap = await getDoc(docRef);
+    
+    if (docSnap.exists()) {
+      return {
+        id: docSnap.id,
+        ...docSnap.data(),
+        savedDate: docSnap.data().savedDate?.toDate() || new Date()
+      } as SystemPromptVersion;
+    }
+    
+    return null;
+  } catch (error) {
+    console.warn('Firebase version load failed, falling back to localStorage:', error);
+    const allVersions = getFromLocalStorage('evaluator');
+    return allVersions.find(v => v.id === versionId) || null;
+  }
+};
+
+// Update evaluation for a specific version
+export const updatePromptEvaluation = async (versionId: string, evaluation: string): Promise<void> => {
+  try {
+    if (!db) {
+      console.warn('Firebase not initialized, updating localStorage fallback');
+      const key = getLocalStorageKey('evaluator');
+      const versions = JSON.parse(localStorage.getItem(key) || '[]');
+      const updated = versions.map((v: any) => 
+        v.id === versionId ? { ...v, evaluation } : v
+      );
+      localStorage.setItem(key, JSON.stringify(updated));
+      return;
+    }
+
+    const docRef = doc(db, 'systemPromptVersions', versionId);
+    await setDoc(docRef, { evaluation }, { merge: true });
+  } catch (error) {
+    console.warn('Firebase evaluation update failed, falling back to localStorage:', error);
+    const key = getLocalStorageKey('evaluator');
+    const versions = JSON.parse(localStorage.getItem(key) || '[]');
+    const updated = versions.map((v: any) => 
+      v.id === versionId ? { ...v, evaluation } : v
+    );
+    localStorage.setItem(key, JSON.stringify(updated));
+  }
+};
+
+// Legacy functions for backward compatibility
+export const savePrompt = async (userId: string, promptText: string): Promise<void> => {
+  await savePromptVersion(userId, promptText);
 };
 
 export const loadPrompt = async (userId: string): Promise<string | null> => {
-  const promptDocRef = doc(db, 'userPrompts', userId);
-  const docSnap = await getDoc(promptDocRef);
-  if (docSnap.exists()) {
-    return docSnap.data()?.text || null;
-  }
-  return null;
+  return await loadLatestPrompt(userId);
 };

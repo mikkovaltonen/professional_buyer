@@ -1,176 +1,219 @@
-# AI Kysynnänennusteavustaja
+# Procurement AI Agent Evaluator
 
-AI-pohjainen työkalu kysynnän ennustamiseen ja varastonhallinnan optimointiin.
+A modern React application for evaluating AI capabilities in procurement processes through document analysis and intelligent data extraction.
 
-## Kuvaus
-AI Kysynnänennusteavustaja on moderni web-sovellus, joka auttaa yrityksiä ennustamaan tuotteiden kysyntää erityisesti tilanteissa, joissa tilastollista dataa on vähän. Sovellus hyödyntää edistynyttä tekoälyä ja koneoppimista tarjotakseen tarkkoja ennusteita ja parantaakseen varastonhallintaa.
+## Features
 
-## Ominaisuudet
+- **Document Intelligence**: Upload and analyze PDF, Excel, CSV, and Word documents
+- **AI-Powered Analysis**: Leverage Google Gemini AI for procurement document insights
+- **Structured Data Extraction**: Extract suppliers, pricing, and contract information in structured formats
+- **Interactive Chat Interface**: Natural language conversation with AI about uploaded documents
+- **Quick Action Buttons**: Pre-built prompts for common procurement analyses
+- **Export Capabilities**: Download extracted data as CSV files
+- **Responsive UI**: Modern interface built with Tailwind CSS and shadcn/ui components
 
-- 📊 Kysynnän analysointi ja visualisointi
-- 📝 Päätösongelmien dokumentointi ja oppiminen
-- 🔍 Automaattinen markkinasignaalien seuranta
-- 💾 Ennustekorjausten tallennus ja hallinta
-- 🔄 Integroitavissa olemassa oleviin järjestelmiin
-- 🔐 Turvallinen käyttäjienhallinta
-- 📈 Automaattinen kuvaajan päivitys korjausten tallennuksen jälkeen
-- 🌐 Täysin suomenkielinen käyttöliittymä
+## Use Cases
 
-## Teknologiat
-- React + TypeScript
-- Vite
-- Tailwind CSS
-- Shadcn/ui
-- Gemini API
-- Vercel (deployment)
+Perfect for evaluating AI capabilities in:
+- **Supplier Analysis**: Extract and analyze supplier information from catalogs and documents
+- **Contract Review**: Identify key terms, risks, and opportunities in procurement contracts
+- **Pricing Intelligence**: Analyze pricing trends and identify cost-saving opportunities
+- **Document Processing**: Demonstrate AI's ability to structure unorganized procurement data
+- **Procurement Workflow Optimization**: Assess how AI can streamline procurement processes
 
-### Gemini API 
-Kysyntä ennusteen tulkitsemisessa käytetään Gemini 2.5 Pro -mallia, joka tukee sekä kuvien analysointia että nettihakua kysynnän ennustamiseen.
+## Technologies
 
-## Toiminnalliset speksit
+- **Frontend**: React 18, TypeScript, Vite
+- **UI**: Tailwind CSS, shadcn/ui components
+- **AI Integration**: Google Gemini API
+- **File Processing**: Support for PDF, Excel, CSV, Word documents
+- **State Management**: React Hooks
+- **Authentication**: Simple evaluation credentials
 
-### 1. Käyttöliittymä
-- Yksinkertainen ja selkeä käyttöliittymä
-- Kovakoodattu käyttäjätunnistus
-- Työpöytä (Workbench) näkymä ennusteiden käsittelyyn
-- Responsiivinen suunnittelu
+## Installation
 
-### 2. Ennustekorjausten hallinta
-- Tallenna ennustekorjaukset JSON-muodossa
-- Validointi korjausdatan oikeellisuudelle
-- Automaattinen tuoteryhmän liittäminen korjauksiin
-- Selkeät virheilmoitukset virheellisestä datasta
-- Korjausten tallennus paikalliseen tiedostoon
-- Tuki useille korjauksille samassa tallennuksessa
-- Automaattinen kuvaajan päivitys tallennuksen jälkeen
-- Korjausten selitykset näkyvät kuvaajan tooltipissä
-
-### 3. Datan visualisointi
-- Interaktiivinen aikasarjakuvaaja
-- Toteutunut kysyntä (sininen viiva)
-- Vanha ennuste (vihreä katkoviiva)
-- Tilastollinen ennuste (oranssi katkoviiva)
-- Korjattu ennuste (punainen viiva)
-- Ennustevirhe (punainen katkoviiva)
-
-## Käyttöönotto
-
-### Vaatimukset
-- Node.js
-- npm/yarn/pnpm
-- Gemini API -avain
-
-### Asennus
-1. Kloonaa repositorio
+1. **Clone the repository**
 ```bash
-git clone https://github.com/your-org/ai-kysyntaennuste.git
+git clone <repository-url>
+cd procurement-ai-evaluator
 ```
 
-2. Asenna riippuvuudet
+2. **Install dependencies**
 ```bash
 npm install
 ```
 
-3. Luo .env-tiedosto ja lisää tarvittavat ympäristömuuttujat
-```env
-VITE_GEMINI_API_KEY=xxx
-VITE_API_BEARER_TOKEN=
-# Path to your Google service account JSON key (optional)
-GOOGLE_APPLICATION_CREDENTIALS=/path/to/key.json
-```
+3. **Configure environment variables**
 
-4. Käynnistä kehityspalvelin
+Create a `.env` file in the project root and define the following variables:
+
+```env
+VITE_GEMINI_API_KEY=your_gemini_api_key_here
+VITE_GEMINI_MODEL=gemini-2.5-flash-preview-04-17
+
+# Firebase Configuration (required for system prompt versioning)
+VITE_FIREBASE_API_KEY=your_firebase_api_key
+VITE_FIREBASE_AUTH_DOMAIN=your_firebase_auth_domain
+VITE_FIREBASE_PROJECT_ID=your_firebase_project_id
+VITE_FIREBASE_STORAGE_BUCKET=your_firebase_storage_bucket
+VITE_FIREBASE_MESSAGING_SENDER_ID=your_firebase_messaging_sender_id
+VITE_FIREBASE_APP_ID=your_firebase_app_id
+VITE_FIREBASE_MEASUREMENT_ID=your_firebase_measurement_id
+`
+
+
+**Note**: Firebase configuration is required for the system prompt versioning feature, which is a core evaluation capability.
+
+4. **Start the development server**
 ```bash
 npm run dev
 ```
 
-### Tuotantoon vieminen
-Sovellus on konfiguroitu käyttämään Vercel-palvelua tuotantoon viemiseen:
+The application will start at `http://localhost:5173`
 
-1. Linkitä projekti Verceliin:
+## Usage
+
+### Login Credentials
+- Username: `evaluator`
+- Password: `go_nogo_decision`
+
+### Core Functionality
+
+1. **Document Upload**: 
+   - Drag and drop or select files (PDF, Excel, CSV, Word)
+   - Supported formats: `.pdf`, `.xlsx`, `.xls`, `.csv`, `.doc`, `.docx`
+
+2. **AI Analysis Session**:
+   - Start an analysis session with uploaded documents
+   - AI provides initial overview and insights
+
+3. **Structured Data Extraction**:
+   - **Extract Suppliers**: Get structured supplier information
+   - **Extract Pricing**: Analyze pricing data and trends
+   - **Extract Contracts**: Identify contract terms and conditions
+
+4. **Interactive Analysis**:
+   - Ask natural language questions about your documents
+   - Get AI-powered insights and recommendations
+   - Export extracted data as CSV files
+
+5. **System Prompt Versioning**:
+   - Create and manage different versions of AI system prompts
+   - Evaluate and compare different prompt strategies
+   - Browse version history and track improvements
+   - Add evaluation notes for each prompt version
+
+### Quick Actions
+
+The application provides pre-built analysis prompts for:
+- Supplier capability assessment
+- Pricing optimization opportunities
+- Contract risk analysis
+- Process improvement recommendations
+
+## Project Structure
+
+```
+src/
+├── components/          # React components
+│   ├── ui/             # Base UI components (shadcn/ui)
+│   ├── DocumentAnalysis.tsx  # Document upload and management
+│   ├── ProcurementChat.tsx   # AI chat interface
+│   └── LoginForm.tsx
+├── hooks/              # Custom React hooks
+│   └── useAuth.ts
+├── lib/                # Utilities and services
+│   ├── firestoreService.ts
+│   └── utils.ts
+├── pages/              # Page components
+│   ├── Index.tsx       # Landing page
+│   └── Workbench.tsx   # Main application
+└── types/              # TypeScript type definitions
+```
+
+## Development
+
+### Scripts
+
 ```bash
-vercel link
+# Development server
+npm run dev
+
+# Production build
+npm run build
+
+# Preview production build
+npm run preview
+
+# Type checking
+npx tsc --noEmit
+
+# Linting
+npm run lint
 ```
 
-2. Vie sovellus tuotantoon:
+### Getting Google Gemini API Key
+
+1. Visit [Google AI Studio](https://makersuite.google.com/app/apikey)
+2. Create a new API key
+3. Add it to your `.env` file as `VITE_GEMINI_API_KEY`
+
+### Adding New Features
+
+1. Create new components in `src/components/`
+2. Add TypeScript types in `src/types/`
+3. Test functionality locally
+4. Ensure TypeScript checks pass
+
+## Evaluation Scenarios
+
+This tool is perfect for demonstrating:
+
+1. **Document Processing**: Upload real procurement documents to see AI extraction capabilities
+2. **Data Structuring**: Transform unorganized data into structured formats
+3. **Natural Language Querying**: Ask complex questions about procurement data
+4. **Export Integration**: Show how AI-extracted data can integrate with existing systems
+5. **Process Automation**: Demonstrate potential for procurement workflow automation
+
+## System Requirements
+
+- Node.js 18+
+- npm 8+
+- Modern browser (Chrome, Firefox, Safari, Edge)
+- Google Gemini API key
+
+## Security
+
+- No hardcoded secrets or API keys in the codebase
+- Environment variables used for all sensitive configuration
+- Demo credentials are intentionally public for evaluation purposes
+- All API keys loaded from runtime environment
+
+## License
+
+MIT
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Ensure tests pass and code is properly formatted
+5. Submit a pull request
+
+## Deployment
+
+The application is configured for easy deployment to Vercel or similar platforms:
+
+1. Connect your repository to your deployment platform
+2. Set the required environment variables
+3. Deploy directly from your main branch
+
+For Vercel deployment:
 ```bash
-vercel --prod --force
+vercel --prod
 ```
 
-## Projektin rakenne
-```
-ai-kysyntaennuste/
-├── public/              # Staattiset tiedostot
-├── src/                # Lähdekoodi
-│   ├── api/           # API-integraatiot
-│   ├── components/    # React-komponentit
-│   │   └── ui/       # UI-komponenttikirjasto
-│   ├── hooks/        # React-hookit
-│   ├── lib/          # Apukirjastot ja työkalut
-│   ├── pages/        # Sivukomponentit
-│   └── types/        # TypeScript-tyypit
-├── docs/            # Dokumentaatio
-└── config/          # Konfiguraatiotiedostot
-```
+## Support
 
-## Turvallisuus
-- Käyttäjienhallinta toteutettu turvallisesti
-- API-avaimet suojattu ympäristömuuttujilla
-- Virheenkäsittely toteutettu kaikille kriittisille toiminnoille
-- Syötteiden validointi ja sanitointi
-
-## Lisenssi
-Kaikki tekijänoikeudet kuuluvat SCM Best Oy:lle
-
-## Yhteystiedot
-Lisätietoja ja tukea saat osoitteesta [https://wisestein.fi/yhteystiedot](https://wisestein.fi/yhteystiedot)
-
-## Documentation
-
-- See [docs/data-normalization.md](docs/data-normalization.md) for details on the data normalization layer and field mapping.
-
-## Datarakenne
-
-Sovellus käsittelee seuraavia datakenttiä:
-- `Quantity`: Toteutunut kysyntä
-- `old_forecast`: Vanha ennuste
-- `new_forecast`: Uusi tilastollinen ennuste
-- `new_forecast_manually_adjusted`: Manuaalisesti korjattu ennuste
-- `old_forecast_error`: Ennustevirhe
-- `correction_percent`: Korjausprosentti
-- `explanation`: Korjauksen selitys
-- `correction_timestamp`: Korjauksen aikaleima
-
-## Visualisointi
-
-Sovellus näyttää kaksi erillistä graafia:
-
-### 1. Kysynnän historia ja ennusteet
-- Näyttää kaikki kuukaudet, joissa on dataa valitulle tuotteelle/tuoteryhmälle/tuoteluokalle
-- Sisältää seuraavat datapisteet:
-  - Toteutunut kysyntä (sininen)
-  - Vanha ennuste (punainen)
-  - Tilastollinen ennuste (vihreä)
-  - Korjattu ennuste (oranssi)
-  - Ennustevirhe (harmaa)
-- Null-arvoja ei näytetä graafissa
-- Korjattu ennuste näytetään vain jos kaikilla tuoteryhmillä on arvo
-
-### 2. Ennustevirhe-analyysi
-- Näyttää viimeisimmät 36 kuukautta
-- Sisältää kaksi metriikkaa:
-  - Keskiarvoinen absoluuttinen virhe (MAE)
-  - Prosenttiosuus tuotteista, joiden virhe on alle 20%
-- Suodattaa pois rivit, joissa sekä toteutunut kysyntä että ennuste ovat null/undefined/0
-- Virheiden laskenta tehdään vain kun molemmat arvot ovat olemassa
-- Auttaa arvioimaan ennusteen tarkkuutta viime aikoina
-
-## Tietokanta ja API
-
-Sovellus on siirtynyt Google Firestoresta MariaDB:hen. Tämä siirtymä tuo mukanaan:
-- Parempi datan suorituskyky
-- Kestävämpi tietojen tallennus
-- Skaalautuvampi ratkaisu
-- Kustannustehokkaampi toteutus
-
-Tekniset tiedot MariaDB API:sta löytyvät tiedostosta `docs/maria_db_api-specifications.md`.
+For questions about the procurement AI evaluation capabilities or technical implementation, please create an issue in the repository.

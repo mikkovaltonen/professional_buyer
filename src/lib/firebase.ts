@@ -17,6 +17,10 @@ console.log('Firebase config:', {
   apiKey: firebaseConfig.apiKey ? '[SET]' : '[MISSING]'
 });
 
+if (!firebaseConfig.projectId) {
+  throw new Error('Firebase projectId is missing. Check VITE_FIREBASE_PROJECT_ID environment variable.');
+}
+
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);

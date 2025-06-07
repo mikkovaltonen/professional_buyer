@@ -202,7 +202,7 @@ Be helpful, professional, and focus on practical procurement solutions.`;
   return (
     <div className="flex flex-col h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white p-8 text-center relative">
+      <div className="bg-black text-white p-8 text-center relative">
         <div className="absolute top-4 right-4 flex gap-2">
           <Button
             variant="ghost"
@@ -227,7 +227,7 @@ Be helpful, professional, and focus on practical procurement solutions.`;
           <Bot className="h-8 w-8 mr-3" />
           <h1 className="text-3xl font-bold">Professional Buyer AI Assistant</h1>
         </div>
-        <p className="text-indigo-100 text-lg max-w-4xl mx-auto">
+        <p className="text-gray-300 text-lg max-w-4xl mx-auto">
           Get expert procurement advice, use prenegotiated prices from best suppliers, and do professional level procurement with ease
         </p>
       </div>
@@ -246,7 +246,7 @@ Be helpful, professional, and focus on practical procurement solutions.`;
           <Button 
             variant="outline" 
             onClick={handleAttachDocuments}
-            className="text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+            className="text-gray-700 border-gray-300 hover:bg-gray-100"
           >
             <Paperclip className="mr-2 h-4 w-4" />
             Upload Documents
@@ -261,7 +261,7 @@ Be helpful, professional, and focus on practical procurement solutions.`;
             <Button
               key={index}
               variant="outline"
-              className="rounded-full px-6 py-2 text-sm bg-white border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+              className="rounded-full px-6 py-2 text-sm bg-white border-gray-300 text-gray-700 hover:bg-gray-100"
               onClick={() => handleQuickAction(action)}
             >
               {action}
@@ -280,14 +280,14 @@ Be helpful, professional, and focus on practical procurement solutions.`;
             >
               <div className="flex items-start space-x-3 max-w-3xl">
                 {message.role === 'model' && (
-                  <div className="flex-shrink-0 w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
-                    <Bot className="h-5 w-5 text-indigo-600" />
+                  <div className="flex-shrink-0 w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+                    <Bot className="h-5 w-5 text-gray-700" />
                   </div>
                 )}
                 <div
                   className={`px-6 py-4 rounded-2xl ${
                     message.role === 'user'
-                      ? 'bg-indigo-600 text-white ml-auto'
+                      ? 'bg-black text-white ml-auto'
                       : 'bg-white shadow-sm border'
                   }`}
                 >
@@ -315,11 +315,11 @@ Be helpful, professional, and focus on practical procurement solutions.`;
           {isLoading && (
             <div className="flex justify-start">
               <div className="flex items-start space-x-3">
-                <div className="flex-shrink-0 w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
-                  <Bot className="h-5 w-5 text-indigo-600" />
+                <div className="flex-shrink-0 w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+                  <Bot className="h-5 w-5 text-gray-700" />
                 </div>
                 <div className="bg-white shadow-sm border rounded-2xl px-6 py-4 flex items-center space-x-2">
-                  <Loader2 className="h-4 w-4 animate-spin text-indigo-600" />
+                  <Loader2 className="h-4 w-4 animate-spin text-gray-700" />
                   <span className="text-sm text-gray-600">AI is thinking...</span>
                 </div>
               </div>
@@ -341,13 +341,13 @@ Be helpful, professional, and focus on practical procurement solutions.`;
                 onChange={(e) => setInput(e.target.value)}
                 onKeyPress={handleKeyPress}
                 disabled={isLoading}
-                className="w-full h-12 px-4 text-lg border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full h-12 px-4 text-lg border-gray-300 rounded-xl focus:ring-2 focus:ring-black focus:border-transparent"
               />
             </div>
             <Button
               onClick={() => handleSendMessage()}
               disabled={!input.trim() || isLoading}
-              className="h-12 px-6 bg-indigo-600 hover:bg-indigo-700 rounded-xl"
+              className="h-12 px-6 bg-black hover:bg-gray-800 text-white rounded-xl"
             >
               <Send className="h-5 w-5" />
             </Button>

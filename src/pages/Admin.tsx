@@ -32,9 +32,9 @@ const Admin = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+    <div className="min-h-screen bg-gray-100">
       {/* Header */}
-      <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white p-6">
+      <div className="bg-black text-white p-6">
         <div className="container mx-auto">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-6">
@@ -50,7 +50,7 @@ const Admin = () => {
                 <Bot className="h-8 w-8" />
                 <div>
                   <h1 className="text-2xl font-bold">Admin Panel</h1>
-                  <p className="text-indigo-100">System Configuration & Management</p>
+                  <p className="text-gray-300">System Configuration & Management</p>
                 </div>
               </div>
             </div>
@@ -70,13 +70,13 @@ const Admin = () => {
       <div className="container mx-auto px-4 py-8">
         {/* AI Prompt Management - Featured */}
         <div className="mb-8">
-          <Card className="border-indigo-200 shadow-xl hover:shadow-2xl transition-shadow">
-            <CardHeader className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-t-lg p-8">
+          <Card className="border-gray-300 shadow-lg hover:shadow-xl transition-shadow">
+            <CardHeader className="bg-gray-800 text-white rounded-t-lg p-8">
               <CardTitle className="flex items-center text-2xl">
                 <Settings className="mr-4 h-8 w-8" />
                 AI Prompt Management
               </CardTitle>
-              <p className="text-indigo-100 mt-2 text-lg">
+              <p className="text-gray-300 mt-2 text-lg">
                 Primary configuration tool for evaluating AI performance
               </p>
             </CardHeader>
@@ -87,7 +87,7 @@ const Admin = () => {
               <Dialog>
                 <DialogTrigger asChild>
                   <Button 
-                    className="w-full bg-indigo-600 hover:bg-indigo-700 py-4 text-lg"
+                    className="w-full bg-black hover:bg-gray-800 py-4 text-lg text-white"
                   >
                     <Settings className="mr-2 h-5 w-5" />
                     Open Prompt Manager
@@ -107,14 +107,29 @@ const Admin = () => {
           </Card>
         </div>
 
+        {/* Visual Overview Section */}
+        <div className="my-8 p-6 bg-white rounded-lg shadow-lg border border-gray-300">
+          <h2 className="text-2xl font-semibold text-gray-800 mb-4">Solution Visuals</h2>
+          <div className="grid md:grid-cols-2 gap-6 items-center">
+            <div>
+              <h3 className="text-xl font-medium text-gray-700 mb-2">Professional Buyer Tech Stack</h3>
+              <img src="/professiona_buyer_tech_stack.png" alt="Professional Buyer Tech Stack" className="rounded-lg shadow-md border border-gray-200 w-full h-auto" />
+            </div>
+            <div>
+              <h3 className="text-xl font-medium text-gray-700 mb-2">Solution Overview</h3>
+              <img src="/solution_overview.png" alt="Solution Overview" className="rounded-lg shadow-md border border-gray-200 w-full h-auto" />
+            </div>
+          </div>
+        </div>
+
         {/* Secondary Tools */}
         <div className="grid md:grid-cols-2 gap-6">
           
           {/* AI Prompt Management - Moved to featured section above */}
 
           {/* Internal Knowledge Upload */}
-          <Card className="border-purple-200 shadow-lg hover:shadow-xl transition-shadow">
-            <CardHeader className="bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-t-lg">
+          <Card className="border-gray-300 shadow-lg hover:shadow-xl transition-shadow">
+            <CardHeader className="bg-gray-700 text-white rounded-t-lg">
               <CardTitle className="flex items-center">
                 <FileText className="mr-3 h-6 w-6" />
                 Internal Knowledge
@@ -127,7 +142,7 @@ const Admin = () => {
               <Dialog open={showPdfUpload} onOpenChange={setShowPdfUpload}>
                 <DialogTrigger asChild>
                   <Button 
-                    className="w-full bg-purple-600 hover:bg-purple-700"
+                    className="w-full bg-gray-700 hover:bg-gray-600 text-white"
                   >
                     <FileText className="mr-2 h-4 w-4" />
                     Upload Documents
@@ -152,8 +167,8 @@ const Admin = () => {
           </Card>
 
           {/* ERP/P2P Integration Simulation */}
-          <Card className="border-green-200 shadow-lg hover:shadow-xl transition-shadow">
-            <CardHeader className="bg-gradient-to-r from-green-500 to-teal-600 text-white rounded-t-lg">
+          <Card className="border-gray-300 shadow-lg hover:shadow-xl transition-shadow">
+            <CardHeader className="bg-gray-700 text-white rounded-t-lg">
               <CardTitle className="flex items-center">
                 <Database className="mr-3 h-6 w-6" />
                 ERP/P2P Integration
@@ -166,7 +181,7 @@ const Admin = () => {
               <Dialog open={showExcelUpload} onOpenChange={setShowExcelUpload}>
                 <DialogTrigger asChild>
                   <Button 
-                    className="w-full bg-green-600 hover:bg-green-700"
+                    className="w-full bg-gray-700 hover:bg-gray-600 text-white"
                   >
                     <Database className="mr-2 h-4 w-4" />
                     Simulate Integration

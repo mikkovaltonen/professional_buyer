@@ -1,42 +1,6 @@
-import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, setDoc, getDoc, collection, query, orderBy, limit, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
-
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyB_kPjjBfqtcnj38p_okBygFYNV2cr4m-4',
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'airbnb-assistant-app.firebaseapp.com',
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'airbnb-assistant-app',
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'airbnb-assistant-app.firebasestorage.app',
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '929654225196',
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:929654225196:web:e173d2c32421298ee99489',
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || 'G-4WWWC5G727',
-};
-
-// Debug: Log environment variables and config
-console.log('Environment variables:', {
-  VITE_FIREBASE_API_KEY: import.meta.env.VITE_FIREBASE_API_KEY,
-  VITE_FIREBASE_PROJECT_ID: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  VITE_FIREBASE_AUTH_DOMAIN: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-});
-
-console.log('Firebase config:', {
-  ...firebaseConfig,
-  apiKey: firebaseConfig.apiKey ? `${firebaseConfig.apiKey.substring(0, 10)}...` : 'undefined'
-});
-
-let app;
-let db;
-
-try {
-  if (!firebaseConfig.projectId) {
-    throw new Error('Firebase project ID is missing');
-  }
-  app = initializeApp(firebaseConfig);
-  db = getFirestore(app);
-} catch (error) {
-  console.error('Firebase initialization failed:', error);
-  // Create a mock database for fallback
-  db = null;
-}
+import { doc, setDoc, getDoc, collection, query, orderBy, limit, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
+import { User } from 'firebase/auth';
+import { db, auth } from '@/lib/firebase';
 
 export interface SystemPromptVersion {
   id?: string;

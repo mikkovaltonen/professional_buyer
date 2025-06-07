@@ -1,79 +1,59 @@
 import { useState, useEffect } from 'react';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, User } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
 
-interface User {
+interface AuthUser {
   email: string;
+  uid: string;
   isAuthenticated: boolean;
 }
 
 export const useAuth = () => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Initialize auth state from localStorage
   useEffect(() => {
-    const initializeAuth = () => {
-      try {
-        const storedUser = localStorage.getItem('user');
-        
-        if (storedUser) {
-          const parsedUser = JSON.parse(storedUser);
-          if (parsedUser && typeof parsedUser === 'object' && 
-              'email' in parsedUser && 'isAuthenticated' in parsedUser) {
-            setUser(parsedUser);
-          } else {
-            localStorage.removeItem('user');
-            setUser(null);
-          }
-        } else {
-          setUser(null);
-        }
-      } catch (error) {
-        console.error('[useAuth] Error initializing auth state from localStorage:', error);
-        localStorage.removeItem('user');
-        setUser(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    initializeAuth();
-  }, []);
-
-  const login = async (email: string, password: string) => {
-    setLoading(true);
-    
-    try {
-      if (email === 'evaluator' && password === 'go_nogo_decision') {
-        const userData = {
-          email: 'evaluator',
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser: User | null) => {
+      if (firebaseUser) {
+        setUser({
+          email: firebaseUser.email || '',
+          uid: firebaseUser.uid,
           isAuthenticated: true
-        };
-        
-        // Store in localStorage first
-        localStorage.setItem('user', JSON.stringify(userData));
-        
-        // Then update state
-        setUser(userData);
-        return true;
+        });
+      } else {
+        setUser(null);
       }
-      
-      return false;
-    } catch (error) {
-      console.error('[useAuth] Error during login attempt:', error);
-      return false;
-    } finally {
       setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [auth]);
+
+  const login = async (email: string, password: string): Promise<boolean> => {
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      return true;
+    } catch (error) {
+      console.error('Login failed:', error);
+      return false;
     }
   };
 
-  const logout = () => {
+  const register = async (email: string, password: string): Promise<boolean> => {
     try {
-      // Clear localStorage first
-      localStorage.removeItem('user');
-      // Then update state
-      setUser(null);
+      await createUserWithEmailAndPassword(auth, email, password);
+      return true;
     } catch (error) {
-      console.error('[useAuth] Error during logout:', error);
+      console.error('Registration failed:', error);
+      return false;
+    }
+  };
+
+  const logout = async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error('Logout failed:', error);
     }
   };
 
@@ -81,7 +61,8 @@ export const useAuth = () => {
     user,
     loading,
     login,
+    register,
     logout,
     isAuthenticated: !!user?.isAuthenticated
   };
-}; 
+};

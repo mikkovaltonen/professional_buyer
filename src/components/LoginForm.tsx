@@ -13,7 +13,8 @@ const LoginForm = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, user, loading } = useAuth();
+  const { login, register, user, loading } = useAuth();
+  const [isRegistering, setIsRegistering] = useState(false);
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -37,17 +38,26 @@ const LoginForm = () => {
     setIsLoading(true);
 
     try {
-      const success = await login(email, password);
+      let success;
+      if (isRegistering) {
+        success = await register(email, password);
+        if (!success) {
+          setError('Registration failed. Email may already be in use.');
+        }
+      } else {
+        success = await login(email, password);
+        if (!success) {
+          setError('Invalid credentials');
+        }
+      }
       
       if (success) {
         const from = (location.state as { from?: string })?.from || '/workbench';
         navigate(from, { replace: true });
-      } else {
-        setError('Invalid credentials');
       }
     } catch (err) {
-      console.error('[LoginForm] Login error:', err);
-      setError('An error occurred during login');
+      console.error('[LoginForm] Auth error:', err);
+      setError('An error occurred during authentication');
     } finally {
       setIsLoading(false);
     }
@@ -67,11 +77,11 @@ const LoginForm = () => {
         <CardContent className="p-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-gray-700">Username</Label>
+              <Label htmlFor="email" className="text-gray-700">Email</Label>
               <Input
                 id="email"
-                type="text"
-                placeholder="evaluator"
+                type="email"
+                placeholder=""
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -83,7 +93,7 @@ const LoginForm = () => {
               <Input
                 id="password"
                 type="password"
-                placeholder="go_nogo_decision"
+                placeholder=""
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -100,8 +110,20 @@ const LoginForm = () => {
               className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white h-11 shadow-lg hover:shadow-xl transition-all"
               disabled={isLoading}
             >
-              Login
+              {isLoading ? 'Processing...' : (isRegistering ? 'Register' : 'Login')}
             </Button>
+            <div className="text-center">
+              <button 
+                type="button"
+                onClick={() => {
+                  setIsRegistering(!isRegistering);
+                  setError('');
+                }}
+                className="text-sm text-indigo-600 hover:text-indigo-800"
+              >
+                {isRegistering ? 'Already have an account? Login' : 'Need an account? Register'}
+              </button>
+            </div>
             <div className="text-center mt-4">
               <Link 
                 to="/" 

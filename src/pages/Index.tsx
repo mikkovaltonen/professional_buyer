@@ -5,16 +5,16 @@ import { Link } from "react-router-dom";
 
 const Index = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
-      <nav className="flex justify-between items-center p-6 bg-white/80 backdrop-blur-sm border-b border-indigo-100">
+    <div className="min-h-screen bg-white">
+      <nav className="flex justify-between items-center p-6 bg-white border-b border-gray-200">
         <Link to="/" className="flex flex-col">
-          <span className="text-3xl font-bold tracking-wider bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">PROCUREMENT AI</span>
-          <span className="text-indigo-600 text-sm font-medium">Agent Evaluator</span>
+          <span className="text-3xl font-bold tracking-wider text-black">PROCUREMENT AI</span>
+          <span className="text-gray-700 text-sm font-medium">Agent Evaluator</span>
         </Link>
         <div className="flex gap-4">
-          <Button 
-            variant="ghost" 
-            className="text-indigo-600 hover:bg-indigo-50"
+          <Button
+            variant="ghost"
+            className="text-gray-700 hover:bg-gray-100"
             asChild
           >
             <Link to="/login">Login</Link>
@@ -24,9 +24,9 @@ const Index = () => {
 
       <main className="container mx-auto px-4 py-16 text-center">
         <h1 className="text-5xl font-bold mb-6">
-          <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Procurement AI Agent</span>
+          <span className="text-black">Procurement AI Agent</span>
           <br />
-          <span className="text-indigo-600">Evaluator</span>
+          <span className="text-gray-800">Evaluator</span>
         </h1>
         <p className="text-xl mb-4 text-gray-700">
           Evaluate and test AI-powered procurement capabilities with real documents.
@@ -34,8 +34,8 @@ const Index = () => {
         <p className="text-xl mb-8 text-gray-600">
           Upload procurement policies and simulate ERP/P2P integration by loading sample data via excels and evaluate AI Agent performance with your own data
         </p>
-        <Button 
-          className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-8 py-6 rounded-lg text-lg shadow-lg hover:shadow-xl transition-all"
+        <Button
+          className="bg-black hover:bg-gray-800 text-white px-8 py-6 rounded-lg text-lg shadow-lg hover:shadow-xl transition-all"
           asChild
         >
           <Link to="/login">Start Evaluation</Link>
@@ -44,9 +44,9 @@ const Index = () => {
         <section className="mt-24">
           <h2 className="text-3xl font-bold mb-12 text-gray-800">Key Evaluation Benefits</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <Card className="p-6 border-indigo-200 shadow-lg hover:shadow-xl transition-shadow">
+            <Card className="p-6 border-gray-300 shadow-lg hover:shadow-xl transition-shadow">
               <CardContent className="space-y-4">
-                <div className="h-12 w-12 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
+                <div className="h-12 w-12 bg-gray-800 rounded-lg flex items-center justify-center">
                   <DollarSign className="h-6 w-6 text-white" />
                 </div>
                 <h3 className="text-xl font-semibold text-gray-800">Cost Savings Potential</h3>
@@ -56,9 +56,9 @@ const Index = () => {
               </CardContent>
             </Card>
 
-            <Card className="p-6 border-purple-200 shadow-lg hover:shadow-xl transition-shadow">
+            <Card className="p-6 border-gray-300 shadow-lg hover:shadow-xl transition-shadow">
               <CardContent className="space-y-4">
-                <div className="h-12 w-12 bg-gradient-to-r from-purple-500 to-pink-600 rounded-lg flex items-center justify-center">
+                <div className="h-12 w-12 bg-gray-800 rounded-lg flex items-center justify-center">
                   <Upload className="h-6 w-6 text-white" />
                 </div>
                 <h3 className="text-xl font-semibold text-gray-800">Document Intelligence</h3>
@@ -68,9 +68,9 @@ const Index = () => {
               </CardContent>
             </Card>
 
-            <Card className="p-6 border-green-200 shadow-lg hover:shadow-xl transition-shadow">
+            <Card className="p-6 border-gray-300 shadow-lg hover:shadow-xl transition-shadow">
               <CardContent className="space-y-4">
-                <div className="h-12 w-12 bg-gradient-to-r from-green-500 to-teal-600 rounded-lg flex items-center justify-center">
+                <div className="h-12 w-12 bg-gray-800 rounded-lg flex items-center justify-center">
                   <Brain className="h-6 w-6 text-white" />
                 </div>
                 <h3 className="text-xl font-semibold text-gray-800">Professional Buyer Intelligence</h3>
@@ -82,20 +82,36 @@ const Index = () => {
           </div>
         </section>
 
+        <section className="mt-24">
+          <h2 className="text-3xl font-bold mb-12 text-gray-800">Visual Insights</h2>
+          <div className="grid md:grid-cols-2 gap-8 items-start p-6 bg-gray-50 rounded-lg shadow-lg border border-gray-200">
+            <div>
+              <h3 className="text-2xl font-semibold text-gray-700 mb-3">Professional Buyer Tech Stack</h3>
+              <p className="text-gray-600 mb-4">An overview of the technology stack empowering professional buyers.</p>
+              <img src="/professiona_buyer_tech_stack.png" alt="Professional Buyer Tech Stack" className="rounded-lg shadow-md border border-gray-300 w-full h-auto" />
+            </div>
+            <div>
+              <h3 className="text-2xl font-semibold text-gray-700 mb-3">Core Solution Overview</h3>
+              <p className="text-gray-600 mb-4">A diagram illustrating the main components and flow of our solution.</p>
+              <img src="/solution_overview.png" alt="Solution Overview" className="rounded-lg shadow-md border border-gray-300 w-full h-auto" />
+            </div>
+          </div>
+        </section>
+
         <section className="mt-24 mb-16">
           <h2 className="text-3xl font-bold mb-6 text-gray-800">
-            Start Your <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Procurement AI Evaluation</span>
+            Start Your <span className="text-black">Procurement AI Evaluation</span>
           </h2>
           <div className="flex justify-center gap-4">
-            <Button 
-              className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-8 py-6 rounded-lg text-lg shadow-lg hover:shadow-xl transition-all"
+            <Button
+              className="bg-black hover:bg-gray-800 text-white px-8 py-6 rounded-lg text-lg shadow-lg hover:shadow-xl transition-all"
               asChild
             >
               <Link to="/login">Begin Evaluation</Link>
             </Button>
-            <Button 
-              variant="outline" 
-              className="px-8 py-6 rounded-lg text-lg border-indigo-200 text-indigo-600 hover:bg-indigo-50"
+            <Button
+              variant="outline"
+              className="px-8 py-6 rounded-lg text-lg border-gray-700 text-gray-700 hover:bg-gray-100"
               onClick={() => window.open('https://github.com/mikkovaltonen/professional_buyer', '_blank', 'noopener,noreferrer')}
             >
               View Full Solution →

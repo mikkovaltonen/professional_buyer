@@ -113,21 +113,47 @@ const ProfessionalBuyerChat: React.FC<ProfessionalBuyerChatProps> = ({ onLogout 
           const session = await sessionService.initializeChatSession(user.uid);
           setChatSession(session);
           
-          // Create welcome message with context info
-          const documentsInfo = session.documentsUsed.length > 0 
-            ? `\n\n📚 **Knowledge Base Loaded:** ${session.documentsUsed.length} document(s) available for reference.`
-            : '\n\n💡 **Tip:** Upload knowledge documents in Admin panel to provide me with your company-specific information.';
-            
+          // Check if this is a new user (no documents loaded)
+          const isLikelyNewUser = session.documentsUsed.length === 0;
+          
           const welcomeMessage: Message = {
             role: 'model',
             parts: [{
-              text: `Hello! I'm your Professional Buyer AI Assistant. I'm here to help you optimize your procurement processes, negotiate better deals, and achieve significant cost savings.${documentsInfo}\n\nWhat can I help you with today?`
+              text: isLikelyNewUser 
+                ? `🎉 **Welcome to Professional Buyer AI Assistant!**
+
+I'm here to transform how you handle procurement and purchasing. As your AI-powered procurement expert, I can help you:
+
+**🎯 Get Started (recommended):**
+• **Load Sample Data**: Go to Admin panel → Load sample knowledge documents and ERP data to try me out
+• **Upload Your Files**: Add your own procurement policies and Excel purchase data  
+• **Ask Questions**: "What suppliers do we use?" or "Find me laptop purchases from last quarter"
+
+**💡 My Special Capabilities:**
+✅ Real-time access to your ERP/purchase data through advanced function calling
+✅ Analysis of your internal procurement documents and policies  
+✅ Professional buyer expertise for cost optimization and supplier management
+
+**Ready to explore?** Try asking me "Load some sample data so I can see what you can do" or visit the Admin panel to upload your own files!
+
+What would you like to start with?`
+                : `Hello! I'm your Professional Buyer AI Assistant. I'm here to help you optimize your procurement processes, negotiate better deals, and achieve significant cost savings.
+
+📚 **Knowledge Base Loaded:** ${session.documentsUsed.length} document(s) available for reference.
+
+What can I help you with today?`
             }]
           };
           setMessages([welcomeMessage]);
           setSessionActive(true);
           
-          toast.success(`Session initialized with ${session.documentsUsed.length} knowledge document(s)`);
+          if (isLikelyNewUser) {
+            toast.success("🎉 Welcome! Your AI assistant is ready. Visit the Admin panel to load sample data and explore capabilities.", {
+              duration: 6000
+            });
+          } else {
+            toast.success(`Session initialized with ${session.documentsUsed.length} knowledge document(s)`);
+          }
         } catch (error) {
           console.error('Failed to initialize session:', error);
           toast.error('Failed to load knowledge base. Using default settings.');
@@ -179,10 +205,10 @@ const ProfessionalBuyerChat: React.FC<ProfessionalBuyerChatProps> = ({ onLogout 
         // Use the full context from initialized session (system prompt + knowledge documents)
         systemPrompt = chatSession.fullContext;
       } else {
-        // Fallback: try to load latest prompt
-        if (user?.email) {
+        // Fallback: try to load latest prompt for this user
+        if (user?.uid) {
           try {
-            const latestPrompt = await loadLatestPrompt(user.email);
+            const latestPrompt = await loadLatestPrompt(user.uid);
             if (latestPrompt) {
               systemPrompt = latestPrompt;
             }
@@ -400,6 +426,17 @@ Be helpful, professional, and focus on practical procurement solutions.`;
     <div className="flex flex-col h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-black text-white p-8 text-center relative">
+        {/* User info top left */}
+        {user && (
+          <div className="absolute top-4 left-4 text-sm text-gray-300">
+            <span className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+              Logged in as: <span className="text-white font-medium">{user.email}</span>
+            </span>
+          </div>
+        )}
+        
+        {/* Action buttons top right */}
         <div className="absolute top-4 right-4 flex gap-2">
           <Button
             variant="ghost"

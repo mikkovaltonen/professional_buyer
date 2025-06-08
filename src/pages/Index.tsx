@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DollarSign, FileText, Brain, Upload } from "lucide-react";
 import { Link } from "react-router-dom";
+import { RegisterButton } from "@/components/RegisterButton";
 
 const Index = () => {
   return (
@@ -19,6 +20,7 @@ const Index = () => {
           >
             <Link to="/login">Login</Link>
           </Button>
+          <RegisterButton />
         </div>
       </nav>
 
@@ -34,12 +36,16 @@ const Index = () => {
         <p className="text-lg mb-12 text-blue-600 font-light max-w-2xl mx-auto">
           Upload procurement policies and simulate ERP/P2P integration by loading sample data via excels and evaluate AI Agent performance with your own data
         </p>
-        <Button
-          className="bg-blue-600 hover:bg-blue-700 text-white px-10 py-4 rounded-full text-lg font-light shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
-          asChild
-        >
-          <Link to="/login">Start Evaluation</Link>
-        </Button>
+        <div className="flex justify-center gap-6 flex-wrap">
+          <RegisterButton />
+          <Button
+            variant="outline"
+            className="px-10 py-4 rounded-full text-lg border-blue-600 text-blue-600 hover:bg-blue-50 font-light shadow-lg transition-all duration-300"
+            asChild
+          >
+            <Link to="/login">Login</Link>
+          </Button>
+        </div>
 
         <section className="mt-32">
           <h2 className="text-4xl font-light mb-16 text-blue-900">The Procurement Challenge</h2>
@@ -109,12 +115,14 @@ const Index = () => {
           <h2 className="text-4xl font-light mb-10 text-blue-900 text-center">
             Start Your <span className="text-blue-600">Procurement AI Evaluation</span>
           </h2>
-          <div className="flex justify-center gap-6">
+          <div className="flex justify-center gap-6 flex-wrap">
+            <RegisterButton />
             <Button
-              className="bg-blue-600 hover:bg-blue-700 text-white px-10 py-4 rounded-full text-lg font-light shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+              variant="outline"
+              className="px-10 py-4 rounded-full text-lg border-blue-600 text-blue-600 hover:bg-blue-50 font-light shadow-lg transition-all duration-300"
               asChild
             >
-              <Link to="/login">Begin Evaluation</Link>
+              <Link to="/login">Already have an account? Login</Link>
             </Button>
             <Button
               variant="outline"

@@ -1,4 +1,4 @@
-import { doc, setDoc, getDoc, collection, query, orderBy, limit, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, collection, query, where, orderBy, limit, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 import { User } from 'firebase/auth';
 import { db, auth } from '@/lib/firebase';
 
@@ -111,8 +111,7 @@ const getNextVersionNumber = async (userId: string): Promise<number> => {
 
   const q = query(
     collection(db, 'systemPromptVersions'),
-    orderBy('version', 'desc'),
-    limit(1)
+    where('userId', '==', userId)
   );
   
   const querySnapshot = await getDocs(q);
@@ -121,14 +120,17 @@ const getNextVersionNumber = async (userId: string): Promise<number> => {
     return 1;
   }
   
-  const latestDoc = querySnapshot.docs[0];
-  const latestVersion = latestDoc.data().version || 0;
+  // Find highest version on client side
+  const docs = querySnapshot.docs.map(doc => doc.data().version || 0);
+  const latestVersion = Math.max(...docs);
   return latestVersion + 1;
 };
 
 // Load the latest version of system prompt for a user
 export const loadLatestPrompt = async (userId: string): Promise<string | null> => {
   try {
+    console.log('🔍 Loading latest prompt for user:', userId.substring(0, 8) + '...');
+    
     if (!db) {
       console.warn('Firebase not initialized, using localStorage fallback');
       const versions = getFromLocalStorage(userId);
@@ -139,18 +141,35 @@ export const loadLatestPrompt = async (userId: string): Promise<string | null> =
 
     const q = query(
       collection(db, 'systemPromptVersions'),
-      orderBy('version', 'desc'),
-      limit(1)
+      where('userId', '==', userId)
     );
     
     const querySnapshot = await getDocs(q);
     
     if (querySnapshot.empty) {
+      console.log('📝 No user-specific prompts found for user:', userId.substring(0, 8) + '...');
       return null;
     }
     
-    const latestDoc = querySnapshot.docs[0];
-    return latestDoc.data().systemPrompt || null;
+    // Sort by version on client side to avoid index requirement
+    const docs = querySnapshot.docs.map(doc => ({
+      ...doc.data(),
+      version: doc.data().version || 0
+    }));
+    
+    const latestDoc = docs.reduce((latest, current) => 
+      current.version > latest.version ? current : latest
+    );
+    
+    const latestPrompt = latestDoc.systemPrompt || null;
+    
+    console.log('✅ Latest prompt loaded for user:', {
+      userId: userId.substring(0, 8) + '...',
+      version: latestDoc.version,
+      promptLength: latestPrompt?.length || 0
+    });
+    
+    return latestPrompt;
   } catch (error) {
     console.warn('Firebase load failed, falling back to localStorage:', error);
     const versions = getFromLocalStorage(userId);
@@ -163,6 +182,8 @@ export const loadLatestPrompt = async (userId: string): Promise<string | null> =
 // Get all versions for a user (for history browsing)
 export const getPromptHistory = async (userId: string): Promise<SystemPromptVersion[]> => {
   try {
+    console.log('📚 Loading prompt history for user:', userId.substring(0, 8) + '...');
+    
     if (!db) {
       console.warn('Firebase not initialized, using localStorage fallback');
       return getFromLocalStorage(userId).sort((a, b) => b.version - a.version);
@@ -170,16 +191,27 @@ export const getPromptHistory = async (userId: string): Promise<SystemPromptVers
 
     const q = query(
       collection(db, 'systemPromptVersions'),
-      orderBy('version', 'desc')
+      where('userId', '==', userId)
     );
     
     const querySnapshot = await getDocs(q);
     
-    return querySnapshot.docs.map(doc => ({
+    const history = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
       savedDate: doc.data().savedDate?.toDate() || new Date()
     })) as SystemPromptVersion[];
+    
+    // Sort by version on client side to avoid index requirement
+    const sortedHistory = history.sort((a, b) => b.version - a.version);
+    
+    console.log('✅ Prompt history loaded for user:', {
+      userId: userId.substring(0, 8) + '...',
+      versionCount: sortedHistory.length,
+      latestVersion: sortedHistory[0]?.version || 'none'
+    });
+    
+    return sortedHistory;
   } catch (error) {
     console.warn('Firebase history load failed, falling back to localStorage:', error);
     return getFromLocalStorage(userId).sort((a, b) => b.version - a.version);

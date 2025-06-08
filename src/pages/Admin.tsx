@@ -58,14 +58,25 @@ const Admin = () => {
                 </div>
               </div>
             </div>
-            <Button
-              variant="ghost"
-              onClick={handleLogout}
-              className="text-white hover:bg-white/20"
-            >
-              <LogOut className="mr-2 h-4 w-4" />
-              Logout
-            </Button>
+            <div className="flex items-center gap-4">
+              {/* User info */}
+              {user && (
+                <div className="text-sm text-gray-300">
+                  <span className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                    <span className="text-white font-medium">{user.email}</span>
+                  </span>
+                </div>
+              )}
+              <Button
+                variant="ghost"
+                onClick={handleLogout}
+                className="text-white hover:bg-white/20"
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Logout
+              </Button>
+            </div>
           </div>
         </div>
       </div>

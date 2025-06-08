@@ -6,6 +6,7 @@ import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Upload, FileSpreadsheet, AlertCircle, Database } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
+import { toast } from 'sonner';
 
 interface ERPUploadProps {
   onUploadComplete?: (document: ERPDocument) => void;
@@ -65,6 +66,55 @@ export const ERPUpload: React.FC<ERPUploadProps> = ({
     disabled: uploading || !user
   });
 
+  const loadSampleERPData = async () => {
+    if (!user) {
+      toast.error('Please log in to load sample data');
+      return;
+    }
+    
+    try {
+      setUploading(true);
+      setError(null);
+      
+      // Fetch the sample Excel file from public directory
+      const response = await fetch('/example_purchase_orders.xlsx');
+      if (!response.ok) {
+        throw new Error(`Failed to fetch sample data: ${response.status}`);
+      }
+      
+      const arrayBuffer = await response.arrayBuffer();
+      
+      // Create a File-like object from the fetched data
+      const fileName = 'Sample Purchase Orders.xlsx';
+      
+      const fileObject = {
+        name: fileName,
+        size: arrayBuffer.byteLength,
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        lastModified: Date.now(),
+        arrayBuffer: async () => arrayBuffer,
+        // Required for File interface compatibility
+        webkitRelativePath: '',
+        text: async () => '', // Not used for Excel files
+        stream: () => new Blob([arrayBuffer]).stream(),
+        slice: (start?: number, end?: number) => new Blob([arrayBuffer]).slice(start, end)
+      } as File;
+      
+      // Upload using the existing upload function
+      const uploadedDoc = await storageService.uploadERPDocument(fileObject, user.uid);
+      onUploadComplete?.(uploadedDoc);
+      toast.success('Sample ERP data loaded successfully!');
+      console.log('✅ Successfully loaded sample ERP data');
+      
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load sample ERP data';
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
     <Card className="w-full max-w-2xl">
       <CardHeader>
@@ -118,24 +168,25 @@ export const ERPUpload: React.FC<ERPUploadProps> = ({
         <div className="mt-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
           <h4 className="font-medium text-orange-800 mb-2">⚠️ Important: Data Structure Requirements</h4>
           <p className="text-sm text-orange-700 mb-3">
-            Your Excel data must follow <strong>exactly the same structure</strong> as our example template for proper AI analysis:
+            Your Excel data must follow <strong>exactly the same structure</strong> as our sample data for proper AI analysis. Click below to load sample data directly to your workspace:
           </p>
           <div className="mb-3">
-            <a 
-              href="/example_purchase_orders.xlsx" 
-              download
-              className="inline-flex items-center px-3 py-2 bg-orange-100 hover:bg-orange-200 border border-orange-300 rounded text-sm font-medium text-orange-800 transition-colors"
+            <Button
+              onClick={loadSampleERPData}
+              disabled={uploading}
+              className="bg-green-600 hover:bg-green-700 text-white"
+              size="sm"
             >
-              📥 Download Example Template (Excel)
-            </a>
+              📊 Load Sample Transaction Data
+            </Button>
           </div>
           <div className="text-sm text-orange-700">
             <p className="mb-2"><strong>🤖 Need help converting your data?</strong></p>
             <p className="text-xs bg-white p-2 rounded border border-orange-300 font-mono">
-              "Convert my Excel data to match this structure: [paste example template structure]. 
+              "Convert my Excel data to match the structure shown in the loaded sample data. 
               Keep the same column names and data formats."
             </p>
-            <p className="text-xs mt-1">Copy your data and this prompt to ChatGPT for automatic conversion.</p>
+            <p className="text-xs mt-1">Load sample data first, then copy your data and this prompt to ChatGPT for automatic conversion.</p>
           </div>
         </div>
 

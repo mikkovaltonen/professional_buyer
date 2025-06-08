@@ -22,7 +22,6 @@ export const ERPManager: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [previewDoc, setPreviewDoc] = useState<ERPDocument | null>(null);
-  const [showUpload, setShowUpload] = useState(false);
   const { user } = useAuth();
 
   const loadDocuments = async () => {
@@ -43,14 +42,9 @@ export const ERPManager: React.FC = () => {
     loadDocuments();
   }, [user]);
 
-  useEffect(() => {
-    // Show upload if no documents exist
-    setShowUpload(documents.length === 0);
-  }, [documents]);
 
   const handleUploadComplete = (newDoc: ERPDocument) => {
     setDocuments([newDoc]); // Replace existing document
-    setShowUpload(false);
   };
 
   const handleDelete = async (doc: ERPDocument) => {
@@ -59,17 +53,19 @@ export const ERPManager: React.FC = () => {
     try {
       await storageService.deleteERPDocument(doc.id, doc.storageUrl);
       setDocuments([]);
-      setShowUpload(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete document');
     }
   };
 
   const handleReplaceData = () => {
-    if (documents.length > 0 && !confirm('Replace current ERP data? This will delete your existing data and upload a new file.')) {
+    if (documents.length > 0 && !confirm('Replace current ERP data? This will delete your existing data. After confirming, use the drag & drop area above to upload a new file.')) {
       return;
     }
-    setShowUpload(true);
+    // Just delete current data, user can then drag & drop new file
+    if (documents[0]?.id) {
+      handleDelete(documents[0]);
+    }
   };
 
   const handleDownload = async (doc: ERPDocument) => {
@@ -154,7 +150,7 @@ export const ERPManager: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {showUpload && <ERPUpload onUploadComplete={handleUploadComplete} />}
+      <ERPUpload onUploadComplete={handleUploadComplete} />
       
       <Card>
         <CardHeader>
@@ -179,11 +175,8 @@ export const ERPManager: React.FC = () => {
           ) : documents.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-gray-600 mb-4">
-                No ERP data uploaded yet. Upload your structured Excel file to simulate ERP integration.
+                No ERP data uploaded yet. Use the drag & drop area above to upload your structured Excel file.
               </p>
-              <Button onClick={handleReplaceData} className="bg-blue-600 hover:bg-blue-700 text-white">
-                Upload ERP Data
-              </Button>
             </div>
           ) : (
             <div className="space-y-4">

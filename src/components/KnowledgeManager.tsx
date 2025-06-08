@@ -8,6 +8,7 @@ import { Badge } from './ui/badge';
 import { Separator } from './ui/separator';
 import { File, Download, Trash2, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
+import { toast } from 'sonner';
 
 export const KnowledgeManager: React.FC = () => {
   const [documents, setDocuments] = useState<KnowledgeDocument[]>([]);
@@ -67,6 +68,76 @@ export const KnowledgeManager: React.FC = () => {
     }
   };
 
+  const loadSampleKnowledgeData = async () => {
+    if (!user) return;
+    
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // List of sample knowledge documents to load
+      const sampleFiles = [
+        { path: '/DMA_levels_markdown.md', name: 'DMA Authorization Levels' },
+        { path: '/DMA_matrix_combined.md', name: 'DMA Matrix Combined' },
+        { path: '/Operative purchasing process.md', name: 'Operative Purchasing Process' },
+        { path: '/S2P Policy.md', name: 'Source-to-Pay Policy' }
+      ];
+      
+      let successCount = 0;
+      
+      for (const sampleFile of sampleFiles) {
+        try {
+          // Fetch the file content
+          const response = await fetch(sampleFile.path);
+          if (!response.ok) {
+            console.warn(`Failed to fetch ${sampleFile.name}: ${response.status}`);
+            continue;
+          }
+          
+          const content = await response.text();
+          
+          // Create a minimal File-like object with only required properties
+          const fileName = sampleFile.name + '.md';
+          
+          const fileObject = {
+            name: fileName,
+            size: new Blob([content]).size,
+            type: 'text/markdown',
+            lastModified: Date.now(),
+            text: async () => content,
+            // Required for File interface compatibility
+            webkitRelativePath: '',
+            arrayBuffer: async () => new TextEncoder().encode(content).buffer,
+            stream: () => new Blob([content]).stream(),
+            slice: (start?: number, end?: number) => new Blob([content]).slice(start, end)
+          } as File;
+          
+          // Upload using the existing upload function
+          await storageService.uploadDocument(fileObject, user.uid, 'md');
+          successCount++;
+          
+        } catch (fileError) {
+          console.warn(`Failed to load sample file ${sampleFile.name}:`, fileError);
+        }
+      }
+      
+      if (successCount > 0) {
+        // Reload documents to show the new ones
+        await loadDocuments();
+        toast.success(`Successfully loaded ${successCount} sample knowledge documents`);
+        console.log(`✅ Successfully loaded ${successCount} sample knowledge documents`);
+      } else {
+        setError('Failed to load any sample documents');
+        toast.error('Failed to load sample documents');
+      }
+      
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load sample knowledge data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -91,10 +162,22 @@ export const KnowledgeManager: React.FC = () => {
       
       <Card>
         <CardHeader>
-          <CardTitle>Your Knowledge Documents</CardTitle>
-          <CardDescription>
-            Manage your uploaded internal knowledge base documents
-          </CardDescription>
+          <div className="flex justify-between items-start">
+            <div>
+              <CardTitle>Your Knowledge Documents</CardTitle>
+              <CardDescription>
+                Manage your uploaded internal knowledge base documents
+              </CardDescription>
+            </div>
+            <Button
+              variant="outline"
+              onClick={loadSampleKnowledgeData}
+              disabled={loading}
+              className="text-green-600 border-green-200 hover:bg-green-50"
+            >
+              📚 Load Sample Knowledge
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {error && (

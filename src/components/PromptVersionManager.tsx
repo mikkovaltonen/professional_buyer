@@ -45,10 +45,10 @@ const PromptVersionManager: React.FC<PromptVersionManagerProps> = ({
 
   // Load initial data
   useEffect(() => {
-    if (user?.email) {
+    if (user?.uid) {
       loadInitialData();
     }
-  }, [user?.email]);
+  }, [user?.uid]);
 
   // Update parent when prompt changes
   useEffect(() => {
@@ -58,25 +58,48 @@ const PromptVersionManager: React.FC<PromptVersionManagerProps> = ({
   }, [prompt, onPromptChange]);
 
   const loadInitialData = async () => {
-    if (!user?.email) return;
+    if (!user?.uid) return;
 
     setIsLoading(true);
     try {
-      // Load latest prompt
-      const latestPrompt = await loadLatestPrompt(user.email);
+      // Load latest prompt for this user
+      const latestPrompt = await loadLatestPrompt(user.uid);
       if (latestPrompt) {
         setPrompt(latestPrompt);
       } else {
-        // Load default prompt from file if no saved version exists
-        try {
-          const response = await fetch('/docs/gemini_instructions.md');
-          if (response.ok) {
-            const defaultPrompt = await response.text();
-            setPrompt(defaultPrompt);
-          }
-        } catch (error) {
-          console.error('Error loading default prompt:', error);
-        }
+        // Set default prompt if no saved version exists
+        const defaultPrompt = `You are a Professional Buyer AI Assistant with advanced capabilities including real-time access to ERP/purchase order data through function calling.
+
+## Core Capabilities:
+- **ERP Data Access**: Use the search_erp_data function to query purchase orders, suppliers, products, and buyer information
+- **Procurement Intelligence**: Analyze supplier performance, pricing trends, and purchase patterns
+- **Strategic Guidance**: Provide data-driven procurement recommendations
+- **Contract Analysis**: Evaluate supplier agreements and identify optimization opportunities
+- **Cost Intelligence**: Analyze spending patterns and identify savings opportunities
+
+## When to Use ERP Data Search:
+- User asks about specific suppliers, orders, or purchases
+- Questions about pricing, costs, or spending patterns
+- Requests for purchase history or supplier analysis
+- Date-specific procurement queries
+- Buyer performance or activity questions
+
+## Response Guidelines:
+- Always search ERP data when relevant to the user's question
+- Provide specific data points and examples from search results
+- Combine ERP data with procurement best practices
+- Offer actionable insights based on actual data
+- Explain your data sources and methodology
+
+## Professional Standards:
+- Use precise, data-driven language
+- Provide specific recommendations with supporting evidence
+- Maintain confidentiality and professional discretion
+- Focus on practical, implementable solutions
+- Ask clarifying questions when context is needed
+
+Remember: You have access to real procurement data - use it to provide specific, actionable insights rather than generic advice.`;
+        setPrompt(defaultPrompt);
       }
 
       // Load version history
@@ -90,10 +113,10 @@ const PromptVersionManager: React.FC<PromptVersionManagerProps> = ({
   };
 
   const loadVersionHistory = async () => {
-    if (!user?.email) return;
+    if (!user?.uid) return;
 
     try {
-      const history = await getPromptHistory(user.email);
+      const history = await getPromptHistory(user.uid);
       setVersions(history);
     } catch (error) {
       console.error('Error loading version history:', error);
@@ -101,7 +124,7 @@ const PromptVersionManager: React.FC<PromptVersionManagerProps> = ({
   };
 
   const handleSaveVersion = async () => {
-    if (!user?.email) {
+    if (!user?.uid) {
       toast.error('User not authenticated');
       return;
     }
@@ -114,7 +137,7 @@ const PromptVersionManager: React.FC<PromptVersionManagerProps> = ({
     setIsLoading(true);
     try {
       const versionNumber = await savePromptVersion(
-        user.email,
+        user.uid,
         prompt,
         evaluation,
         aiModel

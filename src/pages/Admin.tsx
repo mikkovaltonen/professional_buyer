@@ -5,6 +5,9 @@ import { useNavigate, Link } from "react-router-dom";
 import { LogOut, Settings, FileText, Database, ArrowLeft, Bot } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import DocumentAnalysis from "@/components/DocumentAnalysis";
+import { KnowledgeManager } from "@/components/KnowledgeManager";
+import { ERPManager } from "@/components/ERPManager";
+import { ERPApiTester } from "@/components/ERPApiTester";
 import {
   Dialog,
   DialogContent,
@@ -21,6 +24,7 @@ const Admin = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showPdfUpload, setShowPdfUpload] = useState(false);
   const [showExcelUpload, setShowExcelUpload] = useState(false);
+  const [showApiTester, setShowApiTester] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -137,7 +141,7 @@ const Admin = () => {
             </CardHeader>
             <CardContent className="p-6">
               <p className="text-gray-600 mb-4">
-                Upload PDF documents containing internal procurement policies, procedures, and knowledge base content for AI analysis.
+                Upload markdown and text documents containing internal procurement policies, procedures, and knowledge base content for AI analysis.
               </p>
               <Dialog open={showPdfUpload} onOpenChange={setShowPdfUpload}>
                 <DialogTrigger asChild>
@@ -145,22 +149,17 @@ const Admin = () => {
                     className="w-full bg-gray-700 hover:bg-gray-600 text-white"
                   >
                     <FileText className="mr-2 h-4 w-4" />
-                    Upload Documents
+                    Manage Knowledge Documents
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-[500px]">
+                <DialogContent className="sm:max-w-[900px] max-h-[80vh] overflow-y-auto">
                   <DialogHeader>
-                    <DialogTitle>Upload Internal Knowledge</DialogTitle>
+                    <DialogTitle>Internal Knowledge Management</DialogTitle>
                     <DialogDescription>
-                      Upload PDF documents containing internal procurement policies, procedures, and knowledge base content for AI analysis.
+                      Upload and manage markdown and text documents for your internal knowledge base.
                     </DialogDescription>
                   </DialogHeader>
-                  <DocumentAnalysis 
-                    isLoading={isLoading}
-                    setIsLoading={setIsLoading}
-                    fileFilter="pdf"
-                    dialogMode={true}
-                  />
+                  <KnowledgeManager />
                 </DialogContent>
               </Dialog>
             </CardContent>
@@ -176,7 +175,7 @@ const Admin = () => {
             </CardHeader>
             <CardContent className="p-6">
               <p className="text-gray-600 mb-4">
-                Upload Excel files to simulate data integration from ERP systems, P2P platforms, or supplier databases for AI processing.
+                Upload and manage your structured Excel file to simulate ERP integration.
               </p>
               <Dialog open={showExcelUpload} onOpenChange={setShowExcelUpload}>
                 <DialogTrigger asChild>
@@ -184,22 +183,51 @@ const Admin = () => {
                     className="w-full bg-gray-700 hover:bg-gray-600 text-white"
                   >
                     <Database className="mr-2 h-4 w-4" />
-                    Simulate Integration
+                    Manage ERP Data
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-[500px]">
+                <DialogContent className="sm:max-w-[900px] max-h-[80vh] overflow-y-auto">
                   <DialogHeader>
-                    <DialogTitle>Simulate ERP/P2P Integration</DialogTitle>
+                    <DialogTitle>ERP/P2P Integration Management</DialogTitle>
                     <DialogDescription>
-                      Upload Excel files to simulate data integration from ERP systems, P2P platforms, or supplier databases for AI processing.
+                      Upload and manage your structured Excel file to simulate ERP integration.
                     </DialogDescription>
                   </DialogHeader>
-                  <DocumentAnalysis 
-                    isLoading={isLoading}
-                    setIsLoading={setIsLoading}
-                    fileFilter="excel"
-                    dialogMode={true}
-                  />
+                  <ERPManager />
+                </DialogContent>
+              </Dialog>
+            </CardContent>
+          </Card>
+
+          {/* ERP API Testing */}
+          <Card className="border-gray-300 shadow-lg hover:shadow-xl transition-shadow">
+            <CardHeader className="bg-gray-700 text-white rounded-t-lg">
+              <CardTitle className="flex items-center">
+                <Database className="mr-3 h-6 w-6" />
+                ERP API Testing
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <p className="text-gray-600 mb-4">
+                Test the internal ERP API with search functionality. Search by supplier, product, date range, or buyer name.
+              </p>
+              <Dialog open={showApiTester} onOpenChange={setShowApiTester}>
+                <DialogTrigger asChild>
+                  <Button 
+                    className="w-full bg-gray-700 hover:bg-gray-600 text-white"
+                  >
+                    <Database className="mr-2 h-4 w-4" />
+                    Test ERP API
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[1000px] max-h-[80vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>ERP API Testing Interface</DialogTitle>
+                    <DialogDescription>
+                      Test the ERP search API with different criteria and verify functionality.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <ERPApiTester />
                 </DialogContent>
               </Dialog>
             </CardContent>

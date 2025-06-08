@@ -1,34 +1,73 @@
-# Procurement AI Agent Evaluator
+# Professional Buyer AI Assistant
 
-A modern React application for evaluating AI capabilities in procurement processes through document analysis and intelligent data extraction.
+A comprehensive React application that combines AI-powered procurement intelligence with real-time ERP data integration. Built to demonstrate advanced AI capabilities in procurement workflows with function calling and structured data access.
 
-## Features
+## 🚀 Key Features
 
-- **Document Intelligence**: Upload and analyze PDF, Excel, CSV, and Word documents
-- **AI-Powered Analysis**: Leverage Google Gemini AI for procurement document insights
-- **Structured Data Extraction**: Extract suppliers, pricing, and contract information in structured formats
-- **Interactive Chat Interface**: Natural language conversation with AI about uploaded documents
-- **Quick Action Buttons**: Pre-built prompts for common procurement analyses
-- **Export Capabilities**: Download extracted data as CSV files
-- **Responsive UI**: Modern interface built with Tailwind CSS and shadcn/ui components
+### 🤖 AI-Powered Procurement Assistant
+- **Google Gemini Integration**: Advanced AI with function calling capabilities
+- **Interactive Chat Interface**: Natural language conversation with procurement intelligence
+- **ERP Data Integration**: Real-time access to purchase order and supplier data
+- **Smart Search Functions**: AI automatically searches ERP data when relevant
 
-## Use Cases
+### 📊 ERP System Simulation
+- **Excel Data Upload**: Upload structured purchase order data to simulate ERP integration
+- **Advanced Search API**: Multi-criteria search (supplier, product, date range, buyer)
+- **Real-time Data Access**: AI can query your ERP data during conversations
+- **Data Preview & Management**: View, download, and manage uploaded ERP data
 
-Perfect for evaluating AI capabilities in:
-- **Supplier Analysis**: Extract and analyze supplier information from catalogs and documents
-- **Contract Review**: Identify key terms, risks, and opportunities in procurement contracts
-- **Pricing Intelligence**: Analyze pricing trends and identify cost-saving opportunities
-- **Document Processing**: Demonstrate AI's ability to structure unorganized procurement data
-- **Procurement Workflow Optimization**: Assess how AI can streamline procurement processes
+### 📚 Knowledge Management
+- **Document Upload**: Support for Markdown and text files for internal knowledge
+- **Contextual AI**: AI uses your knowledge base during conversations
+- **Document Conversion**: Built-in tools for Word/Excel → Markdown conversion
+- **Session Initialization**: AI loads all context (prompts + knowledge + ERP data) on startup
 
-## Technologies
+### 🛠 Advanced Configuration
+- **System Prompt Versioning**: Create, test, and manage different AI prompt strategies
+- **Multi-Model Support**: Configurable AI models and parameters
+- **Temperature Control**: Precision-tuned AI responses (0.2 temperature)
+- **Session Management**: Smart context loading and refresh capabilities
 
+## 💼 Use Cases
+
+### Real-time ERP Queries
+- *"Show me all orders from Tech Corp this month"*
+- *"Find laptop purchases over $1000"*
+- *"Which suppliers has John ordered from?"*
+- *"What did we buy between January and March?"*
+
+### Procurement Intelligence
+- **Supplier Analysis**: AI searches your data to analyze supplier performance
+- **Cost Optimization**: Identify pricing trends and savings opportunities
+- **Purchase Pattern Analysis**: Understand buying behaviors and trends
+- **Contract Intelligence**: Combine ERP data with knowledge base insights
+
+### Advanced AI Evaluation
+- **Function Calling**: Test AI's ability to use tools and APIs
+- **Contextual Understanding**: Evaluate how AI combines multiple data sources
+- **Multi-modal Intelligence**: Test AI with structured data + unstructured knowledge
+- **Real-time Decision Support**: Assess AI as a procurement decision-making tool
+
+## 🛠 Technologies
+
+### Core Stack
 - **Frontend**: React 18, TypeScript, Vite
-- **UI**: Tailwind CSS, shadcn/ui components
-- **AI Integration**: Google Gemini API
-- **File Processing**: Support for PDF, Excel, CSV, Word documents
-- **State Management**: React Hooks
-- **Authentication**: Simple evaluation credentials
+- **UI Framework**: Tailwind CSS, shadcn/ui components
+- **AI Integration**: Google Gemini with Function Calling
+- **Database**: Firebase Firestore for metadata and configurations
+- **File Processing**: XLSX.js for Excel parsing, React Dropzone for uploads
+
+### AI & Function Calling
+- **Model**: Google Gemini 2.5 Pro with function declarations
+- **Temperature**: 0.2 (precision-focused responses)
+- **Functions**: `search_erp_data` with multi-criteria search
+- **Context Management**: System prompts + knowledge base + ERP data integration
+
+### Data Processing
+- **Excel Processing**: XLSX parsing with automatic column detection
+- **Search Engine**: Advanced filtering with partial string matching
+- **Date Parsing**: Multiple format support including Excel serial dates
+- **Field Detection**: Smart column mapping using keywords (English/Finnish)
 
 ## Installation
 
@@ -48,10 +87,11 @@ npm install
 Create a `.env` file in the project root and define the following variables:
 
 ```env
+# Google Gemini AI Configuration
 VITE_GEMINI_API_KEY=your_gemini_api_key_here
-VITE_GEMINI_MODEL=gemini-2.5-flash-preview-04-17
+VITE_GEMINI_MODEL=gemini-2.5-pro-preview-06-05
 
-# Firebase Configuration (required for system prompt versioning)
+# Firebase Configuration (required for data storage)
 VITE_FIREBASE_API_KEY=your_firebase_api_key
 VITE_FIREBASE_AUTH_DOMAIN=your_firebase_auth_domain
 VITE_FIREBASE_PROJECT_ID=your_firebase_project_id
@@ -59,7 +99,30 @@ VITE_FIREBASE_STORAGE_BUCKET=your_firebase_storage_bucket
 VITE_FIREBASE_MESSAGING_SENDER_ID=your_firebase_messaging_sender_id
 VITE_FIREBASE_APP_ID=your_firebase_app_id
 VITE_FIREBASE_MEASUREMENT_ID=your_firebase_measurement_id
-`
+```
+
+### AI Configuration Details
+
+**Model Settings:**
+- **Model**: `gemini-2.5-pro-preview-06-05` (latest version with function calling)
+- **Temperature**: `0.2` (precision-focused, less creative)
+- **Functions**: `search_erp_data` automatically declared
+- **Context**: System prompt + Knowledge base + ERP data loaded on session init
+
+**Function Declaration:**
+```javascript
+const searchERPFunction = {
+  name: "search_erp_data",
+  description: "Search ERP/purchase order data with various criteria",
+  parameters: {
+    supplierName: "string",      // Partial supplier name matching
+    productDescription: "string", // Partial product description matching  
+    dateFrom: "string",          // Start date (YYYY-MM-DD)
+    dateTo: "string",            // End date (YYYY-MM-DD)
+    buyerName: "string"          // Partial buyer name matching
+  }
+}
+```
 
 
 **Note**: Firebase configuration is required for the system prompt versioning feature, which is a core evaluation capability.

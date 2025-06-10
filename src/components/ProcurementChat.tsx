@@ -139,23 +139,7 @@ const ProcurementChat: React.FC<ProcurementChatProps> = ({
         }
       } catch (error) {
         console.error('[ProcurementChat] Error loading default prompt:', error);
-        systemPrompt = `You are a Procurement AI Agent Evaluator. Your role is to analyze uploaded documents and provide insights about procurement processes, supplier information, contract terms, pricing, and other procurement-related matters.
-
-Key capabilities you should demonstrate:
-1. Document Analysis - Extract key information from contracts, supplier catalogs, purchase orders, etc.
-2. Cost Analysis - Identify potential cost savings and pricing insights
-3. Supplier Evaluation - Assess supplier performance and capabilities
-4. Contract Review - Highlight important terms, risks, and opportunities
-5. Process Optimization - Suggest improvements to procurement workflows
-6. Data Extraction - Structure unorganized data from documents
-
-When analyzing Excel files, focus on:
-- Supplier data and performance metrics
-- Pricing trends and patterns
-- Spend analysis opportunities
-- Contract compliance data
-
-Provide structured, actionable insights that would help evaluate the value of AI in procurement processes.`;
+        throw new Error('No system prompt configured. Please visit Admin panel to set up your prompt.');
       }
     }
 

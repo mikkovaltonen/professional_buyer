@@ -10,6 +10,30 @@ export interface SystemPromptVersion {
   savedDate: Date;
   aiModel: string;
   userId: string;
+  technicalKey?: string; // New: username + version number
+}
+
+export interface ContinuousImprovementSession {
+  id?: string;
+  promptKey: string; // References SystemPromptVersion.technicalKey
+  chatSessionKey: string; // Unique identifier for this chat session
+  userId: string;
+  userFeedback?: 'thumbs_up' | 'thumbs_down' | null;
+  technicalLogs: TechnicalLog[];
+  createdDate: Date;
+  lastUpdated: Date;
+}
+
+export interface TechnicalLog {
+  timestamp: Date;
+  event: 'function_call_triggered' | 'function_call_success' | 'function_call_error' | 'ai_response' | 'user_message';
+  userMessage?: string;
+  functionName?: string;
+  functionInputs?: Record<string, unknown>;
+  functionOutputs?: Record<string, unknown>;
+  aiResponse?: string;
+  errorMessage?: string;
+  aiRequestId?: string;
 }
 
 // LocalStorage fallback functions
@@ -31,7 +55,7 @@ const getFromLocalStorage = (userId: string): SystemPromptVersion[] => {
   const data = localStorage.getItem(key);
   if (!data) return [];
   
-  return JSON.parse(data).map((item: any) => ({
+  return JSON.parse(data).map((item: SystemPromptVersion) => ({
     ...item,
     savedDate: new Date(item.savedDate)
   }));
@@ -43,32 +67,42 @@ const getNextLocalVersion = (userId: string): number => {
   return Math.max(...existing.map(v => v.version)) + 1;
 };
 
+// Generate technical key from user email and version
+const generateTechnicalKey = (userEmail: string, version: number): string => {
+  const username = userEmail.split('@')[0]; // Extract username part from email
+  return `${username}_v${version}`;
+};
+
 // Save a new version of system prompt
 export const savePromptVersion = async (
   userId: string, 
   promptText: string, 
   evaluation: string = '',
-  aiModel: string = 'gemini-2.5-flash-preview-04-17'
+  aiModel: string = 'gemini-2.5-flash-preview-04-17',
+  userEmail?: string
 ): Promise<number> => {
   try {
     if (!db) {
       console.warn('Firebase not initialized, using localStorage fallback');
       const nextVersion = getNextLocalVersion(userId);
+      const technicalKey = userEmail ? generateTechnicalKey(userEmail, nextVersion) : `user_${userId.substring(0, 8)}_v${nextVersion}`;
       const promptVersion: SystemPromptVersion = {
         version: nextVersion,
         systemPrompt: promptText,
         evaluation: evaluation,
         savedDate: new Date(),
         aiModel: aiModel,
-        userId: userId
+        userId: userId,
+        technicalKey: technicalKey
       };
       saveToLocalStorage(userId, promptVersion);
-      console.log(`[LocalStorage] Saved prompt version ${nextVersion}`);
+      console.log(`[LocalStorage] Saved prompt version ${nextVersion} with key ${technicalKey}`);
       return nextVersion;
     }
 
     // Try Firebase first
     const nextVersion = await getNextVersionNumber(userId);
+    const technicalKey = userEmail ? generateTechnicalKey(userEmail, nextVersion) : `user_${userId.substring(0, 8)}_v${nextVersion}`;
     
     const promptVersion: Omit<SystemPromptVersion, 'id'> = {
       version: nextVersion,
@@ -76,7 +110,8 @@ export const savePromptVersion = async (
       evaluation: evaluation,
       savedDate: new Date(),
       aiModel: aiModel,
-      userId: userId
+      userId: userId,
+      technicalKey: technicalKey
     };
 
     const docRef = await addDoc(collection(db, 'systemPromptVersions'), {
@@ -84,21 +119,23 @@ export const savePromptVersion = async (
       savedDate: serverTimestamp()
     });
     
-    console.log(`[FirestoreService] Saved prompt version ${nextVersion} with ID: ${docRef.id}`);
+    console.log(`[FirestoreService] Saved prompt version ${nextVersion} with ID: ${docRef.id} and key: ${technicalKey}`);
     return nextVersion;
   } catch (error) {
     console.warn('Firebase save failed, falling back to localStorage:', error);
     const nextVersion = getNextLocalVersion(userId);
+    const technicalKey = userEmail ? generateTechnicalKey(userEmail, nextVersion) : `user_${userId.substring(0, 8)}_v${nextVersion}`;
     const promptVersion: SystemPromptVersion = {
       version: nextVersion,
       systemPrompt: promptText,
       evaluation: evaluation,
       savedDate: new Date(),
       aiModel: aiModel,
-      userId: userId
+      userId: userId,
+      technicalKey: technicalKey
     };
     saveToLocalStorage(userId, promptVersion);
-    console.log(`[LocalStorage] Saved prompt version ${nextVersion} (fallback)`);
+    console.log(`[LocalStorage] Saved prompt version ${nextVersion} with key ${technicalKey} (fallback)`);
     return nextVersion;
   }
 };
@@ -253,7 +290,7 @@ export const updatePromptEvaluation = async (versionId: string, evaluation: stri
       console.warn('Firebase not initialized, updating localStorage fallback');
       const key = getLocalStorageKey('evaluator');
       const versions = JSON.parse(localStorage.getItem(key) || '[]');
-      const updated = versions.map((v: any) => 
+      const updated = versions.map((v: SystemPromptVersion) => 
         v.id === versionId ? { ...v, evaluation } : v
       );
       localStorage.setItem(key, JSON.stringify(updated));
@@ -266,7 +303,7 @@ export const updatePromptEvaluation = async (versionId: string, evaluation: stri
     console.warn('Firebase evaluation update failed, falling back to localStorage:', error);
     const key = getLocalStorageKey('evaluator');
     const versions = JSON.parse(localStorage.getItem(key) || '[]');
-    const updated = versions.map((v: any) => 
+    const updated = versions.map((v: SystemPromptVersion) => 
       v.id === versionId ? { ...v, evaluation } : v
     );
     localStorage.setItem(key, JSON.stringify(updated));
@@ -280,4 +317,132 @@ export const savePrompt = async (userId: string, promptText: string): Promise<vo
 
 export const loadPrompt = async (userId: string): Promise<string | null> => {
   return await loadLatestPrompt(userId);
+};
+
+// Continuous Improvement Functions
+export const createContinuousImprovementSession = async (
+  promptKey: string,
+  chatSessionKey: string,
+  userId: string
+): Promise<string> => {
+  try {
+    if (!db) {
+      console.warn('Firebase not initialized, cannot create continuous improvement session');
+      return 'local_session_' + Date.now();
+    }
+
+    const session: Omit<ContinuousImprovementSession, 'id'> = {
+      promptKey,
+      chatSessionKey,
+      userId,
+      userFeedback: null,
+      technicalLogs: [],
+      createdDate: new Date(),
+      lastUpdated: new Date()
+    };
+
+    const docRef = await addDoc(collection(db, 'continuous_improvement'), {
+      ...session,
+      createdDate: serverTimestamp(),
+      lastUpdated: serverTimestamp()
+    });
+
+    console.log(`[ContinuousImprovement] Created session with ID: ${docRef.id}`);
+    return docRef.id;
+  } catch (error) {
+    console.error('Error creating continuous improvement session:', error);
+    return 'error_session_' + Date.now();
+  }
+};
+
+export const addTechnicalLog = async (
+  sessionId: string,
+  logEntry: Omit<TechnicalLog, 'timestamp'>
+): Promise<void> => {
+  try {
+    if (!db || sessionId.startsWith('local_') || sessionId.startsWith('error_')) {
+      console.warn('Firebase not initialized or invalid session, skipping log');
+      return;
+    }
+
+    const sessionRef = doc(db, 'continuous_improvement', sessionId);
+    const sessionDoc = await getDoc(sessionRef);
+
+    if (sessionDoc.exists()) {
+      const sessionData = sessionDoc.data() as ContinuousImprovementSession;
+      const updatedLogs = [
+        ...sessionData.technicalLogs,
+        {
+          ...logEntry,
+          timestamp: new Date()
+        }
+      ];
+
+      await setDoc(sessionRef, {
+        technicalLogs: updatedLogs,
+        lastUpdated: serverTimestamp()
+      }, { merge: true });
+
+      console.log(`[ContinuousImprovement] Added log to session ${sessionId}: ${logEntry.event}`);
+    }
+  } catch (error) {
+    console.error('Error adding technical log:', error);
+  }
+};
+
+export const setUserFeedback = async (
+  sessionId: string,
+  feedback: 'thumbs_up' | 'thumbs_down'
+): Promise<void> => {
+  try {
+    if (!db || sessionId.startsWith('local_') || sessionId.startsWith('error_')) {
+      console.warn('Firebase not initialized or invalid session, skipping feedback');
+      return;
+    }
+
+    const sessionRef = doc(db, 'continuous_improvement', sessionId);
+    await setDoc(sessionRef, {
+      userFeedback: feedback,
+      lastUpdated: serverTimestamp()
+    }, { merge: true });
+
+    console.log(`[ContinuousImprovement] Set feedback for session ${sessionId}: ${feedback}`);
+  } catch (error) {
+    console.error('Error setting user feedback:', error);
+  }
+};
+
+export const getContinuousImprovementSessions = async (
+  userId: string,
+  promptKey?: string
+): Promise<ContinuousImprovementSession[]> => {
+  try {
+    if (!db) {
+      console.warn('Firebase not initialized, cannot get sessions');
+      return [];
+    }
+
+    let q = query(
+      collection(db, 'continuous_improvement'),
+      where('userId', '==', userId)
+    );
+
+    if (promptKey) {
+      q = query(q, where('promptKey', '==', promptKey));
+    }
+
+    const querySnapshot = await getDocs(q);
+    
+    const sessions = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      createdDate: doc.data().createdDate?.toDate() || new Date(),
+      lastUpdated: doc.data().lastUpdated?.toDate() || new Date()
+    })) as ContinuousImprovementSession[];
+
+    return sessions.sort((a, b) => b.lastUpdated.getTime() - a.lastUpdated.getTime());
+  } catch (error) {
+    console.error('Error getting continuous improvement sessions:', error);
+    return [];
+  }
 };

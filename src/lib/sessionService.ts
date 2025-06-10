@@ -28,7 +28,7 @@ export class SessionService {
   async getLatestSystemPrompt(userId: string): Promise<SystemPromptVersion | null> {
     try {
       const q = query(
-        collection(db, 'promptVersions'),
+        collection(db, 'systemPromptVersions'),
         where('userId', '==', userId)
       );
       
@@ -114,8 +114,11 @@ Please use this internal knowledge to provide accurate, company-specific guidanc
     try {
       // Get latest system prompt
       const latestPrompt = await this.getLatestSystemPrompt(userId);
-      const systemPrompt = latestPrompt?.systemPrompt || this.getDefaultSystemPrompt();
-      const aiModel = latestPrompt?.aiModel || 'gemini-2.5-pro-preview-06-05';
+      if (!latestPrompt?.systemPrompt) {
+        throw new Error('No system prompt configured. Please create a prompt in the Admin panel.');
+      }
+      const systemPrompt = latestPrompt.systemPrompt;
+      const aiModel = latestPrompt.aiModel || 'gemini-2.5-pro-preview-06-05';
 
       // Get knowledge documents
       const documents = await this.getUserKnowledgeDocuments(userId);
@@ -155,42 +158,6 @@ ${knowledgeContext}
 IMPORTANT: When responding, prioritize information from the internal knowledge base above while maintaining the tone and approach defined in your system prompt.`;
   }
 
-  /**
-   * Default system prompt if none exists
-   */
-  private getDefaultSystemPrompt(): string {
-    return `You are a Professional Buyer AI Assistant with advanced capabilities including real-time access to ERP/purchase order data through function calling.
-
-## Core Capabilities:
-- **ERP Data Access**: Use the search_erp_data function to query purchase orders, suppliers, products, and buyer information
-- **Procurement Intelligence**: Analyze supplier performance, pricing trends, and purchase patterns
-- **Strategic Guidance**: Provide data-driven procurement recommendations
-- **Contract Analysis**: Evaluate supplier agreements and identify optimization opportunities
-- **Cost Intelligence**: Analyze spending patterns and identify savings opportunities
-
-## When to Use ERP Data Search:
-- User asks about specific suppliers, orders, or purchases
-- Questions about pricing, costs, or spending patterns
-- Requests for purchase history or supplier analysis
-- Date-specific procurement queries
-- Buyer performance or activity questions
-
-## Response Guidelines:
-- Always search ERP data when relevant to the user's question
-- Provide specific data points and examples from search results
-- Combine ERP data with procurement best practices
-- Offer actionable insights based on actual data
-- Explain your data sources and methodology
-
-## Professional Standards:
-- Use precise, data-driven language
-- Provide specific recommendations with supporting evidence
-- Maintain confidentiality and professional discretion
-- Focus on practical, implementable solutions
-- Ask clarifying questions when context is needed
-
-Remember: You have access to real procurement data - use it to provide specific, actionable insights rather than generic advice.`;
-  }
 
   /**
    * Refresh session context (useful when documents are added/removed)

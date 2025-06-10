@@ -4,6 +4,9 @@ import { Loader2, Send, RotateCcw, Paperclip, Bot, LogOut, Settings, ThumbsUp, T
 import ReactMarkdown from 'react-markdown';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { useAuth } from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -107,6 +110,12 @@ const ProfessionalBuyerChat: React.FC<ProfessionalBuyerChatProps> = ({ onLogout 
   const [continuousImprovementSessionId, setContinuousImprovementSessionId] = useState<string | null>(null);
   const [chatSessionKey] = useState<string>(() => `chat_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`);
   const [currentPromptKey, setCurrentPromptKey] = useState<string | null>(null);
+  
+  // Feedback dialog
+  const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
+  const [pendingFeedback, setPendingFeedback] = useState<'thumbs_up' | 'thumbs_down' | null>(null);
+  const [pendingMessageIndex, setPendingMessageIndex] = useState<number | null>(null);
+  const [feedbackComment, setFeedbackComment] = useState('');
 
   // Initialize chat session with context
   React.useEffect(() => {
@@ -501,27 +510,52 @@ What can I help you with today?`
     }
   };
 
-  // Handle user feedback for specific message
+  // Handle user feedback for specific message - opens dialog
   const handleFeedback = async (feedback: 'thumbs_up' | 'thumbs_down', messageIndex: number) => {
     if (!continuousImprovementSessionId) {
       await initializeContinuousImprovement();
     }
     
-    if (continuousImprovementSessionId) {
-      try {
-        // Add message context to the feedback log
-        await addTechnicalLog(continuousImprovementSessionId, {
-          event: 'ai_response',
-          aiResponse: `User feedback for message ${messageIndex}: ${feedback}`,
-        });
-        
-        await setUserFeedback(continuousImprovementSessionId, feedback);
-        toast.success(feedback === 'thumbs_up' ? '👍 Thanks for the positive feedback!' : '👎 Thanks for the feedback - we\'ll improve!');
-      } catch (error) {
-        console.error('Failed to save feedback:', error);
-        toast.error('Failed to save feedback');
-      }
+    // Store pending feedback and open dialog
+    setPendingFeedback(feedback);
+    setPendingMessageIndex(messageIndex);
+    setFeedbackComment('');
+    setFeedbackDialogOpen(true);
+  };
+
+  // Submit feedback with optional comment
+  const submitFeedback = async () => {
+    if (!continuousImprovementSessionId || !pendingFeedback || pendingMessageIndex === null) {
+      return;
     }
+
+    try {
+      // Add message context to the feedback log
+      await addTechnicalLog(continuousImprovementSessionId, {
+        event: 'ai_response',
+        aiResponse: `User feedback for message ${pendingMessageIndex}: ${pendingFeedback}${feedbackComment ? ` - Comment: ${feedbackComment}` : ''}`,
+      });
+      
+      await setUserFeedback(continuousImprovementSessionId, pendingFeedback, feedbackComment || undefined);
+      
+      setFeedbackDialogOpen(false);
+      setPendingFeedback(null);
+      setPendingMessageIndex(null);
+      setFeedbackComment('');
+      
+      toast.success(pendingFeedback === 'thumbs_up' ? '👍 Thanks for the positive feedback!' : '👎 Thanks for the feedback - we\'ll improve!');
+    } catch (error) {
+      console.error('Failed to save feedback:', error);
+      toast.error('Failed to save feedback');
+    }
+  };
+
+  // Cancel feedback dialog
+  const cancelFeedback = () => {
+    setFeedbackDialogOpen(false);
+    setPendingFeedback(null);
+    setPendingMessageIndex(null);
+    setFeedbackComment('');
   };
 
   return (
@@ -731,6 +765,60 @@ What can I help you with today?`
           </div>
         </div>
       </div>
+
+      {/* Feedback Dialog */}
+      <Dialog open={feedbackDialogOpen} onOpenChange={setFeedbackDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {pendingFeedback === 'thumbs_up' ? (
+                <ThumbsUp className="h-5 w-5 text-green-600" />
+              ) : (
+                <ThumbsDown className="h-5 w-5 text-red-600" />
+              )}
+              {pendingFeedback === 'thumbs_up' ? 'Positive feedback' : 'Feedback for improvement'}
+            </DialogTitle>
+            <DialogDescription>
+              {pendingFeedback === 'thumbs_up' 
+                ? 'Great! What did you like about this response?' 
+                : 'Help us improve! What could be better about this response?'
+              }
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            
+            <div className="space-y-2">
+              <Label htmlFor="feedback-comment">Comment (optional)</Label>
+              <Textarea
+                id="feedback-comment"
+                placeholder={pendingFeedback === 'thumbs_up' 
+                  ? 'What worked well? Any specific aspects you found helpful?'
+                  : 'What was missing or incorrect? How could we improve?'
+                }
+                value={feedbackComment}
+                onChange={(e) => setFeedbackComment(e.target.value)}
+                className="min-h-[100px]"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={cancelFeedback}
+            >
+              Skip
+            </Button>
+            <Button
+              onClick={submitFeedback}
+              className={pendingFeedback === 'thumbs_up' ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'}
+            >
+              Submit Feedback
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

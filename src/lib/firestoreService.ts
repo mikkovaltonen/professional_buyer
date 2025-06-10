@@ -19,6 +19,8 @@ export interface ContinuousImprovementSession {
   chatSessionKey: string; // Unique identifier for this chat session
   userId: string;
   userFeedback?: 'thumbs_up' | 'thumbs_down' | null;
+  userComment?: string; // Optional comment from user
+  issueStatus?: 'fixed' | 'not_fixed'; // Status for negative feedback issues
   technicalLogs: TechnicalLog[];
   createdDate: Date;
   lastUpdated: Date;
@@ -392,7 +394,8 @@ export const addTechnicalLog = async (
 
 export const setUserFeedback = async (
   sessionId: string,
-  feedback: 'thumbs_up' | 'thumbs_down'
+  feedback: 'thumbs_up' | 'thumbs_down',
+  comment?: string
 ): Promise<void> => {
   try {
     if (!db || sessionId.startsWith('local_') || sessionId.startsWith('error_')) {
@@ -401,12 +404,18 @@ export const setUserFeedback = async (
     }
 
     const sessionRef = doc(db, 'continuous_improvement', sessionId);
-    await setDoc(sessionRef, {
+    const updateData: any = {
       userFeedback: feedback,
       lastUpdated: serverTimestamp()
-    }, { merge: true });
+    };
 
-    console.log(`[ContinuousImprovement] Set feedback for session ${sessionId}: ${feedback}`);
+    if (comment !== undefined) {
+      updateData.userComment = comment;
+    }
+
+    await setDoc(sessionRef, updateData, { merge: true });
+
+    console.log(`[ContinuousImprovement] Set feedback for session ${sessionId}: ${feedback}${comment ? ' with comment' : ''}`);
   } catch (error) {
     console.error('Error setting user feedback:', error);
   }
@@ -444,5 +453,63 @@ export const getContinuousImprovementSessions = async (
   } catch (error) {
     console.error('Error getting continuous improvement sessions:', error);
     return [];
+  }
+};
+
+// Get negative feedback sessions (for issue reporting)
+export const getNegativeFeedbackSessions = async (
+  userId?: string // If not provided, get all users' feedback
+): Promise<ContinuousImprovementSession[]> => {
+  try {
+    if (!db) {
+      console.warn('Firebase not initialized, cannot get negative feedback');
+      return [];
+    }
+
+    let q = query(
+      collection(db, 'continuous_improvement'),
+      where('userFeedback', '==', 'thumbs_down')
+    );
+
+    if (userId) {
+      q = query(q, where('userId', '==', userId));
+    }
+
+    const querySnapshot = await getDocs(q);
+    
+    const sessions = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      createdDate: doc.data().createdDate?.toDate() || new Date(),
+      lastUpdated: doc.data().lastUpdated?.toDate() || new Date()
+    })) as ContinuousImprovementSession[];
+
+    return sessions.sort((a, b) => b.createdDate.getTime() - a.createdDate.getTime());
+  } catch (error) {
+    console.error('Error getting negative feedback sessions:', error);
+    return [];
+  }
+};
+
+// Update issue status for negative feedback
+export const updateIssueStatus = async (
+  sessionId: string,
+  status: 'fixed' | 'not_fixed'
+): Promise<void> => {
+  try {
+    if (!db) {
+      console.warn('Firebase not initialized, cannot update issue status');
+      return;
+    }
+
+    const sessionRef = doc(db, 'continuous_improvement', sessionId);
+    await setDoc(sessionRef, {
+      issueStatus: status,
+      lastUpdated: serverTimestamp()
+    }, { merge: true });
+
+    console.log(`[ContinuousImprovement] Updated issue status for session ${sessionId}: ${status}`);
+  } catch (error) {
+    console.error('Error updating issue status:', error);
   }
 };

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNavigate, Link } from "react-router-dom";
-import { LogOut, Settings, FileText, Database, ArrowLeft, Bot } from "lucide-react";
+import { LogOut, Settings, FileText, Database, ArrowLeft, Bot, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import DocumentAnalysis from "@/components/DocumentAnalysis";
 import { KnowledgeManager } from "@/components/KnowledgeManager";
@@ -138,7 +138,7 @@ const Admin = () => {
         </div>
 
         {/* Secondary Tools */}
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid md:grid-cols-3 gap-6">
           
           {/* AI Prompt Management - Moved to featured section above */}
 
@@ -241,6 +241,29 @@ const Admin = () => {
                   <ERPApiTester />
                 </DialogContent>
               </Dialog>
+            </CardContent>
+          </Card>
+
+          {/* Issue Report */}
+          <Card className="border-gray-300 shadow-lg hover:shadow-xl transition-shadow">
+            <CardHeader className="bg-red-600 text-white rounded-t-lg">
+              <CardTitle className="flex items-center">
+                <AlertTriangle className="mr-3 h-6 w-6" />
+                Issue Report
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <p className="text-gray-600 mb-4">
+                View and manage negative feedback issues from user interactions. Track resolution status.
+              </p>
+              <Link to="/issues">
+                <Button 
+                  className="w-full bg-red-600 hover:bg-red-700 text-white"
+                >
+                  <AlertTriangle className="mr-2 h-4 w-4" />
+                  View Issues
+                </Button>
+              </Link>
             </CardContent>
           </Card>
 

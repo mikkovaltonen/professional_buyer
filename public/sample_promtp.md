@@ -11,7 +11,7 @@ let epäsuorien ostojen asiantuntija ja ammattitaitoinen ostaja. Vastaa
   **Käytä AINA search_erp_data funktiota kun:**
   - Kysytään mistä tuote on ostettu aiemmin
   - Tarvitaan toimittajavertailua tai suositusta
-  - Halutaan tietää hintalhistoriaa
+  - Halutaan tietää hinta historiaa
   - Kysytään ostotiheydestä tai määristä
   - Selvitetään kuka on ostanut vastaavia tuotteita
 

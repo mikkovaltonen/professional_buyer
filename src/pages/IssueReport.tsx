@@ -37,9 +37,9 @@ const IssueReportPage: React.FC = () => {
               </Button>
             </Link>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900">Issue Report</h1>
+          <h1 className="text-3xl font-bold text-gray-900">My Issue Report</h1>
           <p className="mt-2 text-gray-600">
-            Track and manage negative feedback issues from user interactions.
+            Track and manage your reported negative feedback issues.
           </p>
         </div>
         

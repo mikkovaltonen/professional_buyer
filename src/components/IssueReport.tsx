@@ -42,9 +42,8 @@ const IssueReport: React.FC = () => {
   const loadIssues = async () => {
     setIsLoading(true);
     try {
-      // Load all users' negative feedback (for admin view)
-      // You can change this to user?.uid to show only current user's issues
-      const negativeFeedback = await getNegativeFeedbackSessions();
+      // Load only current user's negative feedback
+      const negativeFeedback = await getNegativeFeedbackSessions(user?.uid);
       setIssues(negativeFeedback);
     } catch (error) {
       console.error('Error loading issues:', error);
@@ -124,7 +123,7 @@ const IssueReport: React.FC = () => {
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-red-600" />
-              Issue Report - Negative Feedback
+              My Issues - Negative Feedback
             </CardTitle>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
@@ -161,8 +160,8 @@ const IssueReport: React.FC = () => {
           ) : filteredIssues.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
               {statusFilter === 'all' 
-                ? 'No negative feedback found.' 
-                : `No ${statusFilter === 'fixed' ? 'fixed' : 'unfixed'} issues found.`
+                ? 'You have not reported any issues yet.' 
+                : `You have no ${statusFilter === 'fixed' ? 'fixed' : 'unfixed'} issues.`
               }
             </div>
           ) : (

@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Loader2, Save, History, Clock } from "lucide-react";
+import { Loader2, Save, History, Clock, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { 
   SystemPromptVersion, 
@@ -167,6 +167,27 @@ const PromptVersionManager: React.FC<PromptVersionManagerProps> = ({
     }
   };
 
+  const handleRestoreDefault = () => {
+    if (samplePrompt.trim()) {
+      // If user has current content, ask for confirmation
+      if (prompt.trim() && prompt !== samplePrompt) {
+        if (window.confirm('This will replace your current prompt with the default. Are you sure you want to continue?')) {
+          setPrompt(samplePrompt);
+          setSelectedVersion(null); // Clear selected version since we're loading default
+          toast.success('Default prompt restored! You can now edit and save it.');
+        }
+      } else {
+        // No current content or already default, just load it
+        setPrompt(samplePrompt);
+        setSelectedVersion(null);
+        toast.success('Default prompt loaded! You can now edit and save it.');
+      }
+    } else {
+      toast.error('Default prompt file is empty or missing. Please add content to /public/sample_promtp.md');
+      console.error('Default prompt file /public/sample_promtp.md is empty or missing');
+    }
+  };
+
   return (
     <div className="space-y-4">
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'editor' | 'history')}>
@@ -228,6 +249,23 @@ const PromptVersionManager: React.FC<PromptVersionManagerProps> = ({
                   </div>
                 </div>
               )}
+
+              {/* Restore Default button - always visible */}
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-3">
+                <p className="text-sm text-amber-800">
+                  <strong>Default Prompt:</strong> Restore the system default prompt that new users receive.
+                </p>
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={handleRestoreDefault} 
+                    variant="outline"
+                    className="flex-1 border-amber-300 text-amber-700 hover:bg-amber-100"
+                  >
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Restore Default Prompt
+                  </Button>
+                </div>
+              </div>
 
               <div className="flex gap-2">
                 <Button 

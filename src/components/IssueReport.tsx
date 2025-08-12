@@ -44,10 +44,19 @@ const IssueReport: React.FC = () => {
     try {
       // Load only current user's negative feedback
       const negativeFeedback = await getNegativeFeedbackSessions(user?.uid);
-      setIssues(negativeFeedback);
+      
+      // Filter out any invalid entries
+      const validIssues = negativeFeedback.filter(issue => 
+        issue && 
+        issue.id && 
+        typeof issue === 'object'
+      );
+      
+      setIssues(validIssues);
     } catch (error) {
       console.error('Error loading issues:', error);
       toast.error('Failed to load issues');
+      setIssues([]); // Set empty array on error
     } finally {
       setIsLoading(false);
     }
@@ -95,20 +104,32 @@ const IssueReport: React.FC = () => {
   };
 
   const filteredIssues = issues.filter(issue => {
+    // Ensure issue has required fields
+    if (!issue || !issue.id) return false;
+    
     if (statusFilter === 'all') return true;
     if (statusFilter === 'fixed') return issue.issueStatus === 'fixed';
     if (statusFilter === 'not_fixed') return issue.issueStatus === 'not_fixed' || !issue.issueStatus;
     return true;
   });
 
-  const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat('fi-FI', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    }).format(date);
+  const formatDate = (date: Date | string | number) => {
+    try {
+      const dateObj = date instanceof Date ? date : new Date(date);
+      if (isNaN(dateObj.getTime())) {
+        return 'Invalid Date';
+      }
+      return new Intl.DateTimeFormat('fi-FI', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }).format(dateObj);
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return 'Invalid Date';
+    }
   };
 
   const handleViewChat = (session: ContinuousImprovementSession) => {
@@ -200,10 +221,10 @@ const IssueReport: React.FC = () => {
                       </div>
                     </TableCell>
                     <TableCell className="text-sm text-gray-600">
-                      {formatDate(issue.createdDate)}
+                      {issue.createdDate ? formatDate(issue.createdDate) : 'No Date'}
                     </TableCell>
                     <TableCell className="text-sm text-gray-600">
-                      {issue.userId.substring(0, 8)}...
+                      {issue.userId ? issue.userId.substring(0, 8) + '...' : 'Unknown User'}
                     </TableCell>
                     <TableCell>
                       {getStatusBadge(issue.issueStatus)}

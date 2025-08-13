@@ -7,15 +7,21 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { useAuth } from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { loadLatestPrompt, createContinuousImprovementSession, addTechnicalLog, setUserFeedback } from '../lib/firestoreService';
 import { sessionService, ChatSession } from '../lib/sessionService';
 import { erpApiService } from '../lib/erpApiService';
+import { createPurchaseRequisition } from '@/lib/firestoreService';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface ProfessionalBuyerChatProps {
   onLogout?: () => void;
+  leftPanel?: React.ReactNode;
+  leftPanelVisible?: boolean;
+  topRightControls?: React.ReactNode;
 }
 
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
@@ -49,6 +55,45 @@ const searchERPFunction = {
         description: "Buyer/purchaser name or partial name to search for"
       }
     }
+  }
+};
+
+const createRequisitionFunction = {
+  name: "create_purchase_requisition",
+  description: "Create a purchase requisition document with header and lines to Firestore.",
+  parameters: {
+    type: "object",
+    properties: {
+      header: {
+        type: "object",
+        properties: {
+          templateBatchName: { type: "string" },
+          locationCode: { type: "string" },
+          startDate: { type: "string", description: "YYYY-MM-DD" },
+          endDate: { type: "string", description: "YYYY-MM-DD" },
+          responsibilityCenterOrBuyer: { type: "string" },
+          notes: { type: "string" }
+        },
+        required: ["templateBatchName","locationCode","startDate","endDate","responsibilityCenterOrBuyer"]
+      },
+      lines: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            itemNoOrDescription: { type: "string" },
+            quantity: { type: "number" },
+            unitOfMeasure: { type: "string" },
+            requestedDate: { type: "string", description: "YYYY-MM-DD" },
+            vendorNoOrName: { type: "string" },
+            directUnitCost: { type: "number" },
+            currency: { type: "string" }
+          },
+          required: ["itemNoOrDescription","quantity","unitOfMeasure","requestedDate"]
+        }
+      }
+    },
+    required: ["header","lines"]
   }
 };
 
@@ -95,7 +140,7 @@ const processTextWithCitations = (text: string, citationSources?: CitationSource
   return { originalText, formattedSources };
 };
 
-const ProfessionalBuyerChat: React.FC<ProfessionalBuyerChatProps> = ({ onLogout }) => {
+const ProfessionalBuyerChat: React.FC<ProfessionalBuyerChatProps> = ({ onLogout, leftPanel, leftPanelVisible = false, topRightControls }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -104,6 +149,7 @@ const ProfessionalBuyerChat: React.FC<ProfessionalBuyerChatProps> = ({ onLogout 
   const [sessionInitializing, setSessionInitializing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
   
   // Continuous improvement tracking
@@ -194,7 +240,7 @@ What can I help you with today?`
     "Use prenegotiated discount prices",
     "Get approvals easily and from correct person", 
     "Find preferred supplier and best price/quality",
-    "Create purchase orders easily and correctly"
+    "Create purcase requisitions and orders easily and correctly"
   ];
 
   const handleQuickAction = async (action: string) => {
@@ -254,7 +300,7 @@ What can I help you with today?`
         model: geminiModel,
         generationConfig: { temperature: 0.2 },
         tools: [
-          { functionDeclarations: [searchERPFunction] }
+          { functionDeclarations: [searchERPFunction, createRequisitionFunction] }
         ]
       });
 
@@ -417,6 +463,26 @@ What can I help you with today?`
                     role: 'model',
                     parts: [{ text: `I tried to search your ERP data but encountered an error: ${functionError instanceof Error ? functionError.message : 'Unknown error'}. Please make sure you have uploaded your ERP data in the Admin panel.` }]
                   }]);
+                  return;
+                }
+              }
+              if (functionName === 'create_purchase_requisition') {
+                try {
+                  const aiRequestId = Math.random().toString(36).substring(2, 8);
+                  const args = functionArgs as any;
+                  if (!user?.uid) throw new Error('Not authenticated');
+                  const id = await createPurchaseRequisition(user.uid, {
+                    status: 'draft',
+                    header: args.header,
+                    lines: args.lines
+                  } as any);
+                  try {
+                    await queryClient.invalidateQueries({ queryKey: ['purchaseRequisitions', user.uid] });
+                  } catch {}
+                  setMessages(prev => [...prev, { role: 'model', parts: [{ text: `Created purchase requisition ${id}. You can view and edit it in Requisitions.` }] }]);
+                  return;
+                } catch (err) {
+                  setMessages(prev => [...prev, { role: 'model', parts: [{ text: `Failed to create requisition: ${err instanceof Error ? err.message : 'Unknown error'}` }] }]);
                   return;
                 }
               }
@@ -601,48 +667,65 @@ What can I help you with today?`
           Get expert procurement advice, use prenegotiated prices from best suppliers, and do professional level procurement with ease
         </p>
       </div>
+      
 
-      {/* Action Buttons */}
-      <div className="bg-white border-b p-4">
-        <div className="flex gap-3 justify-center">
-          <Button 
-            variant="outline" 
-            onClick={handleResetChat}
-            className="text-red-600 border-red-200 hover:bg-red-50"
-          >
-            <RotateCcw className="mr-2 h-4 w-4" />
-            Reset Chat
-          </Button>
-          <Button 
-            variant="outline" 
-            onClick={handleAttachDocuments}
-            className="text-gray-700 border-gray-300 hover:bg-gray-100"
-          >
-            <Paperclip className="mr-2 h-4 w-4" />
-            Upload Documents
-          </Button>
-        </div>
+      {/* Main Content under header with optional left panel */}
+      {/* Controls row under header */}
+      <div className="container mx-auto px-4 mt-4 flex justify-end">
+        {topRightControls}
       </div>
 
-      {/* Quick Action Pills */}
-      <div className="bg-white border-b p-6">
-        <div className="flex flex-wrap gap-3 justify-center max-w-4xl mx-auto">
-          {quickActions.map((action, index) => (
-            <Button
-              key={index}
-              variant="outline"
-              className="rounded-full px-6 py-2 text-sm bg-white border-gray-300 text-gray-700 hover:bg-gray-100"
-              onClick={() => handleQuickAction(action)}
-            >
-              {action}
-            </Button>
-          ))}
-        </div>
-      </div>
+      <div className="container mx-auto px-4 pb-6">
+        {leftPanelVisible ? (
+          <ResizablePanelGroup direction="horizontal" className="h-full min-h-[60vh]">
+            <ResizablePanel defaultSize={35} minSize={20} maxSize={60} className="pr-2">
+              {leftPanel}
+            </ResizablePanel>
+            <ResizableHandle withHandle />
+            <ResizablePanel defaultSize={65} minSize={40} className="pl-2">
+              <div className={"flex flex-col items-stretch"}>
+            {/* Action Buttons */}
+            <div className="bg-white border p-4 rounded-md mb-2">
+              <div className="flex gap-3 justify-center">
+                <Button 
+                  variant="outline" 
+                  onClick={handleResetChat}
+                  className="text-red-600 border-red-200 hover:bg-red-50"
+                >
+                  <RotateCcw className="mr-2 h-4 w-4" />
+                  Reset Chat
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={handleAttachDocuments}
+                  className="text-gray-700 border-gray-300 hover:bg-gray-100"
+                >
+                  <Paperclip className="mr-2 h-4 w-4" />
+                  Upload Documents
+                </Button>
+              </div>
+            </div>
 
-      {/* Chat Messages */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
-        <div className="max-w-4xl mx-auto space-y-6">
+            {/* Quick Action Pills */}
+            <div className="bg-white border rounded-md p-6 mb-2">
+              <div className="flex flex-wrap gap-3 justify-center max-w-4xl mx-auto">
+                {quickActions.map((action, index) => (
+                  <Button
+                    key={index}
+                    variant="outline"
+                    className="rounded-full px-6 py-2 text-sm bg-white border-gray-300 text-gray-700 hover:bg-gray-100"
+                    onClick={() => handleQuickAction(action)}
+                  >
+                    {action}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {/* Chat Messages */}
+            <div className="p-2 space-y-6">
+              <div className="max-w-4xl ml-0 mr-auto space-y-6">
+                
           {sessionInitializing && (
             <div className="flex justify-start">
               <div className="flex items-start space-x-3">
@@ -736,34 +819,148 @@ What can I help you with today?`
               </div>
             </div>
           )}
-        </div>
-      </div>
-
-      {/* Input Area */}
-      <div className="bg-white border-t p-6">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex space-x-4 items-end">
-            <div className="flex-1">
-              <Input
-                ref={inputRef}
-                type="text"
-                placeholder="Ask about procurement strategies, cost optimization, supplier management..."
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyPress={handleKeyPress}
-                disabled={isLoading}
-                className="w-full h-12 px-4 text-lg border-gray-300 rounded-xl focus:ring-2 focus:ring-black focus:border-transparent"
-              />
+              </div>
             </div>
-            <Button
-              onClick={() => handleSendMessage()}
-              disabled={!input.trim() || isLoading}
-              className="h-12 px-6 bg-black hover:bg-gray-800 text-white rounded-xl"
-            >
-              <Send className="h-5 w-5" />
-            </Button>
+
+            {/* Input Area */}
+            <div className="bg-white border rounded-md p-6">
+              <div className="max-w-4xl mx-auto">
+                <div className="flex space-x-4 items-end">
+                  <div className="flex-1">
+                    <Input
+                      ref={inputRef}
+                      type="text"
+                      placeholder="Ask about procurement strategies, cost optimization, supplier management..."
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      onKeyPress={handleKeyPress}
+                      disabled={isLoading}
+                      className="w-full h-12 px-4 text-lg border-gray-300 rounded-xl focus:ring-2 focus:ring-black focus:border-transparent"
+                    />
+                  </div>
+                  <Button
+                    onClick={() => handleSendMessage()}
+                    disabled={!input.trim() || isLoading}
+                    className="h-12 px-6 bg-black hover:bg-gray-800 text-white rounded-xl"
+                  >
+                    <Send className="h-5 w-5" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+              </div>
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        ) : (
+          <div>
+            {/* When no left panel, show full-width chat */}
+            <div className={"flex flex-col items-stretch"}>
+              <div className="bg-white border p-4 rounded-md mb-2">
+                <div className="flex gap-3 justify-center">
+                  <Button variant="outline" onClick={handleResetChat} className="text-red-600 border-red-200 hover:bg-red-50">
+                    <RotateCcw className="mr-2 h-4 w-4" />
+                    Reset Chat
+                  </Button>
+                  <Button variant="outline" onClick={handleAttachDocuments} className="text-gray-700 border-gray-300 hover:bg-gray-100">
+                    <Paperclip className="mr-2 h-4 w-4" />
+                    Upload Documents
+                  </Button>
+                </div>
+              </div>
+              <div className="bg-white border rounded-md p-6 mb-2">
+                <div className="flex flex-wrap gap-3 justify-center max-w-4xl mx-auto">
+                  {quickActions.map((action, index) => (
+                    <Button key={index} variant="outline" className="rounded-full px-6 py-2 text-sm bg-white border-gray-300 text-gray-700 hover:bg-gray-100" onClick={() => handleQuickAction(action)}>
+                      {action}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              <div className="p-2 space-y-6">
+                <div className="max-w-4xl mx-auto space-y-6">
+                  {sessionInitializing && (
+                    <div className="flex justify-start">
+                      <div className="flex items-start space-x-3">
+                        <div className="flex-shrink-0 w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+                          <Bot className="h-5 w-5 text-gray-700" />
+                        </div>
+                        <div className="bg-white shadow-sm border rounded-2xl px-6 py-4 flex items-center space-x-2">
+                          <Loader2 className="h-4 w-4 animate-spin text-gray-700" />
+                          <span className="text-sm text-gray-600">Initializing AI with your knowledge base...</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {messages.map((message, index) => (
+                    <div key={index} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                      <div className="flex items-start space-x-3 max-w-3xl w-full">
+                        {message.role === 'model' && (
+                          <div className="flex-shrink-0 w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+                            <Bot className="h-5 w-5 text-gray-700" />
+                          </div>
+                        )}
+                        <div className="flex flex-col space-y-2 flex-1">
+                          <div className={`px-6 py-4 rounded-2xl ${message.role === 'user' ? 'bg-black text-white ml-auto max-w-lg' : 'bg-white shadow-sm border'}`}>
+                            {message.parts.map((part, partIndex) => (
+                              <div key={partIndex}>
+                                {part.text && (
+                                  <div className={`prose ${message.role === 'user' ? 'prose-invert' : ''} prose-sm max-w-none`}>
+                                    <ReactMarkdown>
+                                      {(() => {
+                                        const { originalText, formattedSources } = processTextWithCitations(part.text, message.citationMetadata?.citationSources);
+                                        return originalText + (formattedSources.length > 0 ? '\n\n**Sources:**\n' + formattedSources.join('\n') : '');
+                                      })()}
+                                    </ReactMarkdown>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                          {message.role === 'model' && (
+                            <div className="flex items-center space-x-2 ml-2">
+                              <span className="text-xs text-gray-500">Was this helpful?</span>
+                              <Button variant="ghost" size="sm" onClick={() => handleFeedback('thumbs_up', index)} className="text-gray-500 hover:text-green-600 hover:bg-green-50 p-1 h-auto" title="Good response">
+                                <ThumbsUp className="h-3 w-3" />
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => handleFeedback('thumbs_down', index)} className="text-gray-500 hover:text-red-600 hover:bg-red-50 p-1 h-auto" title="Poor response">
+                                <ThumbsDown className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {isLoading && (
+                    <div className="flex justify-start">
+                      <div className="flex items-start space-x-3">
+                        <div className="flex-shrink-0 w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+                          <Bot className="h-5 w-5 text-gray-700" />
+                        </div>
+                        <div className="bg-white shadow-sm border rounded-2xl px-6 py-4 flex items-center space-x-2">
+                          <Loader2 className="h-4 w-4 animate-spin text-gray-700" />
+                          <span className="text-sm text-gray-600">AI is thinking...</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="bg-white border rounded-md p-6">
+                <div className="max-w-4xl mx-auto">
+                  <div className="flex space-x-4 items-end">
+                    <div className="flex-1">
+                      <Input ref={inputRef} type="text" placeholder="Ask about procurement strategies, cost optimization, supplier management..." value={input} onChange={(e) => setInput(e.target.value)} onKeyPress={handleKeyPress} disabled={isLoading} className="w-full h-12 px-4 text-lg border-gray-300 rounded-xl focus:ring-2 focus:ring-black focus:border-transparent" />
+                    </div>
+                    <Button onClick={() => handleSendMessage()} disabled={!input.trim() || isLoading} className="h-12 px-6 bg-black hover:bg-gray-800 text-white rounded-xl">
+                      <Send className="h-5 w-5" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Feedback Dialog */}

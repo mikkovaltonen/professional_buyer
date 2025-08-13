@@ -1,6 +1,7 @@
-import { doc, setDoc, getDoc, collection, query, where, orderBy, limit, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, collection, query, where, orderBy, limit, getDocs, addDoc, serverTimestamp, updateDoc, deleteDoc } from 'firebase/firestore';
 import { User } from 'firebase/auth';
 import { db, auth } from '@/lib/firebase';
+import { PurchaseRequisition, PurchaseRequisitionStatus } from '@/types/purchaseRequisition';
 
 export interface SystemPromptVersion {
   id?: string;
@@ -513,3 +514,60 @@ export const updateIssueStatus = async (
     console.error('Error updating issue status:', error);
   }
 };
+
+// =============================
+// Purchase Requisition Firestore
+// =============================
+
+const PR_COLLECTION = 'purchase_requisitions';
+
+export const createPurchaseRequisition = async (
+  userId: string,
+  requisition: Omit<PurchaseRequisition, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
+): Promise<string> => {
+  if (!db) throw new Error('Firebase not initialized');
+  const payload = {
+    ...requisition,
+    userId,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  };
+  const docRef = await addDoc(collection(db, PR_COLLECTION), payload);
+  return docRef.id;
+};
+
+export const listPurchaseRequisitions = async (userId: string): Promise<PurchaseRequisition[]> => {
+  if (!db) return [];
+  const q = query(collection(db, PR_COLLECTION), where('userId', '==', userId));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data(), createdAt: d.data().createdAt?.toDate?.() || new Date(), updatedAt: d.data().updatedAt?.toDate?.() || new Date() })) as PurchaseRequisition[];
+};
+
+export const getPurchaseRequisition = async (id: string): Promise<PurchaseRequisition | null> => {
+  if (!db) return null;
+  const ref = doc(db, PR_COLLECTION, id);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return null;
+  const data = snap.data();
+  return { id: snap.id, ...data, createdAt: data.createdAt?.toDate?.() || new Date(), updatedAt: data.updatedAt?.toDate?.() || new Date() } as PurchaseRequisition;
+};
+
+export const updatePurchaseRequisition = async (id: string, update: Partial<PurchaseRequisition>): Promise<void> => {
+  if (!db) throw new Error('Firebase not initialized');
+  const ref = doc(db, PR_COLLECTION, id);
+  const payload = { ...update, updatedAt: serverTimestamp() } as Record<string, unknown>;
+  await setDoc(ref, payload, { merge: true });
+};
+
+export const setPurchaseRequisitionStatus = async (id: string, status: PurchaseRequisitionStatus): Promise<void> => {
+  if (!db) throw new Error('Firebase not initialized');
+  const ref = doc(db, PR_COLLECTION, id);
+  await updateDoc(ref, { status, updatedAt: serverTimestamp() });
+};
+
+export const deletePurchaseRequisition = async (id: string): Promise<void> => {
+  if (!db) throw new Error('Firebase not initialized');
+  const ref = doc(db, PR_COLLECTION, id);
+  await deleteDoc(ref);
+};
+

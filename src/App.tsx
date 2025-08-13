@@ -3,6 +3,7 @@ import Index from "./pages/Index";
 import Workbench from "./pages/Workbench";
 import Admin from "./pages/Admin";
 import IssueReportPage from "./pages/IssueReport";
+import PurchaseRequisitionsPage from "./pages/PurchaseRequisitions";
 import LoginForm from "./components/LoginForm";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -24,6 +25,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <Admin />
+          </ProtectedRoute>
+        }
+      />
+      <Route 
+        path="/requisitions" 
+        element={
+          <ProtectedRoute>
+            <PurchaseRequisitionsPage />
           </ProtectedRoute>
         }
       />

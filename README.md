@@ -201,18 +201,7 @@ MIT
 4. Ensure tests pass and code is properly formatted
 5. Submit a pull request
 
-## Deployment
 
-The application is configured for easy deployment to Vercel or similar platforms:
-
-1. Connect your repository to your deployment platform
-2. Set the required environment variables
-3. Deploy directly from your main branch
-
-For Vercel deployment:
-```bash
-vercel --prod
-```
 
 ## Support
 

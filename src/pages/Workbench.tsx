@@ -14,6 +14,7 @@ const Workbench = () => {
   const { logout } = useAuth();
   const [verificationVisible, setVerificationVisible] = React.useState(true);
   const [openId, setOpenId] = React.useState<string | null>(null);
+  const [refreshToken, setRefreshToken] = React.useState<number>(0);
 
   const handleLogout = () => {
     logout();
@@ -31,12 +32,19 @@ const Workbench = () => {
               <div className="flex items-center justify-between">
                 <CardTitle>Purchase Requisition Verification</CardTitle>
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" onClick={() => setOpenId((prev) => prev)}>Refresh</Button>
+                  <Button variant="outline" size="sm" onClick={() => setRefreshToken((t) => t + 1)}>Refresh</Button>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <PurchaseRequisitionList onOpen={(id) => setOpenId(id)} />
+              <PurchaseRequisitionList
+                onOpen={(id) => setOpenId(id)}
+                selectedId={openId}
+                refreshToken={refreshToken}
+                onDeleted={(id) => {
+                  if (openId === id) setOpenId(null);
+                }}
+              />
               {openId && (
                 <div className="border rounded-md">
                   <PurchaseRequisitionDetail id={openId} />

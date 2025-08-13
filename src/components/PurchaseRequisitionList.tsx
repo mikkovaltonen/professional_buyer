@@ -9,13 +9,16 @@ import { toast } from 'sonner';
 
 interface Props {
   onOpen?: (id: string) => void;
+  selectedId?: string | null;
+  refreshToken?: number; // include in query key to force refetch
+  onDeleted?: (id: string) => void;
 }
 
-const PurchaseRequisitionList: React.FC<Props> = ({ onOpen }) => {
+const PurchaseRequisitionList: React.FC<Props> = ({ onOpen, selectedId, refreshToken = 0, onDeleted }) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { data, isLoading } = useQuery({
-    queryKey: ['purchaseRequisitions', user?.uid],
+    queryKey: ['purchaseRequisitions', user?.uid, refreshToken],
     queryFn: async () => user ? await listPurchaseRequisitions(user.uid) : [],
     enabled: !!user
   });
@@ -35,6 +38,7 @@ const PurchaseRequisitionList: React.FC<Props> = ({ onOpen }) => {
       await deletePurchaseRequisition(id);
       toast.success('Requisition deleted');
       queryClient.invalidateQueries({ queryKey: ['purchaseRequisitions', user?.uid] });
+      onDeleted?.(id);
     } catch (e) {
       toast.error('Failed to delete');
     }
@@ -51,7 +55,12 @@ const PurchaseRequisitionList: React.FC<Props> = ({ onOpen }) => {
         ) : (
           <div className="space-y-3">
             {data && data.length > 0 ? data.map(pr => (
-              <div key={pr.id} className="border rounded-md p-3 flex items-center justify-between hover:bg-gray-50 cursor-pointer" onClick={() => onOpen?.(pr.id!)}>
+              <div
+                key={pr.id}
+                className={`border rounded-md p-3 flex items-center justify-between hover:bg-gray-50 cursor-pointer ${selectedId === pr.id ? 'ring-2 ring-blue-300 bg-blue-50' : ''}`}
+                onClick={() => onOpen?.(pr.id!)}
+                aria-selected={selectedId === pr.id}
+              >
                 <div className="space-y-1">
                   <div className="font-medium">{pr.header.templateBatchName} • {pr.header.locationCode}</div>
                   <div className="text-sm text-gray-500">{pr.header.startDate} → {pr.header.endDate} • {pr.status}</div>

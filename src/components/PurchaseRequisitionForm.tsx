@@ -88,64 +88,64 @@ const PurchaseRequisitionForm: React.FC<Props> = ({ onCreated }) => {
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label>Työkirjan nimi</Label>
-              <Input value={header.templateBatchName} onChange={e => setHeader({ ...header, templateBatchName: e.target.value })} placeholder="OSTO_2025W33" />
+              <Label>Template batch name</Label>
+              <Input value={header.templateBatchName} onChange={e => setHeader({ ...header, templateBatchName: e.target.value })} placeholder="PURCH_2025W33" />
             </div>
             <div>
-              <Label>Varasto / sijainti</Label>
+              <Label>Warehouse / location</Label>
               <Input value={header.locationCode} onChange={e => setHeader({ ...header, locationCode: e.target.value })} placeholder="HELSINKI" />
             </div>
             <div>
-              <Label>Tarveväli - Alku</Label>
+              <Label>Date range - Start</Label>
               <Input type="date" value={header.startDate} onChange={e => setHeader({ ...header, startDate: e.target.value })} />
             </div>
             <div>
-              <Label>Tarveväli - Loppu</Label>
+              <Label>Date range - End</Label>
               <Input type="date" value={header.endDate} onChange={e => setHeader({ ...header, endDate: e.target.value })} />
             </div>
             <div className="md:col-span-2">
-              <Label>Vastuuhenkilö / ostaja</Label>
+              <Label>Responsible person / buyer</Label>
               <Input value={header.responsibilityCenterOrBuyer} onChange={e => setHeader({ ...header, responsibilityCenterOrBuyer: e.target.value })} placeholder="Buyer name" />
             </div>
             <div className="md:col-span-2">
-              <Label>Perustelut / muistiinpano</Label>
-              <Textarea value={header.notes} onChange={e => setHeader({ ...header, notes: e.target.value })} placeholder="Syyskauden täydennys" />
+              <Label>Justification / note</Label>
+              <Textarea value={header.notes} onChange={e => setHeader({ ...header, notes: e.target.value })} placeholder="Autumn replenishment" />
             </div>
           </div>
 
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-medium">Rivit</h3>
+              <h3 className="text-sm font-medium">Lines</h3>
               <Button type="button" variant="outline" onClick={addLine}>Add line</Button>
             </div>
             {lines.map((line, idx) => (
               <div key={idx} className="grid grid-cols-1 md:grid-cols-6 gap-3 border rounded-md p-3">
                 <div className="md:col-span-2">
-                  <Label>Tuote / kuvaus</Label>
+                  <Label>Item / description</Label>
                   <Input value={line.itemNoOrDescription} onChange={e => updateLine(idx, { itemNoOrDescription: e.target.value })} />
                 </div>
                 <div>
-                  <Label>Määrä</Label>
+                  <Label>Quantity</Label>
                   <Input type="number" value={line.quantity} onChange={e => updateLine(idx, { quantity: Number(e.target.value) })} />
                 </div>
                 <div>
-                  <Label>Yksikkö</Label>
+                  <Label>Unit of measure</Label>
                   <Input value={line.unitOfMeasure} onChange={e => updateLine(idx, { unitOfMeasure: e.target.value })} />
                 </div>
                 <div>
-                  <Label>Toimituspäivä</Label>
+                  <Label>Requested date</Label>
                   <Input type="date" value={line.requestedDate} onChange={e => updateLine(idx, { requestedDate: e.target.value })} />
                 </div>
                 <div>
-                  <Label>Toimittajaehdotus</Label>
+                  <Label>Supplier suggestion</Label>
                   <Input value={line.vendorNoOrName || ''} onChange={e => updateLine(idx, { vendorNoOrName: e.target.value })} />
                 </div>
                 <div>
-                  <Label>Yksikköhinta</Label>
+                  <Label>Unit price</Label>
                   <Input type="number" step="0.01" value={line.directUnitCost ?? ''} onChange={e => updateLine(idx, { directUnitCost: e.target.value ? Number(e.target.value) : undefined })} />
                 </div>
                 <div>
-                  <Label>Valuutta</Label>
+                  <Label>Currency</Label>
                   <Input value={line.currency || 'EUR'} onChange={e => updateLine(idx, { currency: e.target.value })} />
                 </div>
                 <div className="flex items-end">

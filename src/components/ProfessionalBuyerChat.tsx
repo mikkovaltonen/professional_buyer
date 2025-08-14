@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { loadLatestPrompt, createContinuousImprovementSession, addTechnicalLog, setUserFeedback } from '../lib/firestoreService';
 import { sessionService, ChatSession } from '../lib/sessionService';
 import { erpApiService } from '../lib/erpApiService';
+import { storageService } from '../lib/storageService';
 import { createPurchaseRequisition } from '@/lib/firestoreService';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -163,6 +164,36 @@ const ProfessionalBuyerChat: React.FC<ProfessionalBuyerChatProps> = ({ onLogout,
   const [pendingMessageIndex, setPendingMessageIndex] = useState<number | null>(null);
   const [feedbackComment, setFeedbackComment] = useState('');
 
+  // System initialization status
+  const [statusLoading, setStatusLoading] = useState(false);
+  const [initStatus, setInitStatus] = useState<{ hasPrompt: boolean; knowledgeCount: number; erpCount: number }>({
+    hasPrompt: false,
+    knowledgeCount: 0,
+    erpCount: 0
+  });
+
+  React.useEffect(() => {
+    const checkStatus = async () => {
+      if (!user) return;
+      setStatusLoading(true);
+      try {
+        const [prompt, knowledge, erp] = await Promise.all([
+          sessionService.getLatestSystemPrompt(user.uid),
+          storageService.getUserDocuments(user.uid).catch(() => []),
+          storageService.getUserERPDocuments(user.uid).catch(() => [])
+        ]);
+        setInitStatus({
+          hasPrompt: !!prompt?.systemPrompt,
+          knowledgeCount: Array.isArray(knowledge) ? knowledge.length : 0,
+          erpCount: Array.isArray(erp) ? erp.length : 0
+        });
+      } finally {
+        setStatusLoading(false);
+      }
+    };
+    checkStatus();
+  }, [user]);
+
   // Initialize chat session with context
   React.useEffect(() => {
     const initializeSession = async () => {
@@ -251,6 +282,12 @@ What can I help you with today?`
   const handleSendMessage = async (messageText?: string) => {
     const textToSend = messageText || input;
     if (!textToSend.trim() || isLoading) return;
+
+    // Guard: require at least a system prompt
+    if (!initStatus.hasPrompt) {
+      toast.error('No system prompt configured. Please open Admin and set up your prompt.');
+      return;
+    }
 
     // Initialize continuous improvement if not already done
     if (!continuousImprovementSessionId) {
@@ -684,6 +721,40 @@ What can I help you with today?`
             <ResizableHandle withHandle />
             <ResizablePanel defaultSize={65} minSize={40} className="pl-2">
               <div className={"flex flex-col items-stretch"}>
+            {/* Status Panel */}
+            <div className="bg-white border rounded-md p-4 mb-2">
+              {statusLoading ? (
+                <div className="text-sm text-gray-600">Checking system status…</div>
+              ) : (
+                <div className="text-sm">
+                  <div className="flex flex-wrap gap-4">
+                    <div>
+                      <span className={`font-medium ${initStatus.hasPrompt ? 'text-green-700' : 'text-red-700'}`}>System Prompt:</span>
+                      <span className="ml-2 text-gray-700">{initStatus.hasPrompt ? 'Configured' : 'Missing'}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-800">Knowledge Docs:</span>
+                      <span className="ml-2 text-gray-700">{initStatus.knowledgeCount}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-800">ERP Data files:</span>
+                      <span className="ml-2 text-gray-700">{initStatus.erpCount}</span>
+                    </div>
+                    
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <a href="/admin" className="text-xs inline-flex items-center px-3 py-2 border rounded-md hover:bg-gray-50">Open Admin</a>
+                    <a href="/docs/setup_guide.html" target="_blank" rel="noreferrer" className="text-xs inline-flex items-center px-3 py-2 border rounded-md hover:bg-gray-50">Setup Guide (PDF)</a>
+                  </div>
+                  {!initStatus.hasPrompt && (
+                    <div className="mt-2 text-xs text-red-700">
+                      Please open Admin and configure a system prompt before chatting.
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
             {/* Action Buttons */}
             <div className="bg-white border p-4 rounded-md mb-2">
               <div className="flex gap-3 justify-center">
@@ -834,13 +905,13 @@ What can I help you with today?`
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
                       onKeyPress={handleKeyPress}
-                      disabled={isLoading}
+                      disabled={isLoading || !initStatus.hasPrompt}
                       className="w-full h-12 px-4 text-lg border-gray-300 rounded-xl focus:ring-2 focus:ring-black focus:border-transparent"
                     />
                   </div>
                   <Button
                     onClick={() => handleSendMessage()}
-                    disabled={!input.trim() || isLoading}
+                    disabled={!input.trim() || isLoading || !initStatus.hasPrompt}
                     className="h-12 px-6 bg-black hover:bg-gray-800 text-white rounded-xl"
                   >
                     <Send className="h-5 w-5" />
@@ -867,6 +938,40 @@ What can I help you with today?`
                   </Button>
                 </div>
               </div>
+              {/* Status Panel */}
+              <div className="bg-white border rounded-md p-4 mb-2">
+                {statusLoading ? (
+                  <div className="text-sm text-gray-600">Checking system status…</div>
+                ) : (
+                  <div className="text-sm">
+                    <div className="flex flex-wrap gap-4">
+                      <div>
+                        <span className={`font-medium ${initStatus.hasPrompt ? 'text-green-700' : 'text-red-700'}`}>System Prompt:</span>
+                        <span className="ml-2 text-gray-700">{initStatus.hasPrompt ? 'Configured' : 'Missing'}</span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-800">Knowledge Docs:</span>
+                        <span className="ml-2 text-gray-700">{initStatus.knowledgeCount}</span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-800">ERP Data files:</span>
+                        <span className="ml-2 text-gray-700">{initStatus.erpCount}</span>
+                      </div>
+                      
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <a href="/admin" className="text-xs inline-flex items-center px-3 py-2 border rounded-md hover:bg-gray-50">Open Admin</a>
+                      <a href="/docs/setup_guide.html" target="_blank" rel="noreferrer" className="text-xs inline-flex items-center px-3 py-2 border rounded-md hover:bg-gray-50">Setup Guide (PDF)</a>
+                    </div>
+                    {!initStatus.hasPrompt && (
+                      <div className="mt-2 text-xs text-red-700">
+                        Please open Admin and configure a system prompt before chatting.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
               <div className="bg-white border rounded-md p-6 mb-2">
                 <div className="flex flex-wrap gap-3 justify-center max-w-4xl mx-auto">
                   {quickActions.map((action, index) => (
@@ -950,9 +1055,9 @@ What can I help you with today?`
                 <div className="max-w-4xl mx-auto">
                   <div className="flex space-x-4 items-end">
                     <div className="flex-1">
-                      <Input ref={inputRef} type="text" placeholder="Ask about procurement strategies, cost optimization, supplier management..." value={input} onChange={(e) => setInput(e.target.value)} onKeyPress={handleKeyPress} disabled={isLoading} className="w-full h-12 px-4 text-lg border-gray-300 rounded-xl focus:ring-2 focus:ring-black focus:border-transparent" />
+                      <Input ref={inputRef} type="text" placeholder="Ask about procurement strategies, cost optimization, supplier management..." value={input} onChange={(e) => setInput(e.target.value)} onKeyPress={handleKeyPress} disabled={isLoading || !initStatus.hasPrompt} className="w-full h-12 px-4 text-lg border-gray-300 rounded-xl focus:ring-2 focus:ring-black focus:border-transparent" />
                     </div>
-                    <Button onClick={() => handleSendMessage()} disabled={!input.trim() || isLoading} className="h-12 px-6 bg-black hover:bg-gray-800 text-white rounded-xl">
+                    <Button onClick={() => handleSendMessage()} disabled={!input.trim() || isLoading || !initStatus.hasPrompt} className="h-12 px-6 bg-black hover:bg-gray-800 text-white rounded-xl">
                       <Send className="h-5 w-5" />
                     </Button>
                   </div>

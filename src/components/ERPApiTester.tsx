@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { erpApiService, SearchCriteria, SearchResult } from '../lib/erpApiService';
+import { erpSampleDataService } from '../lib/erpSampleDataService';
 import { useAuth } from '../hooks/useAuth';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -35,7 +36,7 @@ export const ERPApiTester: React.FC = () => {
     setError(null);
 
     try {
-      const result = await erpApiService.searchRecords(user.uid, searchCriteria);
+      const result = await erpApiService.searchRecords(searchCriteria);
       setSearchResult(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Search failed');
@@ -45,24 +46,24 @@ export const ERPApiTester: React.FC = () => {
   };
 
   const loadAvailableFields = async () => {
-    if (!user) return;
-
     try {
-      const fields = await erpApiService.getAvailableFields(user.uid);
-      setAvailableFields(fields);
+      // Get headers from sample data service
+      const headers = erpSampleDataService.getHeaders();
+      setAvailableFields(headers);
     } catch (err) {
       console.error('Failed to load available fields:', err);
     }
   };
 
   const loadSampleData = async () => {
-    if (!user) return;
-
     setLoading(true);
     setError(null);
 
     try {
-      const sampleRecords = await erpApiService.getSampleData(user.uid, 3);
+      // Get sample data directly from the service
+      const { records } = await erpSampleDataService.getSampleData();
+      const sampleRecords = records.slice(0, 3); // Get first 3 records
+      
       const sampleResult: SearchResult = {
         records: sampleRecords,
         totalCount: sampleRecords.length,
@@ -89,37 +90,37 @@ export const ERPApiTester: React.FC = () => {
       
       // Test 1: Get all records
       console.log('Test 1: Getting all records...');
-      const allRecords = await erpApiService.searchRecords(user.uid, {});
+      const allRecords = await erpApiService.searchRecords({});
       console.log(`✅ Found ${allRecords.totalCount} total records`);
 
-      // Test 2: Search by supplier
+      // Test 2: Search by supplier (using sample data suppliers)
       console.log('Test 2: Searching by supplier...');
-      const supplierTest = await erpApiService.searchRecords(user.uid, { supplierName: 'Tech' });
+      const supplierTest = await erpApiService.searchRecords({ supplierName: 'TechParts' });
       console.log(`✅ Supplier search: ${supplierTest.totalCount} records found`);
 
-      // Test 3: Search by product
+      // Test 3: Search by product (using sample data products)
       console.log('Test 3: Searching by product...');
-      const productTest = await erpApiService.searchRecords(user.uid, { productDescription: 'laptop' });
+      const productTest = await erpApiService.searchRecords({ productDescription: 'MILAN' });
       console.log(`✅ Product search: ${productTest.totalCount} records found`);
 
-      // Test 4: Search by buyer
+      // Test 4: Search by buyer (using sample data buyers)
       console.log('Test 4: Searching by buyer...');
-      const buyerTest = await erpApiService.searchRecords(user.uid, { buyerName: 'John' });
+      const buyerTest = await erpApiService.searchRecords({ buyerName: 'Mikael' });
       console.log(`✅ Buyer search: ${buyerTest.totalCount} records found`);
 
       // Test 5: Date range search
       console.log('Test 5: Searching by date range...');
-      const dateTest = await erpApiService.searchRecords(user.uid, { 
-        dateFrom: '2024-01-01', 
-        dateTo: '2024-12-31' 
+      const dateTest = await erpApiService.searchRecords({ 
+        dateFrom: '2025-01-01', 
+        dateTo: '2025-12-31' 
       });
       console.log(`✅ Date search: ${dateTest.totalCount} records found`);
 
       // Test 6: Combined search
       console.log('Test 6: Combined search...');
-      const combinedTest = await erpApiService.searchRecords(user.uid, { 
-        supplierName: 'Tech',
-        productDescription: 'laptop'
+      const combinedTest = await erpApiService.searchRecords({ 
+        supplierName: 'Nippon',
+        productDescription: 'hylly'
       });
       console.log(`✅ Combined search: ${combinedTest.totalCount} records found`);
 
@@ -171,51 +172,39 @@ export const ERPApiTester: React.FC = () => {
 
           {/* Filter Documentation */}
           <div className="p-4 bg-green-50 border border-green-200 rounded">
-            <h4 className="font-medium text-green-800 mb-3">📋 ERP API Field Mapping</h4>
+            <h4 className="font-medium text-green-800 mb-3">📋 Sample Data Information</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
               <div>
-                <h5 className="font-medium text-green-700 mb-2">📦 Supplier Name Filter</h5>
-                <p className="text-green-600 mb-1">
-                  <strong>Searches ONLY column:</strong> "Supplier Name"
-                </p>
+                <h5 className="font-medium text-green-700 mb-2">🏭 Example Suppliers</h5>
                 <p className="text-green-600 text-xs">
-                  ⚠️ Your Excel must have a column named exactly "Supplier Name"
+                  Nippon Tools Co., TechParts GmbH, Nordic Supply AB, Acme Corporation
                 </p>
               </div>
               
               <div>
-                <h5 className="font-medium text-green-700 mb-2">🛍️ Product Description Filter</h5>
-                <p className="text-green-600 mb-1">
-                  <strong>Searches ONLY column:</strong> "Description"
-                </p>
+                <h5 className="font-medium text-green-700 mb-2">🛍️ Example Products</h5>
                 <p className="text-green-600 text-xs">
-                  ⚠️ Your Excel must have a column named exactly "Description"
+                  BUDAPEST-hyllystö, TOKYO-hylly, LONDON-kaappi, MILAN-tuoli, BERLIN-lipasto
                 </p>
               </div>
               
               <div>
-                <h5 className="font-medium text-green-700 mb-2">📅 Date Range Filter</h5>
-                <p className="text-green-600 mb-1">
-                  <strong>Searches ONLY column:</strong> "Receive By"
-                </p>
+                <h5 className="font-medium text-green-700 mb-2">📅 Date Range</h5>
                 <p className="text-green-600 text-xs">
-                  ⚠️ Your Excel must have a column named exactly "Receive By"
+                  Sample data contains dates in 2025 (mostly April 2025)
                 </p>
               </div>
               
               <div>
-                <h5 className="font-medium text-green-700 mb-2">👤 Buyer Name Filter</h5>
-                <p className="text-green-600 mb-1">
-                  <strong>Searches ONLY column:</strong> "Buyer Name"
-                </p>
+                <h5 className="font-medium text-green-700 mb-2">👤 Example Buyers</h5>
                 <p className="text-green-600 text-xs">
-                  ⚠️ Your Excel must have a column named exactly "Buyer Name"
+                  Mikael Järvinen, Erika Sundström, Sari Rautakorpi, Anna Mäkelä
                 </p>
               </div>
             </div>
             <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded">
               <p className="text-blue-700 text-sm">
-                <strong>💡 Required Excel Column Names:</strong> Supplier Name, Description, Receive By, Buyer Name
+                <strong>💡 Note:</strong> Using shared sample data with 100 purchase order records from /sample_purchase_orders.json
               </p>
             </div>
           </div>
@@ -243,7 +232,7 @@ export const ERPApiTester: React.FC = () => {
               </Label>
               <Input
                 id="supplier"
-                placeholder="e.g., Tech, Acme, part of supplier name"
+                placeholder="e.g., Nippon, TechParts, Nordic Supply"
                 value={searchCriteria.supplierName || ''}
                 onChange={(e) => handleInputChange('supplierName', e.target.value)}
               />
@@ -256,7 +245,7 @@ export const ERPApiTester: React.FC = () => {
               </Label>
               <Input
                 id="product"
-                placeholder="e.g., laptop, monitor, part of description"
+                placeholder="e.g., MILAN, BUDAPEST, hylly, tuoli"
                 value={searchCriteria.productDescription || ''}
                 onChange={(e) => handleInputChange('productDescription', e.target.value)}
               />

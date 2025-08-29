@@ -13,6 +13,7 @@ const Workbench = () => {
   const navigate = useNavigate();
   const { logout } = useAuth();
   const [verificationVisible, setVerificationVisible] = React.useState(true);
+  const [generationVisible, setGenerationVisible] = React.useState(true);
   const [openId, setOpenId] = React.useState<string | null>(null);
   const [refreshToken, setRefreshToken] = React.useState<number>(0);
 
@@ -26,6 +27,7 @@ const Workbench = () => {
       <ProfessionalBuyerChat
         onLogout={handleLogout}
         leftPanelVisible={verificationVisible}
+        generationVisible={generationVisible}
         leftPanel={
           <Card>
             <CardHeader>
@@ -53,10 +55,16 @@ const Workbench = () => {
             </CardContent>
           </Card>
         }
-        topRightControls={
+        leftToggleControl={
           <div className="flex items-center gap-2">
             <Label htmlFor="verify-toggle" className="text-xs text-gray-500">Show verification</Label>
             <Switch id="verify-toggle" checked={verificationVisible} onCheckedChange={setVerificationVisible} />
+          </div>
+        }
+        topRightControls={
+          <div className="flex items-center gap-2">
+            <Label htmlFor="generation-toggle" className="text-xs text-gray-500">Show generation</Label>
+            <Switch id="generation-toggle" checked={generationVisible} onCheckedChange={setGenerationVisible} />
           </div>
         }
       />

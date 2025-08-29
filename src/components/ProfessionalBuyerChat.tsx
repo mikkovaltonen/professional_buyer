@@ -122,6 +122,11 @@ interface Message {
   citationMetadata?: {
     citationSources: CitationSource[];
   };
+  functionCall?: {
+    name: string;
+    args: Record<string, unknown>;
+    result?: unknown;
+  };
 }
 
 const processTextWithCitations = (text: string, citationSources?: CitationSource[]) => {
@@ -153,6 +158,7 @@ const ProfessionalBuyerChat: React.FC<ProfessionalBuyerChatProps> = ({
   topRightControls 
 }) => {
   const [messages, setMessages] = useState<Message[]>([]);
+  const [apiCallLogs, setApiCallLogs] = useState<Array<{timestamp: Date; functionName: string; functionArgs: unknown; functionResult?: unknown; error?: string}>>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [sessionActive, setSessionActive] = useState(false);
@@ -184,13 +190,22 @@ const ProfessionalBuyerChat: React.FC<ProfessionalBuyerChatProps> = ({
 
   React.useEffect(() => {
     const checkStatus = async () => {
-      if (!user) return;
+      if (!user || !user.uid) {
+        console.log('User not authenticated yet, skipping status check');
+        return;
+      }
       setStatusLoading(true);
       try {
         const [prompt, knowledge, erp] = await Promise.all([
           sessionService.getLatestSystemPrompt(user.uid),
-          storageService.getUserDocuments(user.uid).catch(() => []),
-          storageService.getUserERPDocuments(user.uid).catch(() => [])
+          storageService.getUserDocuments(user.uid).catch((err) => {
+            console.warn('Failed to fetch knowledge docs:', err);
+            return [];
+          }),
+          storageService.getUserERPDocuments(user.uid).catch((err) => {
+            console.warn('Failed to fetch ERP docs:', err);
+            return [];
+          })
         ]);
         setInitStatus({
           hasPrompt: !!prompt?.systemPrompt,
@@ -207,7 +222,7 @@ const ProfessionalBuyerChat: React.FC<ProfessionalBuyerChatProps> = ({
   // Initialize chat session with context
   React.useEffect(() => {
     const initializeSession = async () => {
-      if (!sessionActive && user && !sessionInitializing) {
+      if (!sessionActive && user && user.uid && !sessionInitializing) {
         setSessionInitializing(true);
         try {
           // Initialize session with system prompt + knowledge documents
@@ -303,23 +318,10 @@ What procurement needs can I help you with today? I can assist with supplier man
       return;
     }
 
-    // Initialize continuous improvement if not already done
-    if (!continuousImprovementSessionId) {
-      await initializeContinuousImprovement();
-    }
-
     const userMessage: Message = { role: 'user', parts: [{ text: textToSend }] };
     setMessages(prev => [...prev, userMessage]);
     if (!messageText) setInput('');
     setIsLoading(true);
-    
-    // Log user message
-    if (continuousImprovementSessionId) {
-      await addTechnicalLog(continuousImprovementSessionId, {
-        event: 'user_message',
-        userMessage: textToSend
-      });
-    }
 
     try {
       // Use session context if available, otherwise fallback to loading prompt
@@ -389,16 +391,12 @@ What procurement needs can I help you with today? I can assist with supplier man
                     ai_request_id: aiRequestId
                   });
 
-                  // Log function call triggered
-                  if (continuousImprovementSessionId) {
-                    await addTechnicalLog(continuousImprovementSessionId, {
-                      event: 'function_call_triggered',
-                      userMessage: textToSend,
-                      functionName: functionName,
-                      functionInputs: functionArgs,
-                      aiRequestId: aiRequestId
-                    });
-                  }
+                  // Store API call for later saving
+                  setApiCallLogs(prev => [...prev, {
+                    timestamp: new Date(),
+                    functionName: functionName,
+                    functionArgs: functionArgs
+                  }]);
 
                   // Execute ERP search (this will generate its own logs with request ID)
                   const searchResult = await erpApiService.searchRecords(functionArgs);
@@ -417,21 +415,19 @@ What procurement needs can I help you with today? I can assist with supplier man
                     ai_request_id: aiRequestId
                   });
 
-                  // Log function call success
-                  if (continuousImprovementSessionId) {
-                    await addTechnicalLog(continuousImprovementSessionId, {
-                      event: 'function_call_success',
-                      functionName: functionName,
-                      functionInputs: functionArgs,
-                      functionOutputs: {
+                  // Update API call with result
+                  setApiCallLogs(prev => {
+                    const updated = [...prev];
+                    const lastCall = updated[updated.length - 1];
+                    if (lastCall && lastCall.functionName === functionName) {
+                      lastCall.functionResult = {
                         totalRecords: searchResult.totalCount,
                         processingTimeMs: searchResult.processingTimeMs,
-                        hasData: searchResult.records.length > 0,
-                        recordsPreview: searchResult.records.slice(0, 3) // First 3 records as preview
-                      },
-                      aiRequestId: aiRequestId
-                    });
-                  }
+                        recordsPreview: searchResult.records.slice(0, 3)
+                      };
+                    }
+                    return updated;
+                  });
                   
                   // Create function response
                   const functionResponse = {
@@ -477,14 +473,7 @@ What procurement needs can I help you with today? I can assist with supplier man
                       ai_request_id: aiRequestId
                     });
 
-                    // Log AI response
-                    if (continuousImprovementSessionId) {
-                      await addTechnicalLog(continuousImprovementSessionId, {
-                        event: 'ai_response',
-                        aiResponse: aiResponseText.substring(0, 500), // First 500 chars to avoid too much data
-                        aiRequestId: aiRequestId
-                      });
-                    }
+                    // AI response (logging removed)
                     
                     // Ensure we have valid parts with text content
                     const responseParts = followUpResponse.candidates[0].content?.parts || [];
@@ -515,16 +504,15 @@ What procurement needs can I help you with today? I can assist with supplier man
                     ai_request_id: aiRequestId
                   });
 
-                  // Log function call error
-                  if (continuousImprovementSessionId) {
-                    await addTechnicalLog(continuousImprovementSessionId, {
-                      event: 'function_call_error',
-                      functionName: functionName,
-                      functionInputs: functionArgs,
-                      errorMessage: functionError instanceof Error ? functionError.message : 'Unknown error',
-                      aiRequestId: aiRequestId
-                    });
-                  }
+                  // Update API call with error
+                  setApiCallLogs(prev => {
+                    const updated = [...prev];
+                    const lastCall = updated[updated.length - 1];
+                    if (lastCall && lastCall.functionName === functionName) {
+                      lastCall.error = functionError instanceof Error ? functionError.message : 'Unknown error';
+                    }
+                    return updated;
+                  });
                   
                   console.error('Function execution failed:', functionError);
                   setMessages(prev => [...prev, {
@@ -537,16 +525,18 @@ What procurement needs can I help you with today? I can assist with supplier man
               if (functionName === 'create_purchase_requisition') {
                 try {
                   const aiRequestId = Math.random().toString(36).substring(2, 8);
-                  const args = functionArgs as any;
+                  const args = functionArgs as { header: unknown; lines: unknown };
                   if (!user?.uid) throw new Error('Not authenticated');
                   const id = await createPurchaseRequisition(user.uid, {
                     status: 'draft',
                     header: args.header,
                     lines: args.lines
-                  } as any);
+                  } as PurchaseRequisition);
                   try {
                     await queryClient.invalidateQueries({ queryKey: ['purchaseRequisitions', user.uid] });
-                  } catch {}
+                  } catch {
+                    // Ignore query client errors
+                  }
                   setMessages(prev => [...prev, { role: 'model', parts: [{ text: `Created purchase requisition ${id}. You can view and edit it in Requisitions.` }] }]);
                   return;
                 } catch (err) {
@@ -581,13 +571,7 @@ What procurement needs can I help you with today? I can assist with supplier man
             timestamp: new Date().toISOString()
           });
         }
-        
-        if (continuousImprovementSessionId) {
-          await addTechnicalLog(continuousImprovementSessionId, {
-            event: 'ai_response',
-            aiResponse: aiResponseText.substring(0, 500) // First 500 chars to avoid too much data
-          });
-        }
+        // Regular AI response (logging removed)
 
         // Ensure we have valid parts with text content for regular responses
         const responseParts = content?.parts || [];
@@ -665,7 +649,13 @@ What procurement needs can I help you with today? I can assist with supplier man
       // For now, use a default prompt key if we don't have the actual one
       // This should be updated when the user selects/creates a prompt version
       const promptKey = currentPromptKey || `${user.email?.split('@')[0] || 'user'}_v1`;
-      const sessionId = await createContinuousImprovementSession(promptKey, chatSessionKey, user.uid);
+      const sessionId = await createContinuousImprovementSession(
+        promptKey, 
+        chatSessionKey, 
+        user.uid,
+        user.email || undefined,
+        undefined // displayName not available in AuthUser type
+      );
       setContinuousImprovementSessionId(sessionId);
       console.log('📊 Continuous improvement session initialized:', sessionId);
     } catch (error) {
@@ -683,53 +673,87 @@ What procurement needs can I help you with today? I can assist with supplier man
     setFeedbackDialogOpen(true);
   };
 
-  // Submit feedback with optional comment
+  // Submit feedback with mandatory comment
   const submitFeedback = async () => {
     if (!pendingFeedback || pendingMessageIndex === null) {
       return;
     }
 
+    // Comment is mandatory for both thumbs up and down
+    if (!feedbackComment || feedbackComment.trim().length < 10) {
+      toast.error('Please provide at least 10 characters of feedback to save the chat history');
+      return;
+    }
+
     try {
-      // Only create an issue if:
-      // 1. It's thumbs_down feedback AND
-      // 2. There's a meaningful comment describing the issue (not just "empty" or "empty answer")
-      const isRealIssue = pendingFeedback === 'thumbs_down' && 
-                         feedbackComment && 
-                         feedbackComment.trim().length > 10 &&
-                         !feedbackComment.toLowerCase().includes('empty answer') &&
-                         !feedbackComment.toLowerCase().includes('empty response') &&
-                         feedbackComment.toLowerCase() !== 'empty';
+      // Initialize session when user provides feedback
+      let sessionId = continuousImprovementSessionId;
       
-      if (isRealIssue) {
-        // This is a real issue - save it to continuous improvement
-        // Initialize session only when we have a real issue
-        if (!continuousImprovementSessionId) {
-          await initializeContinuousImprovement();
+      if (!sessionId) {
+        // Create new session inline to ensure we have the ID immediately
+        const promptKey = currentPromptKey || `${user?.email?.split('@')[0] || 'user'}_v1`;
+        sessionId = await createContinuousImprovementSession(
+          promptKey, 
+          chatSessionKey, 
+          user?.uid || '',
+          user?.email || undefined,
+          undefined // displayName not available in AuthUser type
+        );
+        
+        // Check if session creation failed
+        if (sessionId.startsWith('error_') || sessionId.startsWith('local_')) {
+          console.error('Failed to create session:', sessionId);
+          toast.error('Failed to save chat history to cloud. Please check your connection.');
+          return;
         }
         
-        if (continuousImprovementSessionId) {
-          await addTechnicalLog(continuousImprovementSessionId, {
-            event: 'user_issue_report',
-            aiResponse: `Issue reported for message ${pendingMessageIndex}: ${feedbackComment}`,
-          });
-          
-          await setUserFeedback(continuousImprovementSessionId, pendingFeedback, feedbackComment);
-          console.log(`[ContinuousImprovement] Issue saved: ${feedbackComment}`);
-          toast.success('👎 Thanks for reporting this issue - we\'ll investigate and improve!');
-        } else {
-          console.error('Failed to initialize continuous improvement session');
-          toast.error('Failed to save issue');
+        setContinuousImprovementSessionId(sessionId);
+        console.log('📊 Continuous improvement session initialized:', sessionId);
+      }
+      
+      if (sessionId && !sessionId.startsWith('error_') && !sessionId.startsWith('local_')) {
+        // Save all messages to Firestore as technical logs
+        const messagesUpToFeedback = messages.slice(0, pendingMessageIndex + 1);
+        
+        console.log(`Saving ${messagesUpToFeedback.length} messages and ${apiCallLogs.length} API calls to session ${sessionId}`);
+        
+        // Add all messages as technical logs
+        for (let i = 0; i < messagesUpToFeedback.length; i++) {
+          const msg = messagesUpToFeedback[i];
+          const logEntry = {
+            event: msg.role === 'user' ? 'user_message' : 'ai_response',
+            userMessage: msg.role === 'user' ? msg.parts[0]?.text : undefined,
+            aiResponse: msg.role === 'model' ? msg.parts[0]?.text : undefined
+          };
+          console.log(`Saving message ${i + 1}/${messagesUpToFeedback.length}:`, logEntry.event);
+          await addTechnicalLog(sessionId, logEntry);
         }
-      } else {
-        // This is just feedback (thumbs up or thumbs down without substantial comment)
-        // Log it but don't create an issue
-        console.log(`[Feedback] User feedback: ${pendingFeedback}${feedbackComment ? ` - ${feedbackComment}` : ''} (not saved as issue)`);
+        
+        // Add all API calls as technical logs
+        for (let i = 0; i < apiCallLogs.length; i++) {
+          const apiCall = apiCallLogs[i];
+          const logEntry = {
+            event: apiCall.error ? 'function_call_error' : 'function_call_success' as 'function_call_error' | 'function_call_success',
+            functionName: apiCall.functionName,
+            functionInputs: apiCall.functionArgs,
+            functionOutputs: apiCall.functionResult,
+            errorMessage: apiCall.error
+            // Note: timestamp is handled by addTechnicalLog
+          };
+          console.log(`Saving API call ${i + 1}/${apiCallLogs.length}:`, apiCall.functionName);
+          await addTechnicalLog(sessionId, logEntry);
+        }
+        
+        // Save feedback
+        await setUserFeedback(sessionId, pendingFeedback, feedbackComment);
         
         if (pendingFeedback === 'thumbs_up') {
-          toast.success('👍 Thanks for the positive feedback!');
+          toast.success('👍 Thanks! Chat history saved with your positive feedback.');
         } else {
-          toast.success('👎 Thanks for the feedback!');
+          toast.success('👎 Thanks! Chat history saved with your feedback for improvement.');
         }
+      } else {
+        toast.error('Failed to save chat history');
       }
       
       setFeedbackDialogOpen(false);
@@ -790,6 +814,9 @@ What procurement needs can I help you with today? I can assist with supplier man
           <h1 className="text-3xl font-bold">Professional Buyer AI Assistant</h1>
         </div>
         <p className="text-gray-300 text-lg max-w-4xl mx-auto">
+          {user?.email && (
+            <span className="font-medium">Welcome {user.email.split('@')[0]}! </span>
+          )}
           Get expert procurement advice, use prenegotiated prices from best suppliers, and do professional level procurement with ease
         </p>
       </div>
@@ -1173,13 +1200,10 @@ What procurement needs can I help you with today? I can assist with supplier man
               ) : (
                 <ThumbsDown className="h-5 w-5 text-red-600" />
               )}
-              {pendingFeedback === 'thumbs_up' ? 'Positive feedback' : 'Feedback for improvement'}
+              Save Chat History with Feedback
             </DialogTitle>
             <DialogDescription>
-              {pendingFeedback === 'thumbs_up' 
-                ? 'Great! What did you like about this response?' 
-                : 'Help us improve! Please describe the issue in detail (required for issue reporting).'
-              }
+              Your feedback helps improve the AI. Please provide at least 10 characters of feedback to save this chat conversation.
             </DialogDescription>
           </DialogHeader>
           
@@ -1187,26 +1211,27 @@ What procurement needs can I help you with today? I can assist with supplier man
             
             <div className="space-y-2">
               <Label htmlFor="feedback-comment">
-                {pendingFeedback === 'thumbs_up' ? 'Comment (optional)' : 'Issue description (required for saving as issue)'}
+                Feedback comment (required to save chat history)
               </Label>
               <Textarea
                 id="feedback-comment"
                 placeholder={pendingFeedback === 'thumbs_up' 
-                  ? 'What worked well? Any specific aspects you found helpful?'
-                  : 'Please describe the issue in detail. For example: "The AI misunderstood my request about..." (min 10 characters to save as issue)'
+                  ? 'What worked well? Please provide feedback (min 10 characters)'
+                  : 'What could be improved? Please provide feedback (min 10 characters)'
                 }
                 value={feedbackComment}
                 onChange={(e) => setFeedbackComment(e.target.value)}
                 className="min-h-[100px]"
+                required
               />
-              {pendingFeedback === 'thumbs_down' && feedbackComment && feedbackComment.trim().length > 0 && feedbackComment.trim().length <= 10 && (
+              {feedbackComment && feedbackComment.trim().length > 0 && feedbackComment.trim().length < 10 && (
                 <p className="text-sm text-amber-600">
-                  Please provide more detail (minimum 10 characters) to save as an issue.
+                  Please provide at least 10 characters to save chat history.
                 </p>
               )}
-              {pendingFeedback === 'thumbs_down' && !feedbackComment && (
-                <p className="text-sm text-gray-500">
-                  Without a detailed description, this will be recorded as feedback only (not saved as an issue).
+              {!feedbackComment && (
+                <p className="text-sm text-red-500">
+                  Feedback is required to save chat history.
                 </p>
               )}
             </div>
@@ -1217,13 +1242,14 @@ What procurement needs can I help you with today? I can assist with supplier man
               variant="outline"
               onClick={cancelFeedback}
             >
-              Skip
+              Cancel
             </Button>
             <Button
               onClick={submitFeedback}
+              disabled={!feedbackComment || feedbackComment.trim().length < 10}
               className={pendingFeedback === 'thumbs_up' ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'}
             >
-              Submit Feedback
+              Save Chat History
             </Button>
           </DialogFooter>
         </DialogContent>

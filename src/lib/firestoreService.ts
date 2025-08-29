@@ -19,6 +19,8 @@ export interface ContinuousImprovementSession {
   promptKey: string; // References SystemPromptVersion.technicalKey
   chatSessionKey: string; // Unique identifier for this chat session
   userId: string;
+  userEmail?: string; // User's email address
+  userName?: string; // User's display name
   userFeedback?: 'thumbs_up' | 'thumbs_down' | null;
   userComment?: string; // Optional comment from user
   issueStatus?: 'fixed' | 'not_fixed'; // Status for negative feedback issues
@@ -326,7 +328,9 @@ export const loadPrompt = async (userId: string): Promise<string | null> => {
 export const createContinuousImprovementSession = async (
   promptKey: string,
   chatSessionKey: string,
-  userId: string
+  userId: string,
+  userEmail?: string,
+  userName?: string
 ): Promise<string> => {
   try {
     if (!db) {
@@ -334,21 +338,26 @@ export const createContinuousImprovementSession = async (
       return 'local_session_' + Date.now();
     }
 
-    const session: Omit<ContinuousImprovementSession, 'id'> = {
+    // Build session object with only defined values
+    const sessionData: any = {
       promptKey,
       chatSessionKey,
       userId,
       userFeedback: null,
       technicalLogs: [],
-      createdDate: new Date(),
-      lastUpdated: new Date()
-    };
-
-    const docRef = await addDoc(collection(db, 'continuous_improvement'), {
-      ...session,
       createdDate: serverTimestamp(),
       lastUpdated: serverTimestamp()
-    });
+    };
+    
+    // Add optional fields only if they are defined
+    if (userEmail) {
+      sessionData.userEmail = userEmail;
+    }
+    if (userName) {
+      sessionData.userName = userName;
+    }
+
+    const docRef = await addDoc(collection(db, 'continuous_improvement'), sessionData);
 
     console.log(`[ContinuousImprovement] Created session with ID: ${docRef.id}`);
     return docRef.id;
@@ -372,21 +381,48 @@ export const addTechnicalLog = async (
     const sessionDoc = await getDoc(sessionRef);
 
     if (sessionDoc.exists()) {
-      const sessionData = sessionDoc.data() as ContinuousImprovementSession;
-      const updatedLogs = [
-        ...sessionData.technicalLogs,
-        {
-          ...logEntry,
-          timestamp: new Date()
-        }
-      ];
+      const sessionData = sessionDoc.data();
+      const existingLogs = sessionData.technicalLogs || [];
+      
+      // Clean the log entry - remove undefined values
+      const cleanLogEntry: any = {
+        event: logEntry.event,
+        timestamp: new Date()
+      };
+      
+      // Add only defined fields
+      if (logEntry.userMessage !== undefined) {
+        cleanLogEntry.userMessage = logEntry.userMessage;
+      }
+      if (logEntry.aiResponse !== undefined) {
+        cleanLogEntry.aiResponse = logEntry.aiResponse;
+      }
+      if (logEntry.functionName !== undefined) {
+        cleanLogEntry.functionName = logEntry.functionName;
+      }
+      if (logEntry.functionInputs !== undefined) {
+        cleanLogEntry.functionInputs = logEntry.functionInputs;
+      }
+      if (logEntry.functionOutputs !== undefined) {
+        cleanLogEntry.functionOutputs = logEntry.functionOutputs;
+      }
+      if (logEntry.errorMessage !== undefined) {
+        cleanLogEntry.errorMessage = logEntry.errorMessage;
+      }
+      if (logEntry.aiRequestId !== undefined) {
+        cleanLogEntry.aiRequestId = logEntry.aiRequestId;
+      }
+      
+      const updatedLogs = [...existingLogs, cleanLogEntry];
 
-      await setDoc(sessionRef, {
+      await updateDoc(sessionRef, {
         technicalLogs: updatedLogs,
         lastUpdated: serverTimestamp()
-      }, { merge: true });
+      });
 
       console.log(`[ContinuousImprovement] Added log to session ${sessionId}: ${logEntry.event}`);
+    } else {
+      console.error(`Session ${sessionId} not found`);
     }
   } catch (error) {
     console.error('Error adding technical log:', error);

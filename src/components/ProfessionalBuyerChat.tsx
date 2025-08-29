@@ -463,10 +463,15 @@ What procurement needs can I help you with today? I can assist with supplier man
                   if (followUpResponse?.candidates?.[0]?.content) {
                     const aiResponseText = followUpResponse.candidates[0].content?.parts?.[0]?.text || "No response text";
                     
-                    // Log AI's final response
+                    // Log AI's final response with detailed debugging
                     console.log('💬 AI FINAL RESPONSE [' + aiRequestId + ']:', {
                       response_text_length: aiResponseText.length,
                       response_preview: aiResponseText.substring(0, 200) + (aiResponseText.length > 200 ? '...' : ''),
+                      has_content: !!followUpResponse.candidates[0].content,
+                      parts_count: followUpResponse.candidates[0].content?.parts?.length || 0,
+                      parts_with_text: followUpResponse.candidates[0].content?.parts?.filter((p): p is { text: string } => 
+                        typeof p === 'object' && p !== null && 'text' in p && typeof p.text === 'string'
+                      )?.length || 0,
                       included_erp_data: searchResult.totalCount > 0,
                       timestamp: new Date().toISOString(),
                       ai_request_id: aiRequestId
@@ -481,9 +486,21 @@ What procurement needs can I help you with today? I can assist with supplier man
                       });
                     }
                     
+                    // Ensure we have valid parts with text content
+                    const responseParts = followUpResponse.candidates[0].content?.parts || [];
+                    const validParts = responseParts.filter((part): part is { text: string } => 
+                      typeof part === 'object' && 
+                      part !== null && 
+                      'text' in part && 
+                      typeof part.text === 'string' && 
+                      part.text.trim().length > 0
+                    );
+                    
                     setMessages(prev => [...prev, {
                       role: 'model',
-                      parts: followUpResponse.candidates[0].content?.parts || [{ text: "I executed the search but couldn't format the response." }]
+                      parts: validParts.length > 0 
+                        ? validParts 
+                        : [{ text: aiResponseText || "I executed the search but couldn't format the response. Please try rephrasing your question." }]
                     }]);
                   }
                   return;
@@ -548,6 +565,23 @@ What procurement needs can I help you with today? I can assist with supplier man
 
         // Log regular AI response (non-function call)
         const aiResponseText = content?.parts?.[0]?.text || "No response text";
+        
+        // Debug logging for empty responses
+        if (!content?.parts || content.parts.length === 0 || 
+            !content.parts.some((p): p is { text: string } => 
+              typeof p === 'object' && p !== null && 'text' in p && 
+              typeof p.text === 'string' && p.text.trim().length > 0)) {
+          console.warn('⚠️ AI returned empty or invalid response:', {
+            has_content: !!content,
+            parts_count: content?.parts?.length || 0,
+            parts_with_text: content?.parts?.filter((p): p is { text: string } => 
+              typeof p === 'object' && p !== null && 'text' in p && typeof p.text === 'string'
+            )?.length || 0,
+            first_part: content?.parts?.[0],
+            timestamp: new Date().toISOString()
+          });
+        }
+        
         if (continuousImprovementSessionId) {
           await addTechnicalLog(continuousImprovementSessionId, {
             event: 'ai_response',
@@ -555,9 +589,21 @@ What procurement needs can I help you with today? I can assist with supplier man
           });
         }
 
+        // Ensure we have valid parts with text content for regular responses
+        const responseParts = content?.parts || [];
+        const validParts = responseParts.filter((part): part is { text: string } => 
+          typeof part === 'object' && 
+          part !== null && 
+          'text' in part && 
+          typeof part.text === 'string' && 
+          part.text.trim().length > 0
+        );
+        
         setMessages(prev => [...prev, {
           role: 'model',
-          parts: content?.parts || [{ text: "I couldn't generate a response." }],
+          parts: validParts.length > 0 
+            ? validParts 
+            : [{ text: aiResponseText || "I couldn't generate a response. Please try again." }],
           citationMetadata: processedCitationMetadata
         }]);
       } else {
@@ -629,10 +675,7 @@ What procurement needs can I help you with today? I can assist with supplier man
 
   // Handle user feedback for specific message - opens dialog
   const handleFeedback = async (feedback: 'thumbs_up' | 'thumbs_down', messageIndex: number) => {
-    if (!continuousImprovementSessionId) {
-      await initializeContinuousImprovement();
-    }
-    
+    // Don't initialize session yet - only if they actually submit an issue
     // Store pending feedback and open dialog
     setPendingFeedback(feedback);
     setPendingMessageIndex(messageIndex);
@@ -642,25 +685,57 @@ What procurement needs can I help you with today? I can assist with supplier man
 
   // Submit feedback with optional comment
   const submitFeedback = async () => {
-    if (!continuousImprovementSessionId || !pendingFeedback || pendingMessageIndex === null) {
+    if (!pendingFeedback || pendingMessageIndex === null) {
       return;
     }
 
     try {
-      // Add message context to the feedback log
-      await addTechnicalLog(continuousImprovementSessionId, {
-        event: 'ai_response',
-        aiResponse: `User feedback for message ${pendingMessageIndex}: ${pendingFeedback}${feedbackComment ? ` - Comment: ${feedbackComment}` : ''}`,
-      });
+      // Only create an issue if:
+      // 1. It's thumbs_down feedback AND
+      // 2. There's a meaningful comment describing the issue (not just "empty" or "empty answer")
+      const isRealIssue = pendingFeedback === 'thumbs_down' && 
+                         feedbackComment && 
+                         feedbackComment.trim().length > 10 &&
+                         !feedbackComment.toLowerCase().includes('empty answer') &&
+                         !feedbackComment.toLowerCase().includes('empty response') &&
+                         feedbackComment.toLowerCase() !== 'empty';
       
-      await setUserFeedback(continuousImprovementSessionId, pendingFeedback, feedbackComment || undefined);
+      if (isRealIssue) {
+        // This is a real issue - save it to continuous improvement
+        // Initialize session only when we have a real issue
+        if (!continuousImprovementSessionId) {
+          await initializeContinuousImprovement();
+        }
+        
+        if (continuousImprovementSessionId) {
+          await addTechnicalLog(continuousImprovementSessionId, {
+            event: 'user_issue_report',
+            aiResponse: `Issue reported for message ${pendingMessageIndex}: ${feedbackComment}`,
+          });
+          
+          await setUserFeedback(continuousImprovementSessionId, pendingFeedback, feedbackComment);
+          console.log(`[ContinuousImprovement] Issue saved: ${feedbackComment}`);
+          toast.success('👎 Thanks for reporting this issue - we\'ll investigate and improve!');
+        } else {
+          console.error('Failed to initialize continuous improvement session');
+          toast.error('Failed to save issue');
+        }
+      } else {
+        // This is just feedback (thumbs up or thumbs down without substantial comment)
+        // Log it but don't create an issue
+        console.log(`[Feedback] User feedback: ${pendingFeedback}${feedbackComment ? ` - ${feedbackComment}` : ''} (not saved as issue)`);
+        
+        if (pendingFeedback === 'thumbs_up') {
+          toast.success('👍 Thanks for the positive feedback!');
+        } else {
+          toast.success('👎 Thanks for the feedback!');
+        }
+      }
       
       setFeedbackDialogOpen(false);
       setPendingFeedback(null);
       setPendingMessageIndex(null);
       setFeedbackComment('');
-      
-      toast.success(pendingFeedback === 'thumbs_up' ? '👍 Thanks for the positive feedback!' : '👎 Thanks for the feedback - we\'ll improve!');
     } catch (error) {
       console.error('Failed to save feedback:', error);
       toast.error('Failed to save feedback');
@@ -1103,7 +1178,7 @@ What procurement needs can I help you with today? I can assist with supplier man
             <DialogDescription>
               {pendingFeedback === 'thumbs_up' 
                 ? 'Great! What did you like about this response?' 
-                : 'Help us improve! What could be better about this response?'
+                : 'Help us improve! Please describe the issue in detail (required for issue reporting).'
               }
             </DialogDescription>
           </DialogHeader>
@@ -1111,17 +1186,29 @@ What procurement needs can I help you with today? I can assist with supplier man
           <div className="space-y-4">
             
             <div className="space-y-2">
-              <Label htmlFor="feedback-comment">Comment (optional)</Label>
+              <Label htmlFor="feedback-comment">
+                {pendingFeedback === 'thumbs_up' ? 'Comment (optional)' : 'Issue description (required for saving as issue)'}
+              </Label>
               <Textarea
                 id="feedback-comment"
                 placeholder={pendingFeedback === 'thumbs_up' 
                   ? 'What worked well? Any specific aspects you found helpful?'
-                  : 'What was missing or incorrect? How could we improve?'
+                  : 'Please describe the issue in detail. For example: "The AI misunderstood my request about..." (min 10 characters to save as issue)'
                 }
                 value={feedbackComment}
                 onChange={(e) => setFeedbackComment(e.target.value)}
                 className="min-h-[100px]"
               />
+              {pendingFeedback === 'thumbs_down' && feedbackComment && feedbackComment.trim().length > 0 && feedbackComment.trim().length <= 10 && (
+                <p className="text-sm text-amber-600">
+                  Please provide more detail (minimum 10 characters) to save as an issue.
+                </p>
+              )}
+              {pendingFeedback === 'thumbs_down' && !feedbackComment && (
+                <p className="text-sm text-gray-500">
+                  Without a detailed description, this will be recorded as feedback only (not saved as an issue).
+                </p>
+              )}
             </div>
           </div>
 

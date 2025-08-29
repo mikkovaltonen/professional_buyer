@@ -728,14 +728,19 @@ What procurement needs can I help you with today? I can assist with supplier man
       </div>
 
       <div className="container mx-auto px-4 pb-6">
-        {leftPanelVisible ? (
+        {leftPanelVisible && !generationVisible ? (
+          // When chat is hidden but verification is visible, show verification full-screen
+          <div className="h-full min-h-[60vh]">
+            {leftPanel}
+          </div>
+        ) : leftPanelVisible && generationVisible ? (
+          // When both are visible, show split view
           <ResizablePanelGroup direction="horizontal" className="h-full min-h-[60vh]">
             <ResizablePanel defaultSize={35} minSize={20} maxSize={60} className="pr-2">
               {leftPanel}
             </ResizablePanel>
             <ResizableHandle withHandle />
             <ResizablePanel defaultSize={65} minSize={40} className="pl-2">
-              {generationVisible ? (
               <div className={"flex flex-col items-stretch"}>
             {/* Status Panel */}
             <div className="bg-white border rounded-md p-4 mb-2">
@@ -927,20 +932,11 @@ What procurement needs can I help you with today? I can assist with supplier man
               </div>
             </div>
               </div>
-              ) : (
-                <div className="flex items-center justify-center h-full bg-gray-50 rounded-lg">
-                  <div className="text-center text-gray-500">
-                    <p className="text-lg font-medium">Chat Generation Hidden</p>
-                    <p className="text-sm mt-2">Toggle "Show generation" to view the chat</p>
-                  </div>
-                </div>
-              )}
             </ResizablePanel>
           </ResizablePanelGroup>
-        ) : (
+        ) : !leftPanelVisible && generationVisible ? (
+          // When only chat is visible (no verification), show full-width chat
           <div>
-            {/* When no left panel, show full-width chat */}
-            {generationVisible ? (
             <div className={"flex flex-col items-stretch"}>
               {/* Reset button in corner */}
               <div className="flex justify-end mb-2">
@@ -1079,6 +1075,14 @@ What procurement needs can I help you with today? I can assist with supplier man
                   </div>
                 </div>
               </div>
+            </div>
+        </div>
+        ) : (
+          // When both are hidden
+          <div className="flex items-center justify-center h-full min-h-[60vh] bg-gray-50 rounded-lg">
+            <div className="text-center text-gray-500">
+              <p className="text-lg font-medium">No Panels Visible</p>
+              <p className="text-sm mt-2">Toggle "Show verification" or "Show generation" to view content</p>
             </div>
           </div>
         )}

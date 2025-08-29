@@ -36,12 +36,12 @@
   <body>
     <main class="container">
       <h1>Setup Guide</h1>
-      <p class="muted">Professional Buyer AI — Initial configuration for Prompt, Knowledge documents, and ERP data</p>
+      <p class="muted">Professional Buyer AI — Initial configuration for Prompt and Knowledge documents</p>
 
       <div class="card">
         <h2>Overview</h2>
         <p>
-          The chat experience requires a configured System Prompt. Knowledge documents and ERP data are optional but highly recommended.
+          The chat experience requires a configured System Prompt. Knowledge documents are optional but highly recommended.
           Follow the steps below to initialize the environment. You can always revisit this page and print to PDF (Ctrl/Cmd + P).
         </p>
         <div class="grid grid-2">
@@ -57,7 +57,6 @@
             <ul>
               <li><span class="badge warn">Required</span> System Prompt configured</li>
               <li><span class="badge">Optional</span> Knowledge documents uploaded</li>
-              <li><span class="badge">Optional</span> ERP Excel data uploaded</li>
             </ul>
           </div>
         </div>
@@ -79,24 +78,10 @@
         <li>Return to the chat; the status bar will show the document count</li>
       </ol>
 
-      <h2>3) Upload ERP Data (Optional)</h2>
-      <ol>
-        <li>In <strong>Admin</strong>, open <strong>Manage ERP Data</strong></li>
-        <li>Upload an Excel file (.xlsx/.xls). The first sheet is used. Recommended columns:
-          <ul>
-            <li><code>Supplier Name</code></li>
-            <li><code>Description</code></li>
-            <li><code>Receive By</code> (date used for filtering)</li>
-            <li><code>Buyer Name</code></li>
-          </ul>
-        </li>
-        <li>Return to the chat; the status bar will show detected ERP files</li>
-      </ol>
-
-      <h2>4) Verify in Chat</h2>
+      <h2>3) Verify in Chat</h2>
       <ul>
         <li>Status bar shows <span class="badge ok">System Prompt: Configured</span> once ready</li>
-        <li>Knowledge Docs and ERP Data counts should reflect your uploads</li>
+        <li>Knowledge Docs count should reflect your uploads</li>
         <li>Start chatting when the prompt is configured</li>
       </ul>
 
@@ -105,7 +90,6 @@
         <li><strong>System Prompt: Missing</strong> — Open <a class="btn" href="/admin">Admin</a>, create and save a prompt version</li>
         <li><strong>Backend misconfigured</strong> — Ask an admin to verify backend configuration</li>
         <li><strong>No Knowledge Docs</strong> — Upload via Admin → Internal Knowledge</li>
-        <li><strong>No ERP Data</strong> — Upload Excel via Admin → ERP/P2P Integration</li>
       </ul>
 
       <p class="muted">You can print this page as a PDF (Ctrl/Cmd + P) to distribute offline.</p>

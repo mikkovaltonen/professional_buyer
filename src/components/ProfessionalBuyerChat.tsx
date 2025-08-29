@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { GoogleGenerativeAI, Part } from '@google/generative-ai';
 import { Loader2, Send, RotateCcw, Paperclip, Bot, LogOut, Settings, ThumbsUp, ThumbsDown } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -22,6 +23,8 @@ interface ProfessionalBuyerChatProps {
   onLogout?: () => void;
   leftPanel?: React.ReactNode;
   leftPanelVisible?: boolean;
+  generationVisible?: boolean;
+  leftToggleControl?: React.ReactNode;
   topRightControls?: React.ReactNode;
 }
 
@@ -141,7 +144,14 @@ const processTextWithCitations = (text: string, citationSources?: CitationSource
   return { originalText, formattedSources };
 };
 
-const ProfessionalBuyerChat: React.FC<ProfessionalBuyerChatProps> = ({ onLogout, leftPanel, leftPanelVisible = false, topRightControls }) => {
+const ProfessionalBuyerChat: React.FC<ProfessionalBuyerChatProps> = ({ 
+  onLogout, 
+  leftPanel, 
+  leftPanelVisible = false, 
+  generationVisible = true,
+  leftToggleControl,
+  topRightControls 
+}) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -201,11 +211,14 @@ const ProfessionalBuyerChat: React.FC<ProfessionalBuyerChatProps> = ({ onLogout,
         setSessionInitializing(true);
         try {
           // Initialize session with system prompt + knowledge documents
-          const session = await sessionService.initializeChatSession(user.uid);
+          const session = await sessionService.initializeChatSession(user.uid, user.email || undefined);
           setChatSession(session);
           
           // Check if this is a new user (no documents loaded)
           const isLikelyNewUser = session.documentsUsed.length === 0;
+          
+          // Extract user's name from email (everything before @)
+          const userName = user.email ? user.email.split('@')[0] : 'there';
           
           const welcomeMessage: Message = {
             role: 'model',
@@ -228,11 +241,9 @@ I'm here to transform how you handle procurement and purchasing. As your AI-powe
 **Ready to explore?** Try asking me "Load some sample data so I can see what you can do" or visit the Admin panel to upload your own files!
 
 What would you like to start with?`
-                : `Hello! I'm your Professional Buyer AI Assistant. I'm here to help you optimize your procurement processes, negotiate better deals, and achieve significant cost savings.
+                : `Hello **${userName}**! I'm your Professional Buyer AI Assistant. 
 
-📚 **Knowledge Base Loaded:** ${session.documentsUsed.length} document(s) available for reference.
-
-What can I help you with today?`
+What procurement needs can I help you with today? I can assist with supplier management, cost optimization, purchase requisitions, or analyzing your procurement data.`
             }]
           };
           setMessages([welcomeMessage]);
@@ -250,10 +261,13 @@ What can I help you with today?`
           toast.error('Failed to load knowledge base. Using default settings.');
           
           // Fallback to basic welcome message
+          const userName = user?.email ? user.email.split('@')[0] : 'there';
           const welcomeMessage: Message = {
             role: 'model',
             parts: [{
-              text: "Hello! I'm your Professional Buyer AI Assistant. I'm here to help you optimize your procurement processes, negotiate better deals, and achieve significant cost savings. What can I help you with today?"
+              text: `Hello **${userName}**! I'm your Professional Buyer AI Assistant. 
+
+What procurement needs can I help you with today? I can assist with supplier management, cost optimization, purchase requisitions, or analyzing your procurement data.`
             }]
           };
           setMessages([welcomeMessage]);
@@ -387,7 +401,7 @@ What can I help you with today?`
                   }
 
                   // Execute ERP search (this will generate its own logs with request ID)
-                  const searchResult = await erpApiService.searchRecords(user!.uid, functionArgs);
+                  const searchResult = await erpApiService.searchRecords(functionArgs);
                   
                   // Log consolidated AI + ERP results
                   console.log('🔗 AI-ERP INTEGRATION RESULT [' + aiRequestId + ']:', {
@@ -708,8 +722,9 @@ What can I help you with today?`
 
       {/* Main Content under header with optional left panel */}
       {/* Controls row under header */}
-      <div className="container mx-auto px-4 mt-4 flex justify-end">
-        {topRightControls}
+      <div className="container mx-auto px-4 mt-4 flex justify-between">
+        <div>{leftToggleControl}</div>
+        <div>{topRightControls}</div>
       </div>
 
       <div className="container mx-auto px-4 pb-6">
@@ -720,6 +735,7 @@ What can I help you with today?`
             </ResizablePanel>
             <ResizableHandle withHandle />
             <ResizablePanel defaultSize={65} minSize={40} className="pl-2">
+              {generationVisible ? (
               <div className={"flex flex-col items-stretch"}>
             {/* Status Panel */}
             <div className="bg-white border rounded-md p-4 mb-2">
@@ -737,8 +753,8 @@ What can I help you with today?`
                       <span className="ml-2 text-gray-700">{initStatus.knowledgeCount}</span>
                     </div>
                     <div>
-                      <span className="font-medium text-gray-800">ERP Data files:</span>
-                      <span className="ml-2 text-gray-700">{initStatus.erpCount}</span>
+                      <span className="font-medium text-gray-800">ERP API integrations:</span>
+                      <span className="ml-2 text-gray-700">1</span>
                     </div>
                     
                   </div>
@@ -755,26 +771,17 @@ What can I help you with today?`
               )}
             </div>
 
-            {/* Action Buttons */}
-            <div className="bg-white border p-4 rounded-md mb-2">
-              <div className="flex gap-3 justify-center">
-                <Button 
-                  variant="outline" 
-                  onClick={handleResetChat}
-                  className="text-red-600 border-red-200 hover:bg-red-50"
-                >
-                  <RotateCcw className="mr-2 h-4 w-4" />
-                  Reset Chat
-                </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={handleAttachDocuments}
-                  className="text-gray-700 border-gray-300 hover:bg-gray-100"
-                >
-                  <Paperclip className="mr-2 h-4 w-4" />
-                  Upload Documents
-                </Button>
-              </div>
+            {/* Reset button in corner */}
+            <div className="flex justify-end mb-2">
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={handleResetChat}
+                className="text-red-600 hover:bg-red-50"
+              >
+                <RotateCcw className="h-4 w-4" />
+                <span className="ml-2">Reset Chat</span>
+              </Button>
             </div>
 
             {/* Quick Action Pills */}
@@ -834,7 +841,7 @@ What can I help you with today?`
                       <div key={partIndex}>
                         {part.text && (
                           <div className={`prose ${message.role === 'user' ? 'prose-invert' : ''} prose-sm max-w-none`}>
-                            <ReactMarkdown>
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
                               {(() => {
                                 const { originalText, formattedSources } = processTextWithCitations(
                                   part.text,
@@ -920,23 +927,32 @@ What can I help you with today?`
               </div>
             </div>
               </div>
+              ) : (
+                <div className="flex items-center justify-center h-full bg-gray-50 rounded-lg">
+                  <div className="text-center text-gray-500">
+                    <p className="text-lg font-medium">Chat Generation Hidden</p>
+                    <p className="text-sm mt-2">Toggle "Show generation" to view the chat</p>
+                  </div>
+                </div>
+              )}
             </ResizablePanel>
           </ResizablePanelGroup>
         ) : (
           <div>
             {/* When no left panel, show full-width chat */}
+            {generationVisible ? (
             <div className={"flex flex-col items-stretch"}>
-              <div className="bg-white border p-4 rounded-md mb-2">
-                <div className="flex gap-3 justify-center">
-                  <Button variant="outline" onClick={handleResetChat} className="text-red-600 border-red-200 hover:bg-red-50">
-                    <RotateCcw className="mr-2 h-4 w-4" />
-                    Reset Chat
-                  </Button>
-                  <Button variant="outline" onClick={handleAttachDocuments} className="text-gray-700 border-gray-300 hover:bg-gray-100">
-                    <Paperclip className="mr-2 h-4 w-4" />
-                    Upload Documents
-                  </Button>
-                </div>
+              {/* Reset button in corner */}
+              <div className="flex justify-end mb-2">
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={handleResetChat}
+                  className="text-red-600 hover:bg-red-50"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  <span className="ml-2">Reset Chat</span>
+                </Button>
               </div>
               {/* Status Panel */}
               <div className="bg-white border rounded-md p-4 mb-2">
@@ -954,8 +970,8 @@ What can I help you with today?`
                         <span className="ml-2 text-gray-700">{initStatus.knowledgeCount}</span>
                       </div>
                       <div>
-                        <span className="font-medium text-gray-800">ERP Data files:</span>
-                        <span className="ml-2 text-gray-700">{initStatus.erpCount}</span>
+                        <span className="font-medium text-gray-800">ERP API integrations:</span>
+                        <span className="ml-2 text-gray-700">1</span>
                       </div>
                       
                     </div>
@@ -1010,7 +1026,7 @@ What can I help you with today?`
                               <div key={partIndex}>
                                 {part.text && (
                                   <div className={`prose ${message.role === 'user' ? 'prose-invert' : ''} prose-sm max-w-none`}>
-                                    <ReactMarkdown>
+                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
                                       {(() => {
                                         const { originalText, formattedSources } = processTextWithCitations(part.text, message.citationMetadata?.citationSources);
                                         return originalText + (formattedSources.length > 0 ? '\n\n**Sources:**\n' + formattedSources.join('\n') : '');

@@ -110,15 +110,29 @@ Please use this internal knowledge to provide accurate, company-specific guidanc
   /**
    * Initialize a new chat session with full context
    */
-  async initializeChatSession(userId: string): Promise<ChatSession> {
+  async initializeChatSession(userId: string, userEmail?: string): Promise<ChatSession> {
     try {
       // Get latest system prompt
       const latestPrompt = await this.getLatestSystemPrompt(userId);
       if (!latestPrompt?.systemPrompt) {
         throw new Error('No system prompt configured. Please create a prompt in the Admin panel.');
       }
-      const systemPrompt = latestPrompt.systemPrompt;
+      let systemPrompt = latestPrompt.systemPrompt;
       const aiModel = latestPrompt.aiModel || 'gemini-2.5-pro-preview-06-05';
+
+      // Add user context to system prompt
+      if (userEmail) {
+        const userName = userEmail.split('@')[0]; // Get name part before @
+        const userContext = `
+
+## Current User Information
+- User email: ${userEmail}
+- User name: ${userName}
+- When creating purchase requisitions, use "${userName}" as the buyer/responsible person
+- You can address the user by their name "${userName}" when appropriate
+`;
+        systemPrompt = systemPrompt + userContext;
+      }
 
       // Get knowledge documents
       const documents = await this.getUserKnowledgeDocuments(userId);

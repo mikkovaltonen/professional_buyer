@@ -176,39 +176,6 @@ const Admin = () => {
             </CardContent>
           </Card>
 
-          {/* ERP/P2P Integration Simulation */}
-          <Card className="border-gray-300 shadow-lg hover:shadow-xl transition-shadow">
-            <CardHeader className="bg-gray-700 text-white rounded-t-lg">
-              <CardTitle className="flex items-center">
-                <Database className="mr-3 h-6 w-6" />
-                ERP/P2P Integration
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              <p className="text-gray-600 mb-4">
-                Upload and manage your structured Excel file to simulate ERP integration.
-              </p>
-              <Dialog open={showExcelUpload} onOpenChange={setShowExcelUpload}>
-                <DialogTrigger asChild>
-                  <Button 
-                    className="w-full bg-gray-700 hover:bg-gray-600 text-white"
-                  >
-                    <Database className="mr-2 h-4 w-4" />
-                    Manage ERP Data
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[900px] max-h-[80vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>ERP/P2P Integration Management</DialogTitle>
-                    <DialogDescription>
-                      Upload and manage your structured Excel file to simulate ERP integration.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <ERPManager />
-                </DialogContent>
-              </Dialog>
-            </CardContent>
-          </Card>
 
           {/* ERP API Testing */}
           <Card className="border-gray-300 shadow-lg hover:shadow-xl transition-shadow">

@@ -1,4 +1,4 @@
-import { storageService, ERPDocument } from './storageService';
+import { erpSampleDataService } from './erpSampleDataService';
 
 export interface SearchCriteria {
   supplierName?: string;        // Toimittajan nimi tai osa nimestä
@@ -25,14 +25,13 @@ export class ERPApiService {
   /**
    * Search ERP data with multiple criteria
    */
-  async searchRecords(userId: string, criteria: SearchCriteria): Promise<SearchResult> {
+  async searchRecords(criteria: SearchCriteria): Promise<SearchResult> {
     const startTime = Date.now();
     const requestId = Math.random().toString(36).substring(2, 8);
     
     // Log API Request Input
     console.log('📥 ERP API REQUEST [' + requestId + ']:', {
       method: 'searchRecords',
-      userId: userId.substring(0, 8) + '...',
       inputParameters: {
         supplierName: criteria.supplierName || null,
         productDescription: criteria.productDescription || null,
@@ -45,36 +44,8 @@ export class ERPApiService {
     });
     
     try {
-      // Get user's ERP document
-      const erpDocuments = await storageService.getUserERPDocuments(userId);
-      
-      if (erpDocuments.length === 0) {
-        const result = {
-          records: [],
-          totalCount: 0,
-          searchCriteria: criteria,
-          executedAt: new Date(),
-          processingTimeMs: Date.now() - startTime
-        };
-        
-        // Log API Response Output (no data)
-        console.log('📤 ERP API RESPONSE [' + requestId + ']:', {
-          status: 'NO_DATA',
-          outputResults: {
-            recordCount: result.totalCount,
-            records: [],
-            searchCriteria: result.searchCriteria
-          },
-          processingTimeMs: result.processingTimeMs,
-          timestamp: new Date().toISOString(),
-          requestId: requestId
-        });
-        
-        return result;
-      }
-
-      const erpDoc = erpDocuments[0]; // Only one document allowed
-      const { rawData, headers } = erpDoc;
+      // Get sample ERP data (shared for all users)
+      const { records: rawData, headers } = await erpSampleDataService.getSampleData();
 
       if (!rawData || !headers || rawData.length === 0) {
         const result = {
@@ -102,16 +73,9 @@ export class ERPApiService {
         return result;
       }
 
-      // Convert raw data to records with column names
-      const allRecords: ERPRecord[] = rawData.map((row: any[], index: number) => {
-        const record: ERPRecord = { rowIndex: index + 2 }; // +2 because row 1 is headers, Excel rows start from 1
-        
-        headers.forEach((header: string, colIndex: number) => {
-          record[header] = row[colIndex] || '';
-        });
-        
-        return record;
-      });
+      // The rawData is already in the correct format (array of objects)
+      // Just use it directly since erpSampleDataService returns JSON objects
+      const allRecords: ERPRecord[] = rawData;
 
       // Apply search filters
       console.log('📋 Before filtering:', {
@@ -184,13 +148,14 @@ export class ERPApiService {
         const supplierField = headers.find(header => 
           header === 'Supplier Name' || header.toLowerCase() === 'supplier name'
         );
-        console.log('🏭 SUPPLIER FILTER [' + requestId + ']:', {
-          searchField: 'Supplier Name',
-          foundField: supplierField,
-          searchTerm: criteria.supplierName,
-          recordValue: record[supplierField || ''],
-          rowIndex: record.rowIndex
-        });
+        // Uncomment for debugging
+        // console.log('🏭 SUPPLIER FILTER [' + requestId + ']:', {
+        //   searchField: 'Supplier Name',
+        //   foundField: supplierField,
+        //   searchTerm: criteria.supplierName,
+        //   recordValue: record[supplierField || ''],
+        //   rowIndex: record.rowIndex
+        // });
         
         if (supplierField) {
           const supplierValue = String(record[supplierField] || '').toLowerCase();
@@ -208,13 +173,14 @@ export class ERPApiService {
         const productField = headers.find(header => 
           header === 'Description' || header.toLowerCase() === 'description'
         );
-        console.log('📦 PRODUCT FILTER [' + requestId + ']:', {
-          searchField: 'Description',
-          foundField: productField,
-          searchTerm: criteria.productDescription,
-          recordValue: record[productField || ''],
-          rowIndex: record.rowIndex
-        });
+        // Uncomment for debugging
+        // console.log('📦 PRODUCT FILTER [' + requestId + ']:', {
+        //   searchField: 'Description',
+        //   foundField: productField,
+        //   searchTerm: criteria.productDescription,
+        //   recordValue: record[productField || ''],
+        //   rowIndex: record.rowIndex
+        // });
         
         if (productField) {
           const productValue = String(record[productField] || '').toLowerCase();
@@ -234,34 +200,37 @@ export class ERPApiService {
           header === 'Receive By' || header.toLowerCase() === 'receive by'
         );
         
-        console.log('📅 DATE FILTER [' + requestId + ']:', {
-          searchField: 'Receive By',
-          foundField: dateField,
-          rawDateValue: record[dateField || ''],
-          dateFrom: criteria.dateFrom,
-          dateTo: criteria.dateTo,
-          rowIndex: record.rowIndex
-        });
+        // Uncomment for debugging
+        // console.log('📅 DATE FILTER [' + requestId + ']:', {
+        //   searchField: 'Receive By',
+        //   foundField: dateField,
+        //   rawDateValue: record[dateField || ''],
+        //   dateFrom: criteria.dateFrom,
+        //   dateTo: criteria.dateTo,
+        //   rowIndex: record.rowIndex
+        // });
         
         if (dateField) {
           const rawDateValue = String(record[dateField] || '');
           const dateValue = this.parseDate(rawDateValue);
           
-          console.log('📅 Date parsing:', {
-            field: dateField,
-            rawValue: rawDateValue,
-            parsedDate: dateValue,
-            isValid: dateValue !== null
-          });
+          // Uncomment for debugging
+          // console.log('📅 Date parsing:', {
+          //   field: dateField,
+          //   rawValue: rawDateValue,
+          //   parsedDate: dateValue,
+          //   isValid: dateValue !== null
+          // });
           
           if (criteria.dateFrom && dateValue) {
             const fromDate = new Date(criteria.dateFrom);
             const passesFromCheck = dateValue >= fromDate;
-            console.log('📅 Date FROM check:', {
-              recordDate: dateValue.toISOString(),
-              fromCriteria: fromDate.toISOString(),
-              passes: passesFromCheck
-            });
+            // Uncomment for debugging
+            // console.log('📅 Date FROM check:', {
+            //   recordDate: dateValue.toISOString(),
+            //   fromCriteria: fromDate.toISOString(),
+            //   passes: passesFromCheck
+            // });
             if (!passesFromCheck) {
               return false;
             }
@@ -271,11 +240,12 @@ export class ERPApiService {
             const toDate = new Date(criteria.dateTo);
             toDate.setHours(23, 59, 59, 999); // End of day
             const passesToCheck = dateValue <= toDate;
-            console.log('📅 Date TO check:', {
-              recordDate: dateValue.toISOString(),
-              toCriteria: toDate.toISOString(),
-              passes: passesToCheck
-            });
+            // Uncomment for debugging
+            // console.log('📅 Date TO check:', {
+            //   recordDate: dateValue.toISOString(),
+            //   toCriteria: toDate.toISOString(),
+            //   passes: passesToCheck
+            // });
             if (!passesToCheck) {
               return false;
             }
@@ -291,13 +261,14 @@ export class ERPApiService {
         const buyerField = headers.find(header => 
           header === 'Buyer Name' || header.toLowerCase() === 'buyer name'
         );
-        console.log('👤 BUYER FILTER [' + requestId + ']:', {
-          searchField: 'Buyer Name',
-          foundField: buyerField,
-          searchTerm: criteria.buyerName,
-          recordValue: record[buyerField || ''],
-          rowIndex: record.rowIndex
-        });
+        // Uncomment for debugging
+        // console.log('👤 BUYER FILTER [' + requestId + ']:', {
+        //   searchField: 'Buyer Name',
+        //   foundField: buyerField,
+        //   searchTerm: criteria.buyerName,
+        //   recordValue: record[buyerField || ''],
+        //   rowIndex: record.rowIndex
+        // });
         
         if (buyerField) {
           const buyerValue = String(record[buyerField] || '').toLowerCase();

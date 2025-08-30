@@ -12,12 +12,13 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/componen
 import { useAuth } from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { loadLatestPrompt, createContinuousImprovementSession, addTechnicalLog, setUserFeedback } from '../lib/firestoreService';
+import { loadLatestPrompt, loadLatestPromptWithDetails, createContinuousImprovementSession, addTechnicalLog, setUserFeedback } from '../lib/firestoreService';
 import { sessionService, ChatSession } from '../lib/sessionService';
 import { erpApiService } from '../lib/erpApiService';
 import { storageService } from '../lib/storageService';
 import { createPurchaseRequisition } from '@/lib/firestoreService';
 import { useQueryClient } from '@tanstack/react-query';
+import type { PurchaseRequisition } from '@/types/purchaseRequisition';
 
 interface ProfessionalBuyerChatProps {
   onLogout?: () => void;
@@ -29,7 +30,7 @@ interface ProfessionalBuyerChatProps {
 }
 
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
-const geminiModel = import.meta.env.VITE_GEMINI_MODEL || 'gemini-2.5-pro-preview-03-25';
+const defaultGeminiModel = import.meta.env.VITE_GEMINI_MODEL || 'gemini-2.5-flash';
 
 // ERP Function Definition for Gemini
 const searchERPFunction = {
@@ -104,7 +105,7 @@ const createRequisitionFunction = {
 // Debug: Log Gemini API config
 console.log('Gemini API config:', {
   apiKey: apiKey ? `${apiKey.substring(0, 10)}...` : 'undefined',
-  model: geminiModel
+  model: defaultGeminiModel
 });
 
 const genAI = new GoogleGenerativeAI(apiKey);
@@ -350,7 +351,7 @@ What procurement needs can I help you with today? I can assist with supplier man
       }
 
       const model = genAI.getGenerativeModel({
-        model: geminiModel,
+        model: defaultGeminiModel,
         generationConfig: { temperature: 0.2 },
         tools: [
           { functionDeclarations: [searchERPFunction, createRequisitionFunction] }
@@ -485,11 +486,15 @@ What procurement needs can I help you with today? I can assist with supplier man
                       part.text.trim().length > 0
                     );
                     
+                    // Add function usage note at the bottom
+                    const functionNote = '\n\n---\n_🔧 Käytetty toiminto: ERP-tietojen haku_';
+                    const responseText = validParts.length > 0 
+                      ? validParts[0].text + functionNote
+                      : (aiResponseText || "I executed the search but couldn't format the response. Please try rephrasing your question.") + functionNote;
+                    
                     setMessages(prev => [...prev, {
                       role: 'model',
-                      parts: validParts.length > 0 
-                        ? validParts 
-                        : [{ text: aiResponseText || "I executed the search but couldn't format the response. Please try rephrasing your question." }]
+                      parts: [{ text: responseText }]
                     }]);
                   }
                   return;
@@ -515,9 +520,11 @@ What procurement needs can I help you with today? I can assist with supplier man
                   });
                   
                   console.error('Function execution failed:', functionError);
+                  const errorMessage = `I tried to search your ERP data but encountered an error: ${functionError instanceof Error ? functionError.message : 'Unknown error'}. Please make sure you have uploaded your ERP data in the Admin panel.`;
+                  const functionNote = '\n\n---\n_🔧 Käytetty toiminto: ERP-tietojen haku (virhe)_';
                   setMessages(prev => [...prev, {
                     role: 'model',
-                    parts: [{ text: `I tried to search your ERP data but encountered an error: ${functionError instanceof Error ? functionError.message : 'Unknown error'}. Please make sure you have uploaded your ERP data in the Admin panel.` }]
+                    parts: [{ text: errorMessage + functionNote }]
                   }]);
                   return;
                 }
@@ -537,10 +544,14 @@ What procurement needs can I help you with today? I can assist with supplier man
                   } catch {
                     // Ignore query client errors
                   }
-                  setMessages(prev => [...prev, { role: 'model', parts: [{ text: `Created purchase requisition ${id}. You can view and edit it in Requisitions.` }] }]);
+                  const successMessage = `Created purchase requisition ${id}. You can view and edit it in Requisitions.`;
+                  const functionNote = '\n\n---\n_🔧 Käytetty toiminto: Ostoehdotuksen luonti_';
+                  setMessages(prev => [...prev, { role: 'model', parts: [{ text: successMessage + functionNote }] }]);
                   return;
                 } catch (err) {
-                  setMessages(prev => [...prev, { role: 'model', parts: [{ text: `Failed to create requisition: ${err instanceof Error ? err.message : 'Unknown error'}` }] }]);
+                  const errorMessage = `Failed to create requisition: ${err instanceof Error ? err.message : 'Unknown error'}`;
+                  const functionNote = '\n\n---\n_🔧 Käytetty toiminto: Ostoehdotuksen luonti (virhe)_';
+                  setMessages(prev => [...prev, { role: 'model', parts: [{ text: errorMessage + functionNote }] }]);
                   return;
                 }
               }

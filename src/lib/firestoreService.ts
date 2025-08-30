@@ -83,7 +83,7 @@ export const savePromptVersion = async (
   userId: string, 
   promptText: string, 
   evaluation: string = '',
-  aiModel: string = 'gemini-2.5-flash-preview-04-17',
+  aiModel: string = 'gemini-2.5-flash',
   userEmail?: string
 ): Promise<number> => {
   try {
@@ -166,6 +166,66 @@ const getNextVersionNumber = async (userId: string): Promise<number> => {
   const docs = querySnapshot.docs.map(doc => doc.data().version || 0);
   const latestVersion = Math.max(...docs);
   return latestVersion + 1;
+};
+
+// Load the latest version with full details
+export const loadLatestPromptWithDetails = async (userId: string): Promise<{ prompt: string; model: string } | null> => {
+  try {
+    console.log('🔍 Loading latest prompt details for user:', userId.substring(0, 8) + '...');
+    
+    if (!db) {
+      console.warn('Firebase not initialized, using localStorage fallback');
+      const versions = getFromLocalStorage(userId);
+      if (versions.length === 0) return null;
+      const latest = versions.sort((a, b) => b.version - a.version)[0];
+      return {
+        prompt: latest.systemPrompt || '',
+        model: latest.aiModel || 'gemini-2.5-flash'
+      };
+    }
+
+    const q = query(
+      collection(db, 'systemPromptVersions'),
+      where('userId', '==', userId)
+    );
+    
+    const querySnapshot = await getDocs(q);
+    
+    if (querySnapshot.empty) {
+      console.log('📝 No user-specific prompts found for user:', userId.substring(0, 8) + '...');
+      return null;
+    }
+    
+    // Sort by version on client side to avoid index requirement
+    const docs = querySnapshot.docs.map(doc => ({
+      ...doc.data(),
+      version: doc.data().version || 0
+    }));
+    
+    const latestDoc = docs.reduce((latest, current) => 
+      current.version > latest.version ? current : latest
+    );
+    
+    console.log('✅ Latest prompt loaded with details for user:', {
+      userId: userId.substring(0, 8) + '...',
+      version: latestDoc.version,
+      model: latestDoc.aiModel || 'gemini-2.5-flash'
+    });
+    
+    return {
+      prompt: latestDoc.systemPrompt || '',
+      model: latestDoc.aiModel || 'gemini-2.5-flash'
+    };
+  } catch (error) {
+    console.warn('Firebase load failed, falling back to localStorage:', error);
+    const versions = getFromLocalStorage(userId);
+    if (versions.length === 0) return null;
+    const latest = versions.sort((a, b) => b.version - a.version)[0];
+    return {
+      prompt: latest.systemPrompt || '',
+      model: latest.aiModel || 'gemini-2.5-pro'
+    };
+  }
 };
 
 // Load the latest version of system prompt for a user

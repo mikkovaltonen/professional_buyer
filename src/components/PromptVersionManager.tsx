@@ -6,7 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Loader2, Save, History, Clock, RefreshCw } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Loader2, Save, History, Clock, RefreshCw, Maximize2, Minimize2 } from "lucide-react";
 import { toast } from "sonner";
 import { 
   SystemPromptVersion, 
@@ -33,6 +35,8 @@ const PromptVersionManager: React.FC<PromptVersionManagerProps> = ({
   const [versions, setVersions] = useState<SystemPromptVersion[]>([]);
   const [selectedVersion, setSelectedVersion] = useState<SystemPromptVersion | null>(null);
   const [activeTab, setActiveTab] = useState<'editor' | 'history'>('editor');
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<string>('gemini-2.5-flash');
 
   // Sample prompt - loaded from file or fallback
   const [samplePrompt, setSamplePrompt] = useState<string>('');
@@ -122,7 +126,7 @@ const PromptVersionManager: React.FC<PromptVersionManagerProps> = ({
         user.uid,
         prompt,
         evaluation,
-        undefined, // Use default AI model from environment
+        selectedModel, // Use selected AI model
         user.email || undefined
       );
       
@@ -141,6 +145,9 @@ const PromptVersionManager: React.FC<PromptVersionManagerProps> = ({
     setSelectedVersion(version);
     setPrompt(version.systemPrompt);
     setEvaluation(version.evaluation);
+    if (version.aiModel) {
+      setSelectedModel(version.aiModel);
+    }
     setActiveTab('editor');
     toast.success(`Loaded version ${version.version}`);
   };
@@ -188,13 +195,22 @@ const PromptVersionManager: React.FC<PromptVersionManagerProps> = ({
     }
   };
 
-  return (
-    <div className="space-y-4">
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'editor' | 'history')}>
-        <TabsList className="grid w-full grid-cols-2">
+  const EditorContent = () => (
+    <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'editor' | 'history')}>
+      <div className="flex items-center justify-between mb-4">
+        <TabsList className="grid grid-cols-2">
           <TabsTrigger value="editor">Prompt Editor</TabsTrigger>
           <TabsTrigger value="history">Version History</TabsTrigger>
         </TabsList>
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => setIsFullscreen(!isFullscreen)}
+          title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+        >
+          {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+        </Button>
+      </div>
 
         <TabsContent value="editor" className="space-y-4">
           <Card>
@@ -210,15 +226,35 @@ const PromptVersionManager: React.FC<PromptVersionManagerProps> = ({
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="flex gap-4 items-end">
+                <div className="flex-1 space-y-2">
+                  <Label htmlFor="prompt">System Prompt</Label>
+                  <Textarea
+                    id="prompt"
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    placeholder="Enter your system prompt for the AI agent..."
+                    className={isFullscreen ? "min-h-[400px] font-mono text-sm" : "min-h-[200px] font-mono text-sm"}
+                  />
+                </div>
+              </div>
+              
               <div className="space-y-2">
-                <Label htmlFor="prompt">System Prompt</Label>
-                <Textarea
-                  id="prompt"
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  placeholder="Enter your system prompt for the AI agent..."
-                  className="min-h-[200px] font-mono text-sm"
-                />
+                <Label htmlFor="model">AI Model</Label>
+                <Select value={selectedModel} onValueChange={setSelectedModel}>
+                  <SelectTrigger id="model">
+                    <SelectValue placeholder="Select AI model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="gemini-2.5-pro">Gemini 2.5 Pro</SelectItem>
+                    <SelectItem value="gemini-2.5-flash">Gemini 2.5 Flash</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-sm text-gray-500">
+                  {selectedModel === 'gemini-2.5-pro' 
+                    ? 'More powerful model with better reasoning capabilities'
+                    : 'Faster model optimized for quick responses'}
+                </p>
               </div>
 
               <div className="space-y-2">
@@ -325,6 +361,13 @@ const PromptVersionManager: React.FC<PromptVersionManagerProps> = ({
                               {version.version === Math.max(...versions.map(v => v.version)) && (
                                 <Badge variant="default">Latest</Badge>
                               )}
+                              {version.aiModel && (
+                                <Badge variant="outline" className="text-xs">
+                                  {version.aiModel === 'gemini-2.5-pro' ? 'Pro' : 
+                                   version.aiModel === 'gemini-2.5-flash' ? 'Flash' : 
+                                   version.aiModel.includes('pro') ? 'Pro' : 'Flash'}
+                                </Badge>
+                              )}
                             </div>
                             <div className="flex items-center gap-2 text-sm text-gray-500">
                               <Clock className="h-4 w-4" />
@@ -356,7 +399,27 @@ const PromptVersionManager: React.FC<PromptVersionManagerProps> = ({
             </CardContent>
           </Card>
         </TabsContent>
-      </Tabs>
+    </Tabs>
+  );
+
+  if (isFullscreen) {
+    return (
+      <Dialog open={isFullscreen} onOpenChange={setIsFullscreen}>
+        <DialogContent className="max-w-[95vw] w-full h-[95vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>System Prompt Editor - Fullscreen</DialogTitle>
+          </DialogHeader>
+          <div className="mt-4">
+            <EditorContent />
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <EditorContent />
     </div>
   );
 };

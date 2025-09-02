@@ -228,7 +228,56 @@ export const loadLatestPromptWithDetails = async (userId: string): Promise<{ pro
   }
 };
 
-// Load the latest version of system prompt for a user
+// Save user's single prompt (overwrites existing)
+export const saveUserPrompt = async (
+  userId: string,
+  prompt: string,
+  model: string = 'gemini-2.5-flash'
+): Promise<void> => {
+  try {
+    if (!db) {
+      throw new Error('Firebase not initialized');
+    }
+
+    const docRef = doc(db, 'userPrompts', userId);
+    await setDoc(docRef, {
+      userId,
+      prompt,
+      model,
+      updatedAt: new Date(),
+    });
+    
+    console.log('✅ Prompt saved for user:', userId.substring(0, 8) + '...');
+  } catch (error) {
+    console.error('Error saving prompt:', error);
+    throw error;
+  }
+};
+
+// Load user's single prompt
+export const loadUserPrompt = async (userId: string): Promise<string | null> => {
+  try {
+    if (!db) {
+      throw new Error('Firebase not initialized');
+    }
+
+    const docRef = doc(db, 'userPrompts', userId);
+    const docSnap = await getDoc(docRef);
+    
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      console.log('✅ Prompt loaded for user:', userId.substring(0, 8) + '...');
+      return data.prompt || null;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error loading prompt:', error);
+    return null;
+  }
+};
+
+// Load the latest version of system prompt for a user (keeping for backward compatibility)
 export const loadLatestPrompt = async (userId: string): Promise<string | null> => {
   try {
     console.log('🔍 Loading latest prompt for user:', userId.substring(0, 8) + '...');

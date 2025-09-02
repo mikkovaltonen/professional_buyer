@@ -1,6 +1,7 @@
 import { db } from './firebase';
 import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
 import { storageService, KnowledgeDocument } from './storageService';
+import { loadUserPrompt } from './firestoreService';
 
 export interface ChatSession {
   systemPrompt: string;
@@ -27,29 +28,23 @@ export class SessionService {
    */
   async getLatestSystemPrompt(userId: string): Promise<SystemPromptVersion | null> {
     try {
-      const q = query(
-        collection(db, 'systemPromptVersions'),
-        where('userId', '==', userId)
-      );
+      // Use the new single prompt system
+      const userPrompt = await loadUserPrompt(userId);
       
-      const querySnapshot = await getDocs(q);
-      
-      if (querySnapshot.empty) {
+      if (!userPrompt) {
         return null;
       }
       
-      // Sort by version on client side until index is created
-      const docs = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as SystemPromptVersion[];
-      
-      // Find the highest version number
-      const latestDoc = docs.reduce((latest, current) => 
-        current.version > latest.version ? current : latest
-      );
-      
-      return latestDoc;
+      // Return in the format expected by the rest of the system
+      return {
+        id: userId,
+        version: 1, // Single version now
+        systemPrompt: userPrompt,
+        evaluation: '',
+        savedDate: new Date(),
+        aiModel: 'gemini-2.5-flash', // Default model
+        userId: userId
+      };
     } catch (error) {
       console.error('Failed to fetch latest system prompt:', error);
       return null;

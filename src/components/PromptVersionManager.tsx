@@ -1,426 +1,150 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Loader2, Save, History, Clock, RefreshCw, Maximize2, Minimize2 } from "lucide-react";
+import { Save, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
-import { 
-  SystemPromptVersion, 
-  savePromptVersion, 
-  loadLatestPrompt, 
-  getPromptHistory,
-  getPromptVersion
-} from "@/lib/firestoreService";
 import { useAuth } from "@/hooks/useAuth";
+import { saveUserPrompt, loadUserPrompt } from "@/lib/firestoreService";
 
-interface PromptVersionManagerProps {
-  onPromptChange?: (prompt: string) => void;
-  currentPrompt?: string;
-}
-
-const PromptVersionManager: React.FC<PromptVersionManagerProps> = ({ 
-  onPromptChange, 
-  currentPrompt = '' 
-}) => {
+const PromptVersionManager: React.FC = () => {
   const { user } = useAuth();
-  const [prompt, setPrompt] = useState(currentPrompt);
-  const [evaluation, setEvaluation] = useState('');
+  
+  // States
+  const [promptText, setPromptText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [versions, setVersions] = useState<SystemPromptVersion[]>([]);
-  const [selectedVersion, setSelectedVersion] = useState<SystemPromptVersion | null>(null);
-  const [activeTab, setActiveTab] = useState<'editor' | 'history'>('editor');
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [selectedModel, setSelectedModel] = useState<string>('gemini-2.5-flash');
+  const [isSaving, setIsSaving] = useState(false);
+  const [defaultPrompt, setDefaultPrompt] = useState('');
 
-  // Sample prompt - loaded from file or fallback
-  const [samplePrompt, setSamplePrompt] = useState<string>('');
-
-  // Load sample prompt from file
-  useEffect(() => {
-    const loadSamplePrompt = async () => {
-      try {
-        const response = await fetch('/sample_promtp.md');
-        if (response.ok) {
-          const content = await response.text();
-          setSamplePrompt(content.trim()); // Use exactly what's in the file
-        } else {
-          console.error('Failed to load sample prompt: HTTP', response.status);
-        }
-      } catch (error) {
-        console.error('Failed to load sample prompt:', error);
-      }
-    };
-
-    loadSamplePrompt();
-  }, []);
-
-  // Load initial data
+  // Load latest prompt on mount
   useEffect(() => {
     if (user?.uid) {
-      loadInitialData();
+      loadPrompt();
     }
+    // Load default prompt
+    fetch('/sample_promtp.md')
+      .then(res => res.text())
+      .then(text => setDefaultPrompt(text.trim()))
+      .catch(err => console.error('Error loading default:', err));
   }, [user?.uid]);
 
-  // Update parent when prompt changes
-  useEffect(() => {
-    if (onPromptChange) {
-      onPromptChange(prompt);
-    }
-  }, [prompt, onPromptChange]);
-
-  const loadInitialData = async () => {
+  const loadPrompt = async () => {
     if (!user?.uid) return;
-
+    
     setIsLoading(true);
     try {
-      // Load latest prompt for this user
-      const latestPrompt = await loadLatestPrompt(user.uid);
-      if (latestPrompt) {
-        setPrompt(latestPrompt);
-      } else {
-        // No default prompt - user needs to create or download sample
-        setPrompt('');
+      const userPrompt = await loadUserPrompt(user.uid);
+      if (userPrompt) {
+        setPromptText(userPrompt);
       }
-
-      // Load version history
-      await loadVersionHistory();
     } catch (error) {
-      console.error('Error loading initial data:', error);
-      toast.error('Failed to load prompt data');
+      console.error('Error loading prompt:', error);
+      toast.error('Failed to load prompt');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const loadVersionHistory = async () => {
-    if (!user?.uid) return;
-
-    try {
-      const history = await getPromptHistory(user.uid);
-      setVersions(history);
-    } catch (error) {
-      console.error('Error loading version history:', error);
+  // Reset to default handler
+  const handleReset = () => {
+    if (defaultPrompt) {
+      setPromptText(defaultPrompt);
+      toast.success('Reset to default prompt');
+    } else {
+      toast.error('Default prompt not available');
     }
   };
 
-  const handleSaveVersion = async () => {
+  // Save handler with Firebase (single prompt per user)
+  const handleSave = async () => {
     if (!user?.uid) {
-      toast.error('User not authenticated');
+      toast.error('Please log in to save');
       return;
     }
-
-    if (!prompt.trim()) {
-      toast.error('Prompt cannot be empty');
+    
+    if (!promptText.trim()) {
+      toast.error('Please enter some text before saving');
       return;
     }
-
-    setIsLoading(true);
+    
+    setIsSaving(true);
     try {
-      const versionNumber = await savePromptVersion(
+      await saveUserPrompt(
         user.uid,
-        prompt,
-        evaluation,
-        selectedModel, // Use selected AI model
-        user.email || undefined
+        promptText,
+        'gemini-2.5-flash' // Default model
       );
-      
-      toast.success(`Saved as version ${versionNumber}`);
-      setEvaluation(''); // Clear evaluation after saving
-      await loadVersionHistory(); // Reload history
+      toast.success('Prompt saved successfully');
     } catch (error) {
-      console.error('Error saving prompt version:', error);
-      toast.error('Failed to save prompt version');
+      console.error('Error saving prompt:', error);
+      toast.error('Failed to save prompt');
     } finally {
-      setIsLoading(false);
+      setIsSaving(false);
     }
   };
-
-  const handleLoadVersion = async (version: SystemPromptVersion) => {
-    setSelectedVersion(version);
-    setPrompt(version.systemPrompt);
-    setEvaluation(version.evaluation);
-    if (version.aiModel) {
-      setSelectedModel(version.aiModel);
-    }
-    setActiveTab('editor');
-    toast.success(`Loaded version ${version.version}`);
-  };
-
-
-  const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    }).format(date);
-  };
-
-
-  const handleLoadSamplePrompt = () => {
-    if (samplePrompt.trim()) {
-      setPrompt(samplePrompt);
-      toast.success('Sample prompt loaded! You can now edit and save it.');
-    } else {
-      toast.error('Sample prompt file is empty or missing. Please add content to /public/sample_promtp.md');
-      console.error('Sample prompt file /public/sample_promtp.md is empty or missing');
-    }
-  };
-
-  const handleRestoreDefault = () => {
-    if (samplePrompt.trim()) {
-      // If user has current content, ask for confirmation
-      if (prompt.trim() && prompt !== samplePrompt) {
-        if (window.confirm('This will replace your current prompt with the default. Are you sure you want to continue?')) {
-          setPrompt(samplePrompt);
-          setSelectedVersion(null); // Clear selected version since we're loading default
-          toast.success('Default prompt restored! You can now edit and save it.');
-        }
-      } else {
-        // No current content or already default, just load it
-        setPrompt(samplePrompt);
-        setSelectedVersion(null);
-        toast.success('Default prompt loaded! You can now edit and save it.');
-      }
-    } else {
-      toast.error('Default prompt file is empty or missing. Please add content to /public/sample_promtp.md');
-      console.error('Default prompt file /public/sample_promtp.md is empty or missing');
-    }
-  };
-
-  const EditorContent = () => (
-    <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'editor' | 'history')}>
-      <div className="flex items-center justify-between mb-4">
-        <TabsList className="grid grid-cols-2">
-          <TabsTrigger value="editor">Prompt Editor</TabsTrigger>
-          <TabsTrigger value="history">Version History</TabsTrigger>
-        </TabsList>
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={() => setIsFullscreen(!isFullscreen)}
-          title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-        >
-          {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-        </Button>
-      </div>
-
-        <TabsContent value="editor" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Save className="h-5 w-5" />
-                System Prompt Editor
-                {selectedVersion && (
-                  <Badge variant="outline">
-                    Version {selectedVersion.version}
-                  </Badge>
-                )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex gap-4 items-end">
-                <div className="flex-1 space-y-2">
-                  <Label htmlFor="prompt">System Prompt</Label>
-                  <Textarea
-                    id="prompt"
-                    value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
-                    placeholder="Enter your system prompt for the AI agent..."
-                    className={isFullscreen ? "min-h-[400px] font-mono text-sm" : "min-h-[200px] font-mono text-sm"}
-                  />
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="model">AI Model</Label>
-                <Select value={selectedModel} onValueChange={setSelectedModel}>
-                  <SelectTrigger id="model">
-                    <SelectValue placeholder="Select AI model" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="gemini-2.5-pro">Gemini 2.5 Pro</SelectItem>
-                    <SelectItem value="gemini-2.5-flash">Gemini 2.5 Flash</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-sm text-gray-500">
-                  {selectedModel === 'gemini-2.5-pro' 
-                    ? 'More powerful model with better reasoning capabilities'
-                    : 'Faster model optimized for quick responses'}
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="evaluation">Evaluation Notes</Label>
-                <Textarea
-                  id="evaluation"
-                  value={evaluation}
-                  onChange={(e) => setEvaluation(e.target.value)}
-                  placeholder="Add your evaluation notes for this prompt version..."
-                  className="min-h-[100px]"
-                />
-              </div>
-
-              {/* Sample prompt buttons - show when no prompt exists */}
-              {!prompt.trim() && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
-                  <p className="text-sm text-blue-800">
-                    <strong>Get started:</strong> Load a sample prompt or create your own from scratch.
-                  </p>
-                  <div className="flex gap-2">
-                    <Button 
-                      onClick={handleLoadSamplePrompt} 
-                      variant="outline"
-                      className="flex-1 border-blue-300 text-blue-700 hover:bg-blue-100"
-                    >
-                      Load Sample Prompt
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {/* Restore Default button - always visible */}
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-3">
-                <p className="text-sm text-amber-800">
-                  <strong>Default Prompt:</strong> Restore the system default prompt that new users receive.
-                </p>
-                <div className="flex gap-2">
-                  <Button 
-                    onClick={handleRestoreDefault} 
-                    variant="outline"
-                    className="flex-1 border-amber-300 text-amber-700 hover:bg-amber-100"
-                  >
-                    <RefreshCw className="mr-2 h-4 w-4" />
-                    Restore Default Prompt
-                  </Button>
-                </div>
-              </div>
-
-              <div className="flex gap-2">
-                <Button 
-                  onClick={handleSaveVersion} 
-                  disabled={isLoading || !prompt.trim()}
-                  className="flex-1"
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="mr-2 h-4 w-4" />
-                      Save New Version
-                    </>
-                  )}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="history" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <History className="h-5 w-5" />
-                Version History
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="flex justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin" />
-                </div>
-              ) : versions.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  No versions saved yet. Create your first version in the editor.
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {versions.map((version) => (
-                    <Card 
-                      key={version.id} 
-                      className={`cursor-pointer transition-colors hover:bg-gray-50 ${
-                        selectedVersion?.id === version.id ? 'ring-2 ring-blue-500' : ''
-                      }`}
-                      onClick={() => handleLoadVersion(version)}
-                    >
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between">
-                          <div className="space-y-1 flex-1">
-                            <div className="flex items-center gap-2">
-                              <Badge>v{version.version}</Badge>
-                              {version.version === Math.max(...versions.map(v => v.version)) && (
-                                <Badge variant="default">Latest</Badge>
-                              )}
-                              {version.aiModel && (
-                                <Badge variant="outline" className="text-xs">
-                                  {version.aiModel === 'gemini-2.5-pro' ? 'Pro' : 
-                                   version.aiModel === 'gemini-2.5-flash' ? 'Flash' : 
-                                   version.aiModel.includes('pro') ? 'Pro' : 'Flash'}
-                                </Badge>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-2 text-sm text-gray-500">
-                              <Clock className="h-4 w-4" />
-                              {formatDate(version.savedDate)}
-                            </div>
-                            {version.evaluation && (
-                              <div className="text-sm text-gray-700 mt-2">
-                                <strong>Evaluation:</strong> {version.evaluation.substring(0, 100)}
-                                {version.evaluation.length > 100 && '...'}
-                              </div>
-                            )}
-                          </div>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleLoadVersion(version);
-                            }}
-                          >
-                            Load
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-    </Tabs>
-  );
-
-  if (isFullscreen) {
-    return (
-      <Dialog open={isFullscreen} onOpenChange={setIsFullscreen}>
-        <DialogContent className="max-w-[95vw] w-full h-[95vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>System Prompt Editor - Fullscreen</DialogTitle>
-          </DialogHeader>
-          <div className="mt-4">
-            <EditorContent />
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }
 
   return (
-    <div className="space-y-4">
-      <EditorContent />
-    </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>Prompt Editor</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Loading state */}
+        {isLoading ? (
+          <div className="flex justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin" />
+          </div>
+        ) : (
+          <>
+            {/* Just a simple textarea */}
+            <div>
+              <Textarea
+                value={promptText}
+                onChange={(e) => setPromptText(e.target.value)}
+                placeholder="Type your prompt here..."
+                className="min-h-[400px] font-mono"
+                disabled={isSaving}
+              />
+            </div>
+
+            {/* Character count */}
+            <div className="text-sm text-gray-500">
+              {promptText.length} characters
+            </div>
+
+            {/* Buttons in a row */}
+            <div className="flex gap-2">
+              <Button 
+                onClick={handleReset}
+                variant="outline"
+                disabled={isSaving}
+              >
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Reset to Default
+              </Button>
+              
+              <Button 
+                onClick={handleSave} 
+                className="flex-1"
+                disabled={isSaving || !promptText.trim()}
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="mr-2 h-4 w-4" />
+                    Save Prompt
+                  </>
+                )}
+              </Button>
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 

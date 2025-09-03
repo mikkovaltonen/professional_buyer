@@ -30,7 +30,7 @@ const Index = () => {
             className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium shadow-lg shadow-blue-500/25"
             asChild
           >
-            <Link to="/register">Start Free Trial</Link>
+            <Link to="/login">Start Free Trial</Link>
           </Button>
         </div>
       </nav>
@@ -46,7 +46,7 @@ const Index = () => {
             <div className="space-y-8">
               <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-700 px-4 py-2 rounded-full text-sm font-medium">
                 <Sparkles className="h-4 w-4" />
-                AI-Powered Procurement Intelligence
+                AI-Powered Procurement Guidance
               </div>
               
               <h1 className="text-5xl lg:text-6xl font-bold text-gray-900 leading-tight">
@@ -62,20 +62,10 @@ const Index = () => {
                 <Button
                   size="lg"
                   className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium shadow-lg shadow-blue-500/25 group"
-                  asChild
+                  onClick={() => window.location.href = 'mailto:mikko@zealsourcing.fi?subject=Book%20Free%20Demo%20with%20Our%20Data&body=Hi%20Mikko,%0A%0AWe%20would%20like%20to%20book%20a%20free%20demo%20of%20ProcureAI%20using%20our%20own%20procurement%20data.%0A%0ACompany:%20%0AName:%20%0ARole:%20%0APreferred%20demo%20time:%20%0AType%20of%20procurement%20data%20we%20want%20to%20test:%20%0A%0ABest%20regards'}
                 >
-                  <Link to="/register">
-                    Start Free Evaluation
-                    <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                  </Link>
-                </Button>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="border-gray-300 hover:border-gray-400"
-                  asChild
-                >
-                  <Link to="/login">View Demo</Link>
+                  Book Free Demo with Your Data
+                  <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </div>
               
@@ -501,7 +491,7 @@ const Index = () => {
             Join leading organizations using AI to revolutionize their procurement processes. 
             Schedule a personalized demo to see how we can cut your procurement costs by 78%.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex justify-center">
             <Button
               size="lg"
               className="bg-white text-blue-600 hover:bg-gray-100 font-semibold shadow-xl"
@@ -509,16 +499,6 @@ const Index = () => {
             >
               Request Free Demo
               <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              className="border-white text-white hover:bg-white/10 font-semibold"
-              asChild
-            >
-              <Link to="/register">
-                Try It Yourself
-              </Link>
             </Button>
           </div>
           <div className="mt-8 text-blue-100">
@@ -628,16 +608,16 @@ const Index = () => {
               <h3 className="font-semibold text-white mb-4">Resources</h3>
               <ul className="space-y-3">
                 <li><a href="https://www.zealsourcing.fi/insights" className="text-gray-400 hover:text-white transition-colors">Blog</a></li>
-                <li><a href="#documentation" className="text-gray-400 hover:text-white transition-colors">Documentation</a></li>
-                <li><a href="#api" className="text-gray-400 hover:text-white transition-colors">API Reference</a></li>
-                <li><a href="#support" className="text-gray-400 hover:text-white transition-colors">Support</a></li>
+                <li><a href="https://github.com/mikkovaltonen/professional_buyer" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors">Documentation</a></li>
+                <li><a href="https://vercel.com/docs/functions/serverless-functions" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors">API Reference</a></li>
+                <li><a href="mailto:mikko@zealsourcing.fi?subject=Support%20Request" className="text-gray-400 hover:text-white transition-colors">Support</a></li>
               </ul>
             </div>
             
             <div>
               <h3 className="font-semibold text-white mb-4">Company</h3>
               <ul className="space-y-3">
-                <li><a href="https://www.zealsourcing.fi/our-team" className="text-gray-400 hover:text-white transition-colors">About</a></li>
+                <li><a href="https://www.zealsourcing.fi/team" className="text-gray-400 hover:text-white transition-colors">About</a></li>
                 <li><a href="https://www.zealsourcing.fi" className="text-gray-400 hover:text-white transition-colors">Zeal Sourcing</a></li>
                 <li><a href="https://www.linkedin.com/company/zealsourcing" className="text-gray-400 hover:text-white transition-colors">LinkedIn</a></li>
                 <li><a href="#contact" className="text-gray-400 hover:text-white transition-colors">Contact</a></li>

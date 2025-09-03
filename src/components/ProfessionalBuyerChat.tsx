@@ -331,6 +331,25 @@ What procurement needs can I help you with today? I can assist with supplier man
       if (chatSession) {
         // Use the full context from initialized session (system prompt + knowledge documents)
         systemPrompt = chatSession.fullContext;
+        
+        // Estimate token count (rough estimate: 1 token ≈ 4 characters)
+        const estimatedTokens = Math.ceil(systemPrompt.length / 4);
+        console.log('📊 Context Token Estimate:', {
+          characterCount: systemPrompt.length,
+          estimatedTokens: estimatedTokens,
+          warningLevel: estimatedTokens > 30000 ? '🔴 TOO HIGH' : estimatedTokens > 20000 ? '🟡 HIGH' : '🟢 OK',
+          contextComponents: {
+            systemPromptChars: chatSession.systemPrompt?.length || 0,
+            knowledgeContextChars: chatSession.knowledgeContext?.length || 0
+          },
+          recommendation: estimatedTokens > 30000 ? 'Consider using vector database or reducing knowledge documents' : 'Token count acceptable'
+        });
+        
+        // Warn if context is too large
+        if (estimatedTokens > 30000) {
+          console.warn('⚠️ Context may be too large for Gemini. This could cause no response or errors.');
+          toast.warning('Large knowledge base detected. Response may be slow or fail.');
+        }
       } else {
         // Fallback: try to load latest prompt for this user
         if (user?.uid) {

@@ -29,20 +29,20 @@ export class SessionService {
   async getLatestSystemPrompt(userId: string): Promise<SystemPromptVersion | null> {
     try {
       // Use the new single prompt system
-      const userPrompt = await loadUserPrompt(userId);
-      
-      if (!userPrompt) {
+      const userPromptData = await loadUserPrompt(userId);
+
+      if (!userPromptData) {
         return null;
       }
-      
+
       // Return in the format expected by the rest of the system
       return {
         id: userId,
         version: 1, // Single version now
-        systemPrompt: userPrompt,
+        systemPrompt: userPromptData.prompt,
         evaluation: '',
         savedDate: new Date(),
-        aiModel: 'gemini-2.5-flash', // Default model
+        aiModel: userPromptData.model,
         userId: userId
       };
     } catch (error) {

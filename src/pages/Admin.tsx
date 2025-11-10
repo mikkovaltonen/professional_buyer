@@ -130,10 +130,6 @@ const Admin = () => {
               <h3 className="text-xl font-medium text-gray-700 mb-2">Professional Buyer Tech Stack</h3>
               <img src="/professiona_buyer_tech_stack.png" alt="Professional Buyer Tech Stack" className="rounded-lg shadow-md border border-gray-200 w-full h-auto" />
             </div>
-            <div>
-              <h3 className="text-xl font-medium text-gray-700 mb-2">Solution Overview</h3>
-              <img src="/solution_overview.png" alt="Solution Overview" className="rounded-lg shadow-md border border-gray-200 w-full h-auto" />
-            </div>
           </div>
         </div>
 

@@ -127,6 +127,362 @@ const Index = () => {
         </div>
       </section>
 
+      {/* Professional Buyer Manifest */}
+      <section className="py-20 px-8 bg-gradient-to-b from-white to-blue-50/30">
+        <div className="container mx-auto">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-3 rounded-full text-sm font-semibold mb-6">
+              <FileText className="h-4 w-4" />
+              Professional Buyer Manifest
+            </div>
+            <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-6">
+              The Procurement Revolution
+            </h2>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              How AI transforms every employee into a professional buyer while reducing costs and increasing transparency
+            </p>
+          </div>
+
+          {/* Problem Statement Card */}
+          <div className="bg-gradient-to-br from-red-50 to-orange-50 rounded-3xl p-8 mb-12 border border-red-200">
+            <div className="grid lg:grid-cols-2 gap-8 items-center">
+              <div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-3">
+                  <div className="w-10 h-10 bg-red-500 rounded-lg flex items-center justify-center">
+                    <TrendingUp className="h-6 w-6 text-white" />
+                  </div>
+                  The €7 Billion Problem
+                </h3>
+                <p className="text-gray-700 mb-6 leading-relaxed">
+                  Procurement is inefficient with insufficient control & transparency to prevent abuses. Wild invoices are blossoming while support from professional buyers remains limited and overhead costs continue to rise.
+                </p>
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-2 h-2 bg-red-500 rounded-full mt-2"></div>
+                    <p className="text-gray-600">Lost business user time and fulfilment delays</p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-2 h-2 bg-red-500 rounded-full mt-2"></div>
+                    <p className="text-gray-600">High salary and license costs for professional buyers</p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-2 h-2 bg-red-500 rounded-full mt-2"></div>
+                    <p className="text-gray-600">Un-professional procurement due to lack of skills and tools</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white rounded-2xl p-6 shadow-lg">
+                <div className="grid grid-cols-2 gap-4">
+                  <Card className="border-red-200 bg-red-50">
+                    <CardContent className="p-4">
+                      <DollarSign className="h-8 w-8 text-red-600 mb-2" />
+                      <p className="text-2xl font-bold text-red-600">€7B</p>
+                      <p className="text-sm text-gray-600">P2P Market Size</p>
+                    </CardContent>
+                  </Card>
+                  <Card className="border-orange-200 bg-orange-50">
+                    <CardContent className="p-4">
+                      <TrendingUp className="h-8 w-8 text-orange-600 mb-2" />
+                      <p className="text-2xl font-bold text-orange-600">+10%</p>
+                      <p className="text-sm text-gray-600">Annual Growth</p>
+                    </CardContent>
+                  </Card>
+                </div>
+                <div className="mt-4 p-4 bg-gradient-to-r from-red-100 to-orange-100 rounded-lg">
+                  <p className="text-sm font-medium text-gray-700">Current Reality:</p>
+                  <p className="text-xs text-gray-600 mt-1">1:n frequency ratio with escalating procurement costs</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* AI Solution Card */}
+          <div className="bg-gradient-to-br from-green-50 to-blue-50 rounded-3xl p-8 mb-12 border border-green-200">
+            <div className="grid lg:grid-cols-2 gap-8 items-center">
+              <div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-lg flex items-center justify-center">
+                    <Bot className="h-6 w-6 text-white" />
+                  </div>
+                  AI Assistant Solution
+                </h3>
+                <p className="text-gray-700 mb-6 leading-relaxed">
+                  We build AI Agents that help users create POs intelligently, reducing manual processing while maintaining professional standards.
+                </p>
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3">
+                    <Check className="h-5 w-5 text-green-600 mt-0.5" />
+                    <p className="text-gray-600">Reduced "best guess" PO creation</p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <Check className="h-5 w-5 text-green-600 mt-0.5" />
+                    <p className="text-gray-600">Minimized manual professional buyer transactions</p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <Check className="h-5 w-5 text-green-600 mt-0.5" />
+                    <p className="text-gray-600">Democratized access to procurement expertise</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white rounded-2xl p-6 shadow-lg">
+                <div className="space-y-4">
+                  <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+                    <h4 className="font-semibold text-gray-900 mb-2">AI-Powered Transformation</h4>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                        <span className="text-gray-600">1:n efficiency</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
+                        <span className="text-gray-600">Reduced costs</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
+                    <p className="text-sm font-medium text-gray-700">Impact:</p>
+                    <p className="text-2xl font-bold text-green-600 mt-1">80% Cost Reduction</p>
+                    <p className="text-xs text-gray-600 mt-1">In procurement overhead</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Software Evolution */}
+          <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-3xl p-8 mb-12 border border-purple-200">
+            <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
+                <Code className="h-6 w-6 text-white" />
+              </div>
+              Software Industry Under Disruption
+            </h3>
+            <div className="grid lg:grid-cols-3 gap-6">
+              <Card className="border-purple-200 bg-white/80">
+                <CardContent className="p-6">
+                  <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-4">
+                    <Server className="h-6 w-6 text-purple-600" />
+                  </div>
+                  <h4 className="font-semibold text-gray-900 mb-2">Software 1.0</h4>
+                  <p className="text-sm text-gray-600">Traditional code with low TCO, elegant API integration, and DevOps excellence</p>
+                </CardContent>
+              </Card>
+              <Card className="border-pink-200 bg-white/80">
+                <CardContent className="p-6">
+                  <div className="w-12 h-12 bg-pink-100 rounded-lg flex items-center justify-center mb-4">
+                    <Brain className="h-6 w-6 text-pink-600" />
+                  </div>
+                  <h4 className="font-semibold text-gray-900 mb-2">Software 2.0</h4>
+                  <p className="text-sm text-gray-600">ML models with enhanced security and pattern recognition capabilities</p>
+                </CardContent>
+              </Card>
+              <Card className="border-indigo-200 bg-white/80">
+                <CardContent className="p-6">
+                  <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center mb-4">
+                    <Sparkles className="h-6 w-6 text-indigo-600" />
+                  </div>
+                  <h4 className="font-semibold text-gray-900 mb-2">Software 3.0</h4>
+                  <p className="text-sm text-gray-600">Agentic Process Automation with self-evaluation and autonomous execution</p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {/* Agentic Process Automation */}
+          <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-3xl p-8 mb-12 border border-indigo-200">
+            <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-blue-500 rounded-lg flex items-center justify-center">
+                <Bot className="h-6 w-6 text-white" />
+              </div>
+              Agentic Process Automation
+            </h3>
+            <div className="bg-white rounded-2xl p-6 shadow-lg">
+              <p className="text-gray-700 mb-6 italic">
+                "I plan tasks and execute them, and self-evaluate results"
+              </p>
+              <div className="grid lg:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <h4 className="font-semibold text-gray-900">AI Agent Capabilities:</h4>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-3">
+                      <Search className="h-4 w-4 text-indigo-600" />
+                      <span className="text-sm text-gray-600">Search policies and catalogues</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Database className="h-4 w-4 text-indigo-600" />
+                      <span className="text-sm text-gray-600">Study data warehouse data</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <FileSearch className="h-4 w-4 text-indigo-600" />
+                      <span className="text-sm text-gray-600">Read purchase invoices</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <DollarSign className="h-4 w-4 text-indigo-600" />
+                      <span className="text-sm text-gray-600">Find renegotiated prices</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <h4 className="font-semibold text-gray-900">Integration Points:</h4>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-3">
+                      <Globe className="h-4 w-4 text-blue-600" />
+                      <span className="text-sm text-gray-600">Vendor data warehouses</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <FileSpreadsheet className="h-4 w-4 text-blue-600" />
+                      <span className="text-sm text-gray-600">Purchase invoice systems</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Shield className="h-4 w-4 text-blue-600" />
+                      <span className="text-sm text-gray-600">Policy management systems</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Users className="h-4 w-4 text-blue-600" />
+                      <span className="text-sm text-gray-600">Professional buyer workflows</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Forward Deployment Engineer */}
+          <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-3xl p-8 mb-12 border border-yellow-200">
+            <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-lg flex items-center justify-center">
+                <Users className="h-6 w-6 text-white" />
+              </div>
+              Forward Deployment Engineer Approach
+            </h3>
+            <p className="text-gray-700 mb-6">
+              Following the Palantir and Sierra way of deep customer integration
+            </p>
+            <div className="grid lg:grid-cols-2 gap-6">
+              <Card className="border-yellow-200 bg-white/80">
+                <CardContent className="p-6">
+                  <h4 className="font-semibold text-gray-900 mb-4">FDE Core Tasks:</h4>
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-3">
+                      <div className="w-2 h-2 bg-yellow-500 rounded-full mt-2"></div>
+                      <p className="text-sm text-gray-600">Sit among customer users and do their work with them</p>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <div className="w-2 h-2 bg-yellow-500 rounded-full mt-2"></div>
+                      <p className="text-sm text-gray-600">Involve 100% in all hassle to learn root causes</p>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <div className="w-2 h-2 bg-yellow-500 rounded-full mt-2"></div>
+                      <p className="text-sm text-gray-600">Develop everything alone with full ownership</p>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <div className="w-2 h-2 bg-yellow-500 rounded-full mt-2"></div>
+                      <p className="text-sm text-gray-600">Do UI/UX design based on real user needs</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="border-orange-200 bg-white/80">
+                <CardContent className="p-6">
+                  <h4 className="font-semibold text-gray-900 mb-4">Value Alignment:</h4>
+                  <div className="space-y-3">
+                    <div className="p-3 bg-orange-100 rounded-lg">
+                      <p className="text-sm font-medium text-gray-800">Free functional prototypes & demos</p>
+                    </div>
+                    <div className="p-3 bg-orange-100 rounded-lg">
+                      <p className="text-sm font-medium text-gray-800">Full satisfaction money-back warranties</p>
+                    </div>
+                    <div className="p-3 bg-orange-100 rounded-lg">
+                      <p className="text-sm font-medium text-gray-800">Value-based pricing schemes</p>
+                    </div>
+                    <div className="p-3 bg-orange-100 rounded-lg">
+                      <p className="text-sm font-medium text-gray-800">Sell your own demo with conviction</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {/* AI Assistant Features Matrix */}
+          <div className="bg-gradient-to-br from-gray-50 to-slate-50 rounded-3xl p-8 border border-gray-200">
+            <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-gray-600 to-slate-600 rounded-lg flex items-center justify-center">
+                <BarChart3 className="h-6 w-6 text-white" />
+              </div>
+              AI Assistant Performance Metrics
+            </h3>
+            <div className="grid lg:grid-cols-3 gap-6">
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <Shield className="h-5 w-5 text-blue-600" />
+                    <h4 className="font-semibold text-gray-900">Reliability</h4>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Accuracy</span>
+                      <span className="text-sm font-semibold text-gray-900">0-6 Sigma</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="bg-blue-600 h-2 rounded-full" style={{width: '85%'}}></div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <Zap className="h-5 w-5 text-green-600" />
+                    <h4 className="font-semibold text-gray-900">Response Time</h4>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Processing</span>
+                      <span className="text-sm font-semibold text-gray-900">1-100 sec</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="bg-green-600 h-2 rounded-full" style={{width: '70%'}}></div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <Building2 className="h-5 w-5 text-purple-600" />
+                    <h4 className="font-semibold text-gray-900">Scope</h4>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Features</span>
+                      <span className="text-sm font-semibold text-gray-900">1-n capabilities</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="bg-purple-600 h-2 rounded-full" style={{width: '90%'}}></div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+            <div className="grid lg:grid-cols-2 gap-6 mt-6">
+              <Card className="border-indigo-200 bg-indigo-50/50">
+                <CardContent className="p-6">
+                  <h4 className="font-semibold text-gray-900 mb-3">UI/UX & DevOps Excellence</h4>
+                  <p className="text-sm text-gray-600">Minimal friction in development and deployment with user-centric design</p>
+                </CardContent>
+              </Card>
+              <Card className="border-green-200 bg-green-50/50">
+                <CardContent className="p-6">
+                  <h4 className="font-semibold text-gray-900 mb-3">Change Management</h4>
+                  <p className="text-sm text-gray-600">Low friction adoption with gradual rollout and comprehensive training</p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Problem Section */}
       <section className="py-20 px-8">
         <div className="container mx-auto">
@@ -168,14 +524,25 @@ const Index = () => {
                   </p>
                 </div>
               </div>
-              <div className="relative">
-                <img 
-                  src="/problem.png" 
-                  alt="Procurement Cost Problem Analysis" 
-                  className="rounded-2xl shadow-lg w-full h-auto"
-                />
+              <div className="relative bg-gradient-to-br from-red-50 to-orange-50 rounded-2xl p-6 border border-red-200">
+                <div className="space-y-4">
+                  <div className="text-center">
+                    <div className="text-4xl font-bold text-red-600 mb-2">€7B</div>
+                    <div className="text-sm text-gray-600">P2P Market Size</div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-white rounded-lg p-3 text-center">
+                      <div className="text-2xl font-semibold text-orange-600">+10%</div>
+                      <div className="text-xs text-gray-600">Annual Growth</div>
+                    </div>
+                    <div className="bg-white rounded-lg p-3 text-center">
+                      <div className="text-2xl font-semibold text-red-600">€30-100</div>
+                      <div className="text-xs text-gray-600">Cost per PO</div>
+                    </div>
+                  </div>
+                </div>
                 <div className="absolute -bottom-4 -right-4 bg-gradient-to-r from-red-500 to-orange-500 text-white px-4 py-2 rounded-full text-sm font-semibold shadow-lg">
-                  P2P Market: ~€7B (+10% yearly)
+                  Growing Problem
                 </div>
               </div>
             </div>
@@ -234,12 +601,29 @@ const Index = () => {
           {/* Solution Flow Visualization */}
           <div className="bg-white rounded-3xl shadow-2xl p-8 mb-16">
             <div className="grid lg:grid-cols-2 gap-12">
-              <div>
-                <img 
-                  src="/solution_overview.png" 
-                  alt="AI Procurement Solution Overview" 
-                  className="rounded-2xl shadow-lg w-full h-auto"
-                />
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-200">
+                <div className="text-center mb-4">
+                  <Bot className="h-16 w-16 text-blue-600 mx-auto mb-3" />
+                  <h4 className="text-lg font-semibold text-gray-900">AI Agent Architecture</h4>
+                </div>
+                <div className="space-y-3">
+                  <div className="bg-white rounded-lg p-3 flex items-center gap-3">
+                    <Brain className="h-5 w-5 text-indigo-600" />
+                    <span className="text-sm text-gray-700">Intelligent Document Processing</span>
+                  </div>
+                  <div className="bg-white rounded-lg p-3 flex items-center gap-3">
+                    <Search className="h-5 w-5 text-blue-600" />
+                    <span className="text-sm text-gray-700">Policy & Catalogue Search</span>
+                  </div>
+                  <div className="bg-white rounded-lg p-3 flex items-center gap-3">
+                    <Database className="h-5 w-5 text-indigo-600" />
+                    <span className="text-sm text-gray-700">Data Warehouse Integration</span>
+                  </div>
+                  <div className="bg-white rounded-lg p-3 flex items-center gap-3">
+                    <Shield className="h-5 w-5 text-blue-600" />
+                    <span className="text-sm text-gray-700">Automated Compliance Checks</span>
+                  </div>
+                </div>
               </div>
               <div className="space-y-6">
                 <h3 className="text-2xl font-semibold text-gray-900">How It Works</h3>

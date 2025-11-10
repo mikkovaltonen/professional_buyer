@@ -1,8 +1,6 @@
 import React, { useState, useRef } from 'react';
-import { GoogleGenerativeAI, Part } from '@google/generative-ai';
 import { Loader2, Send, RotateCcw, Paperclip, Bot, LogOut, Settings, ThumbsUp, ThumbsDown } from "lucide-react";
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import { SafeMarkdown } from './SafeMarkdown';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -19,6 +17,7 @@ import { storageService } from '../lib/storageService';
 import { createPurchaseRequisition } from '@/lib/firestoreService';
 import { useQueryClient } from '@tanstack/react-query';
 import type { PurchaseRequisition } from '@/types/purchaseRequisition';
+import { callOpenRouterAPI, getOpenRouterErrorMessage, type OpenRouterMessage, type OpenRouterTool } from '../lib/openRouterService';
 
 interface ProfessionalBuyerChatProps {
   onLogout?: () => void;
@@ -29,126 +28,101 @@ interface ProfessionalBuyerChatProps {
   topRightControls?: React.ReactNode;
 }
 
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
-const defaultGeminiModel = import.meta.env.VITE_GEMINI_MODEL || 'gemini-2.5-flash';
+const defaultModel = 'google/gemini-2.5-flash';
 
-// ERP Function Definition for Gemini
-const searchERPFunction = {
-  name: "search_erp_data",
-  description: "Search ERP/purchase order data with various criteria. Use this when user asks about suppliers, orders, purchases, products, or wants to find specific data from their ERP system.",
-  parameters: {
-    type: "object",
-    properties: {
-      supplierName: {
-        type: "string",
-        description: "Supplier/vendor name or partial name to search for"
-      },
-      productDescription: {
-        type: "string", 
-        description: "Product description or partial description to search for"
-      },
-      dateFrom: {
-        type: "string",
-        description: "Search from date (YYYY-MM-DD format). Filters by 'Receive By' column in the Excel data."
-      },
-      dateTo: {
-        type: "string",
-        description: "Search to date (YYYY-MM-DD format). Filters by 'Receive By' column in the Excel data."
-      },
-      buyerName: {
-        type: "string",
-        description: "Buyer/purchaser name or partial name to search for"
+// ERP Function Definitions for OpenRouter (compatible with function calling)
+const openRouterTools: OpenRouterTool[] = [
+  {
+    type: "function",
+    function: {
+      name: "search_erp_data",
+      description: "Search ERP/purchase order data with various criteria. Use this when user asks about suppliers, orders, purchases, products, or wants to find specific data from their ERP system.",
+      parameters: {
+        type: "object",
+        properties: {
+          supplierName: {
+            type: "string",
+            description: "Supplier/vendor name or partial name to search for"
+          },
+          productDescription: {
+            type: "string",
+            description: "Product description or partial description to search for"
+          },
+          dateFrom: {
+            type: "string",
+            description: "Search from date (YYYY-MM-DD format). Filters by 'Receive By' column in the Excel data."
+          },
+          dateTo: {
+            type: "string",
+            description: "Search to date (YYYY-MM-DD format). Filters by 'Receive By' column in the Excel data."
+          },
+          buyerName: {
+            type: "string",
+            description: "Buyer/purchaser name or partial name to search for"
+          }
+        }
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_purchase_requisition",
+      description: "Create a purchase requisition document with header and lines to Firestore.",
+      parameters: {
+        type: "object",
+        properties: {
+          header: {
+            type: "object",
+            properties: {
+              templateBatchName: { type: "string" },
+              locationCode: { type: "string" },
+              startDate: { type: "string", description: "YYYY-MM-DD" },
+              endDate: { type: "string", description: "YYYY-MM-DD" },
+              responsibilityCenterOrBuyer: { type: "string" },
+              notes: { type: "string" }
+            },
+            required: ["templateBatchName","locationCode","startDate","endDate","responsibilityCenterOrBuyer"]
+          },
+          lines: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                itemNoOrDescription: { type: "string" },
+                quantity: { type: "number" },
+                unitOfMeasure: { type: "string" },
+                requestedDate: { type: "string", description: "YYYY-MM-DD" },
+                vendorNoOrName: { type: "string" },
+                directUnitCost: { type: "number" },
+                currency: { type: "string" }
+              },
+              required: ["itemNoOrDescription","quantity","unitOfMeasure","requestedDate"]
+            }
+          }
+        },
+        required: ["header","lines"]
       }
     }
   }
-};
-
-const createRequisitionFunction = {
-  name: "create_purchase_requisition",
-  description: "Create a purchase requisition document with header and lines to Firestore.",
-  parameters: {
-    type: "object",
-    properties: {
-      header: {
-        type: "object",
-        properties: {
-          templateBatchName: { type: "string" },
-          locationCode: { type: "string" },
-          startDate: { type: "string", description: "YYYY-MM-DD" },
-          endDate: { type: "string", description: "YYYY-MM-DD" },
-          responsibilityCenterOrBuyer: { type: "string" },
-          notes: { type: "string" }
-        },
-        required: ["templateBatchName","locationCode","startDate","endDate","responsibilityCenterOrBuyer"]
-      },
-      lines: {
-        type: "array",
-        items: {
-          type: "object",
-          properties: {
-            itemNoOrDescription: { type: "string" },
-            quantity: { type: "number" },
-            unitOfMeasure: { type: "string" },
-            requestedDate: { type: "string", description: "YYYY-MM-DD" },
-            vendorNoOrName: { type: "string" },
-            directUnitCost: { type: "number" },
-            currency: { type: "string" }
-          },
-          required: ["itemNoOrDescription","quantity","unitOfMeasure","requestedDate"]
-        }
-      }
-    },
-    required: ["header","lines"]
-  }
-};
-
-// Debug: Log Gemini API config
-console.log('Gemini API config:', {
-  apiKey: apiKey ? `${apiKey.substring(0, 10)}...` : 'undefined',
-  model: defaultGeminiModel
-});
-
-const genAI = new GoogleGenerativeAI(apiKey);
-
-interface CitationSource {
-  startIndex?: number;
-  endIndex?: number;
-  uri?: string;
-  title?: string;
-}
+];
 
 interface Message {
-  role: 'user' | 'model';
-  parts: Part[];
-  citationMetadata?: {
-    citationSources: CitationSource[];
-  };
-  functionCall?: {
-    name: string;
-    args: Record<string, unknown>;
-    result?: unknown;
-  };
+  role: 'user' | 'assistant';
+  content: string;
+  tool_calls?: Array<{
+    id: string;
+    type: 'function';
+    function: {
+      name: string;
+      arguments: string;
+    };
+  }>;
+  tool_call_id?: string; // For tool responses
+  name?: string; // Function name for tool responses
 }
 
-const processTextWithCitations = (text: string, citationSources?: CitationSource[]) => {
-  const originalText = text;
-  const formattedSources: string[] = [];
-
-  if (citationSources && citationSources.length > 0) {
-    const uniqueUris = new Set<string>();
-    let sourceNumber = 1;
-    citationSources.forEach((source) => {
-      if (source.uri && !uniqueUris.has(source.uri)) {
-        const linkDescription = source.title && source.title.trim() !== '' ? source.title : source.uri;
-        formattedSources.push(`[Source ${sourceNumber}: ${linkDescription}](${source.uri})`);
-        uniqueUris.add(source.uri);
-        sourceNumber++;
-      }
-    });
-  }
-
-  return { originalText, formattedSources };
-};
+// Removed: processTextWithCitations (citations no longer supported without Google Search)
 
 const ProfessionalBuyerChat: React.FC<ProfessionalBuyerChatProps> = ({ 
   onLogout, 
@@ -319,7 +293,7 @@ What procurement needs can I help you with today? I can assist with supplier man
       return;
     }
 
-    const userMessage: Message = { role: 'user', parts: [{ text: textToSend }] };
+    const userMessage: Message = { role: 'user', content: textToSend };
     setMessages(prev => [...prev, userMessage]);
     if (!messageText) setInput('');
     setIsLoading(true);
@@ -327,12 +301,10 @@ What procurement needs can I help you with today? I can assist with supplier man
     try {
       // Use session context if available, otherwise fallback to loading prompt
       let systemPrompt = '';
-      
+
       if (chatSession) {
-        // Use the full context from initialized session (system prompt + knowledge documents)
         systemPrompt = chatSession.fullContext;
-        
-        // Estimate token count (rough estimate: 1 token ≈ 4 characters)
+
         const estimatedTokens = Math.ceil(systemPrompt.length / 4);
         console.log('📊 Context Token Estimate:', {
           characterCount: systemPrompt.length,
@@ -344,14 +316,12 @@ What procurement needs can I help you with today? I can assist with supplier man
           },
           recommendation: estimatedTokens > 30000 ? 'Consider using vector database or reducing knowledge documents' : 'Token count acceptable'
         });
-        
-        // Warn if context is too large
+
         if (estimatedTokens > 30000) {
-          console.warn('⚠️ Context may be too large for Gemini. This could cause no response or errors.');
+          console.warn('⚠️ Context may be too large. This could cause no response or errors.');
           toast.warning('Large knowledge base detected. Response may be slow or fail.');
         }
       } else {
-        // Fallback: try to load latest prompt for this user
         if (user?.uid) {
           try {
             const latestPrompt = await loadLatestPrompt(user.uid);
@@ -363,44 +333,48 @@ What procurement needs can I help you with today? I can assist with supplier man
           }
         }
 
-        // No fallback - if no prompt available, show error
         if (!systemPrompt) {
           throw new Error('No system prompt configured. Please visit Admin panel to set up your prompt.');
         }
       }
 
-      const model = genAI.getGenerativeModel({
-        model: defaultGeminiModel,
-        generationConfig: { temperature: 0.2 },
-        tools: [
-          { functionDeclarations: [searchERPFunction, createRequisitionFunction] }
-        ]
+      // Build OpenRouter messages with history
+      const openRouterMessages: OpenRouterMessage[] = [
+        { role: 'system', content: systemPrompt }
+      ];
+
+      // Add conversation history
+      messages.forEach(msg => {
+        openRouterMessages.push({
+          role: msg.role,
+          content: msg.content
+        });
       });
 
-      const history = messages.map(msg => ({ role: msg.role, parts: msg.parts }));
-      const result = await model.generateContent({
-        contents: [
-          { role: 'user', parts: [{ text: systemPrompt }] },
-          ...history, 
-          { role: 'user', parts: [{ text: textToSend }] }
-        ]
-      });
+      // Add current user message
+      openRouterMessages.push({ role: 'user', content: textToSend });
 
-      const response = result.response;
-      if (response && response.candidates && response.candidates.length > 0) {
-        const candidate = response.candidates[0];
-        const content = candidate.content;
-        
-        // Check for function calls
-        if (content?.parts) {
-          for (const part of content.parts) {
-            if (part.functionCall) {
-              const functionName = part.functionCall.name;
-              const functionArgs = part.functionCall.args;
-              
-              if (functionName === 'search_erp_data') {
-                try {
-                  const aiRequestId = Math.random().toString(36).substring(2, 8);
+      // Call OpenRouter API with tools
+      const result = await callOpenRouterAPI(
+        openRouterMessages,
+        defaultModel,
+        undefined,
+        openRouterTools,
+        0.2
+      );
+
+      // Check if the response contains tool calls (function calling)
+      const assistantMessage = result.choices?.[0]?.message;
+
+      if (assistantMessage?.tool_calls && assistantMessage.tool_calls.length > 0) {
+        // Handle function calling
+        const toolCall = assistantMessage.tool_calls[0];
+        const functionName = toolCall.function.name;
+        const functionArgs = JSON.parse(toolCall.function.arguments);
+
+        if (functionName === 'search_erp_data') {
+          try {
+            const aiRequestId = Math.random().toString(36).substring(2, 8);
                   
                   // Log AI function call details
                   console.log('🤖 AI FUNCTION CALL [' + aiRequestId + ']:', {
@@ -449,71 +423,50 @@ What procurement needs can I help you with today? I can assist with supplier man
                     return updated;
                   });
                   
-                  // Create function response
-                  const functionResponse = {
-                    role: 'model' as const,
-                    parts: [{
-                      functionResponse: {
-                        name: functionName,
-                        response: {
-                          records: searchResult.records,
-                          totalCount: searchResult.totalCount,
-                          processingTimeMs: searchResult.processingTimeMs
-                        }
-                      }
-                    }]
-                  };
-                  
+                  // Add function result to messages and call API again
+                  const followUpMessages: OpenRouterMessage[] = [
+                    { role: 'system', content: systemPrompt },
+                    ...openRouterMessages.slice(1), // Skip the system message, already added
+                    {
+                      role: 'assistant',
+                      content: null as unknown as string, // OpenRouter expects this for tool calls
+                      tool_calls: [toolCall]
+                    },
+                    {
+                      role: 'user', // Tool responses use 'user' role in OpenRouter
+                      content: JSON.stringify({
+                        records: searchResult.records,
+                        totalCount: searchResult.totalCount,
+                        processingTimeMs: searchResult.processingTimeMs
+                      })
+                    }
+                  ];
+
                   // Generate follow-up response with function results
-                  const followUpResult = await model.generateContent({
-                    contents: [
-                      { role: 'user', parts: [{ text: systemPrompt }] },
-                      ...history,
-                      { role: 'user', parts: [{ text: textToSend }] },
-                      { role: 'model', parts: [part] }, // Original function call
-                      functionResponse // Function response
-                    ]
-                  });
-                  
-                  const followUpResponse = followUpResult.response;
-                  if (followUpResponse?.candidates?.[0]?.content) {
-                    const aiResponseText = followUpResponse.candidates[0].content?.parts?.[0]?.text || "No response text";
-                    
-                    // Log AI's final response with detailed debugging
+                  const followUpResult = await callOpenRouterAPI(
+                    followUpMessages,
+                    defaultModel,
+                    undefined,
+                    openRouterTools,
+                    0.2
+                  );
+
+                  const followUpResponse = followUpResult.choices?.[0]?.message?.content;
+                  if (followUpResponse) {
                     console.log('💬 AI FINAL RESPONSE [' + aiRequestId + ']:', {
-                      response_text_length: aiResponseText.length,
-                      response_preview: aiResponseText.substring(0, 200) + (aiResponseText.length > 200 ? '...' : ''),
-                      has_content: !!followUpResponse.candidates[0].content,
-                      parts_count: followUpResponse.candidates[0].content?.parts?.length || 0,
-                      parts_with_text: followUpResponse.candidates[0].content?.parts?.filter((p): p is { text: string } => 
-                        typeof p === 'object' && p !== null && 'text' in p && typeof p.text === 'string'
-                      )?.length || 0,
+                      response_text_length: followUpResponse.length,
+                      response_preview: followUpResponse.substring(0, 200) + (followUpResponse.length > 200 ? '...' : ''),
                       included_erp_data: searchResult.totalCount > 0,
                       timestamp: new Date().toISOString(),
                       ai_request_id: aiRequestId
                     });
 
-                    // AI response (logging removed)
-                    
-                    // Ensure we have valid parts with text content
-                    const responseParts = followUpResponse.candidates[0].content?.parts || [];
-                    const validParts = responseParts.filter((part): part is { text: string } => 
-                      typeof part === 'object' && 
-                      part !== null && 
-                      'text' in part && 
-                      typeof part.text === 'string' && 
-                      part.text.trim().length > 0
-                    );
-                    
-                    // Add function usage note at the bottom
                     const functionNote = '\n\n---\n_🔧 Käytetty toiminto: ERP-tietojen haku_';
-                    const responseText = validParts.length > 0 
-                      ? validParts[0].text + functionNote
-                      : (aiResponseText || "I executed the search but couldn't format the response. Please try rephrasing your question.") + functionNote;
-                    
+                    const responseText = followUpResponse + functionNote;
+
                     setMessages(prev => [...prev, {
-                      role: 'model',
-                      parts: [{ text: responseText }]
+                      role: 'assistant',
+                      content: responseText
                     }]);
                   }
                   return;
@@ -542,92 +495,63 @@ What procurement needs can I help you with today? I can assist with supplier man
                   const errorMessage = `I tried to search your ERP data but encountered an error: ${functionError instanceof Error ? functionError.message : 'Unknown error'}. Please make sure you have uploaded your ERP data in the Admin panel.`;
                   const functionNote = '\n\n---\n_🔧 Käytetty toiminto: ERP-tietojen haku (virhe)_';
                   setMessages(prev => [...prev, {
-                    role: 'model',
-                    parts: [{ text: errorMessage + functionNote }]
+                    role: 'assistant',
+                    content: errorMessage + functionNote
                   }]);
                   return;
                 }
               }
-              if (functionName === 'create_purchase_requisition') {
-                try {
-                  const aiRequestId = Math.random().toString(36).substring(2, 8);
-                  const args = functionArgs as { header: unknown; lines: unknown };
-                  if (!user?.uid) throw new Error('Not authenticated');
-                  const id = await createPurchaseRequisition(user.uid, {
-                    status: 'draft',
-                    header: args.header,
-                    lines: args.lines
-                  } as PurchaseRequisition);
-                  try {
-                    await queryClient.invalidateQueries({ queryKey: ['purchaseRequisitions', user.uid] });
-                  } catch {
-                    // Ignore query client errors
-                  }
-                  const successMessage = `Created purchase requisition ${id}. You can view and edit it in Requisitions.`;
-                  const functionNote = '\n\n---\n_🔧 Käytetty toiminto: Ostoehdotuksen luonti_';
-                  setMessages(prev => [...prev, { role: 'model', parts: [{ text: successMessage + functionNote }] }]);
-                  return;
-                } catch (err) {
-                  const errorMessage = `Failed to create requisition: ${err instanceof Error ? err.message : 'Unknown error'}`;
-                  const functionNote = '\n\n---\n_🔧 Käytetty toiminto: Ostoehdotuksen luonti (virhe)_';
-                  setMessages(prev => [...prev, { role: 'model', parts: [{ text: errorMessage + functionNote }] }]);
-                  return;
-                }
-              }
+        if (functionName === 'create_purchase_requisition') {
+          try {
+            const aiRequestId = Math.random().toString(36).substring(2, 8);
+            console.log('🤖 AI FUNCTION CALL [' + aiRequestId + ']:', {
+              function_name: functionName,
+              ai_parameters: functionArgs
+            });
+
+            const args = functionArgs as { header: unknown; lines: unknown };
+            if (!user?.uid) throw new Error('Not authenticated');
+            const id = await createPurchaseRequisition(user.uid, {
+              status: 'draft',
+              header: args.header,
+              lines: args.lines
+            } as PurchaseRequisition);
+
+            try {
+              await queryClient.invalidateQueries({ queryKey: ['purchaseRequisitions', user.uid] });
+            } catch {
+              // Ignore query client errors
             }
+
+            const successMessage = `Created purchase requisition ${id}. You can view and edit it in Requisitions.`;
+            const functionNote = '\n\n---\n_🔧 Käytetty toiminto: Ostoehdotuksen luonti_';
+            setMessages(prev => [...prev, { role: 'assistant', content: successMessage + functionNote }]);
+            return;
+          } catch (err) {
+            const errorMessage = `Failed to create requisition: ${err instanceof Error ? err.message : 'Unknown error'}`;
+            const functionNote = '\n\n---\n_🔧 Käytetty toiminto: Ostoehdotuksen luonti (virhe)_';
+            setMessages(prev => [...prev, { role: 'assistant', content: errorMessage + functionNote }]);
+            return;
           }
         }
-        
-        let processedCitationMetadata: { citationSources: CitationSource[] } | undefined = undefined;
-        if (candidate.citationMetadata && candidate.citationMetadata.citationSources) {
-          processedCitationMetadata = candidate.citationMetadata;
-        }
+      }
 
-        // Log regular AI response (non-function call)
-        const aiResponseText = content?.parts?.[0]?.text || "No response text";
-        
-        // Debug logging for empty responses
-        if (!content?.parts || content.parts.length === 0 || 
-            !content.parts.some((p): p is { text: string } => 
-              typeof p === 'object' && p !== null && 'text' in p && 
-              typeof p.text === 'string' && p.text.trim().length > 0)) {
-          console.warn('⚠️ AI returned empty or invalid response:', {
-            has_content: !!content,
-            parts_count: content?.parts?.length || 0,
-            parts_with_text: content?.parts?.filter((p): p is { text: string } => 
-              typeof p === 'object' && p !== null && 'text' in p && typeof p.text === 'string'
-            )?.length || 0,
-            first_part: content?.parts?.[0],
-            timestamp: new Date().toISOString()
-          });
-        }
-        // Regular AI response (logging removed)
-
-        // Ensure we have valid parts with text content for regular responses
-        const responseParts = content?.parts || [];
-        const validParts = responseParts.filter((part): part is { text: string } => 
-          typeof part === 'object' && 
-          part !== null && 
-          'text' in part && 
-          typeof part.text === 'string' && 
-          part.text.trim().length > 0
-        );
-        
+      // No function call - handle normal response
+      const responseContent = assistantMessage?.content;
+      if (responseContent) {
         setMessages(prev => [...prev, {
-          role: 'model',
-          parts: validParts.length > 0 
-            ? validParts 
-            : [{ text: aiResponseText || "I couldn't generate a response. Please try again." }],
-          citationMetadata: processedCitationMetadata
+          role: 'assistant',
+          content: responseContent
         }]);
       } else {
         throw new Error('No response from AI model');
       }
     } catch (error) {
       console.error('Error sending message:', error);
+      const errorMessage = error instanceof Error ? getOpenRouterErrorMessage(error) : 'Error processing your request';
       setMessages(prev => [...prev, {
-        role: 'model',
-        parts: [{ text: "Error processing your request. Please try again." }]
+        role: 'assistant',
+        content: errorMessage
       }]);
     } finally {
       setIsLoading(false);
@@ -974,27 +898,13 @@ What procurement needs can I help you with today? I can assist with supplier man
                         : 'bg-white shadow-sm border'
                     }`}
                   >
-                    {message.parts.map((part, partIndex) => (
-                      <div key={partIndex}>
-                        {part.text && (
-                          <div className={`prose ${message.role === 'user' ? 'prose-invert' : ''} prose-sm max-w-none`}>
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                              {(() => {
-                                const { originalText, formattedSources } = processTextWithCitations(
-                                  part.text,
-                                  message.citationMetadata?.citationSources
-                                );
-                                return originalText + (formattedSources.length > 0 ? '\n\n**Sources:**\n' + formattedSources.join('\n') : '');
-                              })()}
-                            </ReactMarkdown>
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                    <SafeMarkdown className={`prose ${message.role === 'user' ? 'prose-invert' : ''} prose-sm max-w-none`}>
+                      {message.content}
+                    </SafeMarkdown>
                   </div>
                   
                   {/* Feedback buttons for AI responses only */}
-                  {message.role === 'model' && (
+                  {message.role === 'assistant' && (
                     <div className="flex items-center space-x-2 ml-2">
                       <span className="text-xs text-gray-500">Was this helpful?</span>
                       <Button
@@ -1143,29 +1053,18 @@ What procurement needs can I help you with today? I can assist with supplier man
                   {messages.map((message, index) => (
                     <div key={index} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                       <div className="flex items-start space-x-3 max-w-3xl w-full">
-                        {message.role === 'model' && (
+                        {message.role === 'assistant' && (
                           <div className="flex-shrink-0 w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
                             <Bot className="h-5 w-5 text-gray-700" />
                           </div>
                         )}
                         <div className="flex flex-col space-y-2 flex-1">
                           <div className={`px-6 py-4 rounded-2xl ${message.role === 'user' ? 'bg-black text-white ml-auto max-w-lg' : 'bg-white shadow-sm border'}`}>
-                            {message.parts.map((part, partIndex) => (
-                              <div key={partIndex}>
-                                {part.text && (
-                                  <div className={`prose ${message.role === 'user' ? 'prose-invert' : ''} prose-sm max-w-none`}>
-                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                      {(() => {
-                                        const { originalText, formattedSources } = processTextWithCitations(part.text, message.citationMetadata?.citationSources);
-                                        return originalText + (formattedSources.length > 0 ? '\n\n**Sources:**\n' + formattedSources.join('\n') : '');
-                                      })()}
-                                    </ReactMarkdown>
-                                  </div>
-                                )}
-                              </div>
-                            ))}
+                            <SafeMarkdown className={`prose ${message.role === 'user' ? 'prose-invert' : ''} prose-sm max-w-none`}>
+                              {message.content}
+                            </SafeMarkdown>
                           </div>
-                          {message.role === 'model' && (
+                          {message.role === 'assistant' && (
                             <div className="flex items-center space-x-2 ml-2">
                               <span className="text-xs text-gray-500">Was this helpful?</span>
                               <Button variant="ghost" size="sm" onClick={() => handleFeedback('thumbs_up', index)} className="text-gray-500 hover:text-green-600 hover:bg-green-50 p-1 h-auto" title="Good response">

@@ -83,7 +83,7 @@ export const savePromptVersion = async (
   userId: string, 
   promptText: string, 
   evaluation: string = '',
-  aiModel: string = 'gemini-2.5-flash',
+  aiModel: string = 'google/gemini-2.5-flash',
   userEmail?: string
 ): Promise<number> => {
   try {
@@ -232,7 +232,8 @@ export const loadLatestPromptWithDetails = async (userId: string): Promise<{ pro
 export const saveUserPrompt = async (
   userId: string,
   prompt: string,
-  model: string = 'gemini-2.5-flash'
+  model: string = 'gemini-2.5-flash',
+  temperature: number = 0.05
 ): Promise<void> => {
   try {
     if (!db) {
@@ -244,9 +245,10 @@ export const saveUserPrompt = async (
       userId,
       prompt,
       model,
+      temperature,
       updatedAt: new Date(),
     });
-    
+
     console.log('✅ Prompt saved for user:', userId.substring(0, 8) + '...');
   } catch (error) {
     console.error('Error saving prompt:', error);
@@ -254,8 +256,8 @@ export const saveUserPrompt = async (
   }
 };
 
-// Load user's single prompt
-export const loadUserPrompt = async (userId: string): Promise<string | null> => {
+// Load user's single prompt with model
+export const loadUserPrompt = async (userId: string): Promise<{ prompt: string; model: string; temperature: number } | null> => {
   try {
     if (!db) {
       throw new Error('Firebase not initialized');
@@ -263,17 +265,32 @@ export const loadUserPrompt = async (userId: string): Promise<string | null> => 
 
     const docRef = doc(db, 'userPrompts', userId);
     const docSnap = await getDoc(docRef);
-    
+
     if (docSnap.exists()) {
       const data = docSnap.data();
       console.log('✅ Prompt loaded for user:', userId.substring(0, 8) + '...');
-      return data.prompt || null;
+      return {
+        prompt: data.prompt || '',
+        model: data.model || 'x-ai/grok-4-fast',
+        temperature: data.temperature ?? 0.05
+      };
     }
-    
+
     return null;
   } catch (error) {
     console.error('Error loading prompt:', error);
     return null;
+  }
+};
+
+// Load the latest prompt with model for a user
+export const loadLatestPromptWithModel = async (userId: string): Promise<{ prompt: string; model: string; temperature: number } | null> => {
+  try {
+    console.log('🔍 Loading latest prompt with model for user:', userId.substring(0, 8) + '...');
+    return await loadUserPrompt(userId);
+  } catch (error) {
+    console.error('Error loading latest prompt with model:', error);
+    throw error;
   }
 };
 

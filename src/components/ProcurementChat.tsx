@@ -1,17 +1,12 @@
 import React, { useState, useRef } from 'react';
-import { GoogleGenerativeAI, Part } from '@google/generative-ai';
 import { Loader2, Send, FileText, Download, Table } from "lucide-react";
-import ReactMarkdown from 'react-markdown';
+import { SafeMarkdown } from './SafeMarkdown';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '../hooks/useAuth';
 import { toast } from 'sonner';
-import { loadLatestPrompt } from '../lib/firestoreService';
-
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
-const geminiModel = import.meta.env.VITE_GEMINI_MODEL || 'gemini-2.5-pro-preview-03-25';
-
-const genAI = new GoogleGenerativeAI(apiKey);
+import { loadLatestPromptWithModel } from '../lib/firestoreService';
+import { callOpenRouterAPI, getOpenRouterErrorMessage, type OpenRouterMessage } from '../lib/openRouterService';
 
 interface UploadedFile {
   name: string;
@@ -21,19 +16,9 @@ interface UploadedFile {
   url?: string;
 }
 
-interface CitationSource {
-  startIndex?: number;
-  endIndex?: number;
-  uri?: string;
-  title?: string;
-}
-
 interface Message {
-  role: 'user' | 'model';
-  parts: Part[];
-  citationMetadata?: {
-    citationSources: CitationSource[];
-  };
+  role: 'user' | 'assistant';
+  content: string;
 }
 
 interface ProcurementChatProps {
@@ -42,25 +27,12 @@ interface ProcurementChatProps {
   applyBatchCorrectionsFromChat: (corrections: unknown[]) => void;
 }
 
-const processTextWithCitations = (text: string, citationSources?: CitationSource[]) => {
-  const originalText = text;
-  const formattedSources: string[] = [];
+// Store the selected model and temperature for the session
+let sessionModel = 'google/gemini-2.5-flash';
+let sessionSystemPrompt = '';
+let sessionTemperature = 0.05;
 
-  if (citationSources && citationSources.length > 0) {
-    const uniqueUris = new Set<string>();
-    let sourceNumber = 1;
-    citationSources.forEach((source) => {
-      if (source.uri && !uniqueUris.has(source.uri)) {
-        const linkDescription = source.title && source.title.trim() !== '' ? source.title : source.uri;
-        formattedSources.push(`[Source ${sourceNumber}: ${linkDescription}](${source.uri})`);
-        uniqueUris.add(source.uri);
-        sourceNumber++;
-      }
-    });
-  }
-
-  return { originalText, formattedSources };
-};
+// Removed: processTextWithCitations (citations no longer supported without Google Search)
 
 const ProcurementChat: React.FC<ProcurementChatProps> = ({ 
   uploadedFiles,
@@ -75,32 +47,21 @@ const ProcurementChat: React.FC<ProcurementChatProps> = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const { user } = useAuth();
 
-  const processFileForAI = (file: UploadedFile): Part | null => {
+  const processFileForAI = (file: UploadedFile): string | null => {
     try {
       if (file.type === 'application/pdf') {
-        // For PDFs, we'll include metadata about the file
-        return {
-          text: `[PDF Document: ${file.name}]\nThis is a PDF document that needs to be analyzed. The user has uploaded this file for procurement analysis.`
-        };
+        return `[PDF Document: ${file.name}]\nThis is a PDF document that needs to be analyzed. The user has uploaded this file for procurement analysis.`;
       } else if (file.type.includes('spreadsheet') || file.type.includes('excel') || file.type === 'text/csv') {
-        // For Excel/CSV files, include the content if it's text
         if (typeof file.content === 'string') {
-          return {
-            text: `[Spreadsheet/CSV Document: ${file.name}]\n${file.content.substring(0, 10000)}` // Limit to first 10k chars
-          };
+          return `[Spreadsheet/CSV Document: ${file.name}]\n${file.content.substring(0, 10000)}`;
         }
       } else if (file.type.includes('word') || file.type.includes('document')) {
-        // For Word documents
         if (typeof file.content === 'string') {
-          return {
-            text: `[Word Document: ${file.name}]\n${file.content.substring(0, 10000)}`
-          };
+          return `[Word Document: ${file.name}]\n${file.content.substring(0, 10000)}`;
         }
       }
-      
-      return {
-        text: `[Document: ${file.name}]\nFile type: ${file.type}\nSize: ${file.size} bytes\nThis document has been uploaded for procurement analysis.`
-      };
+
+      return `[Document: ${file.name}]\nFile type: ${file.type}\nSize: ${file.size} bytes\nThis document has been uploaded for procurement analysis.`;
     } catch (error) {
       console.error('Error processing file for AI:', error);
       return null;
@@ -113,34 +74,26 @@ const ProcurementChat: React.FC<ProcurementChatProps> = ({
       return;
     }
 
-    // Load the latest system prompt version
-    let systemPrompt = '';
-    if (user?.email) {
+    // Load the latest system prompt version with model and temperature
+    if (user?.uid) {
       try {
-        const latestPrompt = await loadLatestPrompt(user.email);
-        if (latestPrompt) {
-          systemPrompt = latestPrompt;
-          console.log('[ProcurementChat] Using latest saved prompt version');
+        const promptData = await loadLatestPromptWithModel(user.uid);
+        if (promptData) {
+          sessionSystemPrompt = promptData.prompt;
+          sessionModel = promptData.model;
+          sessionTemperature = promptData.temperature;
+          console.log('[ProcurementChat] Using saved prompt with model:', sessionModel, 'temperature:', sessionTemperature);
         }
       } catch (error) {
-        console.error('[ProcurementChat] Error loading latest prompt:', error);
+        console.error('[ProcurementChat] Error loading prompt:', error);
+        toast.error('Failed to load prompt configuration');
+        return;
       }
     }
 
-    // Fallback to default prompt if no saved version
-    if (!systemPrompt) {
-      try {
-        const response = await fetch('/docs/gemini_instructions.md');
-        if (response.ok) {
-          systemPrompt = await response.text();
-          console.log('[ProcurementChat] Using default prompt from file');
-        } else {
-          throw new Error('Failed to fetch default prompt');
-        }
-      } catch (error) {
-        console.error('[ProcurementChat] Error loading default prompt:', error);
-        throw new Error('No system prompt configured. Please visit Admin panel to set up your prompt.');
-      }
+    if (!sessionSystemPrompt) {
+      toast.error('No system prompt configured. Please visit Settings to set up your prompt.');
+      return;
     }
 
     setMessages([]);
@@ -150,54 +103,48 @@ const ProcurementChat: React.FC<ProcurementChatProps> = ({
     setIsLoading(true);
 
     try {
-      const initialMessageParts: Part[] = [{ text: systemPrompt }];
-      
-      // Add document information to the context
-      const documentSummary = uploadedFiles.map(file => 
+      const documentSummary = uploadedFiles.map(file =>
         `- ${file.name} (${file.type}, ${Math.round(file.size / 1024)}KB)`
       ).join('\n');
-      
-      initialMessageParts.push({
-        text: `\n\nUploaded Documents for Analysis:\n${documentSummary}\n\nPlease provide an initial analysis overview of these documents and suggest what insights you can provide.`
-      });
 
-      // Process each file and add to message parts
+      const userMessage = `Uploaded Documents for Analysis:\n${documentSummary}\n\nPlease provide an initial analysis overview of these documents and suggest what insights you can provide.`;
+
+      // Process files and create content string
+      let fileContent = '';
       uploadedFiles.forEach(file => {
-        const filePart = processFileForAI(file);
-        if (filePart) {
-          initialMessageParts.push(filePart);
+        const fileText = processFileForAI(file);
+        if (fileText) {
+          fileContent += '\n\n' + fileText;
         }
       });
 
-      const model = genAI.getGenerativeModel({
-        model: geminiModel,
-        generationConfig: { temperature: 0.2 },
-      });
-      
-      console.log("[ProcurementChat] Starting session with uploaded documents");
-      const result = await model.generateContent({ 
-        contents: [{ role: 'user', parts: initialMessageParts }], 
-        tools: [{ googleSearch: {} }] 
-      });
-      
-      const response = result.response;
-      if (response && response.candidates && response.candidates.length > 0) {
-        const candidate = response.candidates[0];
-        const content = candidate.content;
-        
+      const fullUserMessage = userMessage + fileContent;
+
+      console.log("[ProcurementChat] Starting session with model:", sessionModel);
+
+      // Use OpenRouter for all models
+      const messages: OpenRouterMessage[] = [
+        { role: 'system', content: sessionSystemPrompt },
+        { role: 'user', content: fullUserMessage }
+      ];
+
+      const response = await callOpenRouterAPI(messages, sessionModel, undefined, undefined, sessionTemperature);
+
+      if (response?.choices?.[0]?.message?.content) {
         setMessages([
-          { role: 'user', parts: [{ text: 'Initialize document analysis session' }] },
-          { role: 'model', parts: content?.parts || [{ text: "Session started successfully." }] }
+          { role: 'user', content: 'Initialize document analysis session' },
+          { role: 'assistant', content: response.choices[0].message.content }
         ]);
       } else {
-        throw new Error('No response from AI model');
+        throw new Error('No response from API');
       }
     } catch (error) {
       console.error('Error starting session:', error);
-      toast.error('Failed to start analysis session. Please check your API configuration.');
+      const errorMessage = error instanceof Error ? getOpenRouterErrorMessage(error) : 'Failed to start analysis session';
+      toast.error(errorMessage);
       setMessages([
-        { role: 'user', parts: [{ text: 'Initialize document analysis session' }] },
-        { role: 'model', parts: [{ text: "Error starting session. Please try again." }] }
+        { role: 'user', content: 'Initialize document analysis session' },
+        { role: 'assistant', content: "Error starting session. Please try again." }
       ]);
     } finally {
       setIsLoading(false);
@@ -207,46 +154,45 @@ const ProcurementChat: React.FC<ProcurementChatProps> = ({
   const handleSendMessage = async () => {
     if (!input.trim() || isLoading) return;
 
-    const userMessage: Message = { role: 'user', parts: [{ text: input }] };
+    const userMessage: Message = { role: 'user', content: input };
+    const currentInput = input;
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
 
     try {
-      const model = genAI.getGenerativeModel({
-        model: geminiModel,
-        generationConfig: { temperature: 0.2 },
+      // Build OpenRouter messages with system prompt and history
+      const openRouterMessages: OpenRouterMessage[] = [
+        { role: 'system', content: sessionSystemPrompt }
+      ];
+
+      // Add conversation history
+      messages.forEach(msg => {
+        openRouterMessages.push({
+          role: msg.role,
+          content: msg.content
+        });
       });
 
-      const history = messages.map(msg => ({ role: msg.role, parts: msg.parts }));
-      const result = await model.generateContent({
-        contents: [...history, { role: 'user', parts: [{ text: input }] }],
-        tools: [{ googleSearch: {} }]
-      });
+      // Add current user message
+      openRouterMessages.push({ role: 'user', content: currentInput });
 
-      const response = result.response;
-      if (response && response.candidates && response.candidates.length > 0) {
-        const candidate = response.candidates[0];
-        const content = candidate.content;
-        
-        let processedCitationMetadata: { citationSources: CitationSource[] } | undefined = undefined;
-        if (candidate.citationMetadata && candidate.citationMetadata.citationSources) {
-          processedCitationMetadata = candidate.citationMetadata;
-        }
+      const response = await callOpenRouterAPI(openRouterMessages, sessionModel, undefined, undefined, sessionTemperature);
 
+      if (response?.choices?.[0]?.message?.content) {
         setMessages(prev => [...prev, {
-          role: 'model',
-          parts: content?.parts || [{ text: "I couldn't generate a response." }],
-          citationMetadata: processedCitationMetadata
+          role: 'assistant',
+          content: response.choices[0].message.content
         }]);
       } else {
-        throw new Error('No response from AI model');
+        throw new Error('No response from API');
       }
     } catch (error) {
       console.error('Error sending message:', error);
+      const errorMessage = error instanceof Error ? getOpenRouterErrorMessage(error) : 'Error processing your request. Please try again.';
       setMessages(prev => [...prev, {
-        role: 'model',
-        parts: [{ text: "Error processing your request. Please try again." }]
+        role: 'assistant',
+        content: errorMessage
       }]);
     } finally {
       setIsLoading(false);
@@ -371,21 +317,9 @@ const ProcurementChat: React.FC<ProcurementChatProps> = ({
                       : 'bg-gray-100 text-gray-900'
                   }`}
                 >
-                  {message.parts.map((part, partIndex) => (
-                    <div key={partIndex}>
-                      {part.text && (
-                        <ReactMarkdown className="prose prose-sm">
-                          {(() => {
-                            const { originalText, formattedSources } = processTextWithCitations(
-                              part.text,
-                              message.citationMetadata?.citationSources
-                            );
-                            return originalText + (formattedSources.length > 0 ? '\n\n**Sources:**\n' + formattedSources.join('\n') : '');
-                          })()}
-                        </ReactMarkdown>
-                      )}
-                    </div>
-                  ))}
+                  <SafeMarkdown className="prose prose-sm">
+                    {message.content}
+                  </SafeMarkdown>
                 </div>
               </div>
             ))}

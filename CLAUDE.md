@@ -33,11 +33,12 @@ npm run preview
 ## Key Technologies
 - **Frontend**: React 18, TypeScript, Vite
 - **UI**: Tailwind CSS, shadcn/ui components
-- **AI Integration**: Google Gemini
+- **AI Integration**: OpenRouter API (with grok-4-fast as default model)
 - **State Management**: React Hooks
 - **Authentication**: Custom auth system
 - **File Processing**: Support for PDF, Excel, CSV, Word documents
 - **Database**: Firebase Firestore for prompt versioning
+- **Function Calling**: OpenRouter-based function calling for ERP integration
 
 ## Project Structure
 - `src/components/` - React components
@@ -50,10 +51,12 @@ npm run preview
 
 ## Important Notes
 - The project uses environment variables for API keys (see .env.example)
-- The application uses Google Gemini for AI document analysis
+- The application uses **OpenRouter API** for all AI features (replaced Google Gemini)
+- Default model: `x-ai/grok-4-fast` (supports function calling)
 - Authentication is required for most features
 - Data processing includes document upload and AI analysis
 - System prompt versioning is stored in Firebase Firestore
+- Function calling enables ERP data search and purchase requisition creation
 
 ## Known Issues
 - Some TypeScript `any` types need to be properly typed

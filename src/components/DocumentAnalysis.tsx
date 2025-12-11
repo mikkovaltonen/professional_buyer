@@ -37,16 +37,10 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
         case 'pdf':
           return ['application/pdf'];
         case 'excel':
-          return [
-            'application/vnd.ms-excel',
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'text/csv'
-          ];
+          return ['text/csv'];
         default:
           return [
             'application/pdf',
-            'application/vnd.ms-excel',
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             'text/csv',
             'application/msword',
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
@@ -163,9 +157,9 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
       case 'pdf':
         return '.pdf';
       case 'excel':
-        return '.xlsx,.xls,.csv';
+        return '.csv';
       default:
-        return '.pdf,.xlsx,.xls,.csv,.doc,.docx';
+        return '.pdf,.csv,.doc,.docx';
     }
   };
 
@@ -174,9 +168,9 @@ const DocumentAnalysis: React.FC<DocumentAnalysisProps> = ({
       case 'pdf':
         return 'PDF documents';
       case 'excel':
-        return 'Excel (.xlsx, .xls) and CSV files';
+        return 'CSV files';
       default:
-        return 'PDF, Excel (.xlsx, .xls), CSV, and Word documents';
+        return 'PDF, CSV, and Word documents';
     }
   };
 

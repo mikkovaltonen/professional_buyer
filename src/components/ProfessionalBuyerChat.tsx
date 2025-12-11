@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Loader2, Send, RotateCcw, Paperclip, Bot, LogOut, Settings, ThumbsUp, ThumbsDown } from "lucide-react";
+import { Loader2, Send, RotateCcw, Bot, LogOut, Settings, ThumbsUp, ThumbsDown, FileText, Database, Bug, ChevronDown, CheckCircle, BookOpen } from "lucide-react";
 import { SafeMarkdown } from './SafeMarkdown';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,10 +7,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useAuth } from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
+import PromptVersionManager from './PromptVersionManager';
+import { KnowledgeManager } from './KnowledgeManager';
+import { ERPApiTester } from './ERPApiTester';
 import { toast } from 'sonner';
-import { loadLatestPrompt, loadLatestPromptWithDetails, createContinuousImprovementSession, addTechnicalLog, setUserFeedback } from '../lib/firestoreService';
+import { loadLatestPrompt, createContinuousImprovementSession, addTechnicalLog, setUserFeedback } from '../lib/firestoreService';
 import { sessionService, ChatSession } from '../lib/sessionService';
 import { erpApiService } from '../lib/erpApiService';
 import { storageService } from '../lib/storageService';
@@ -139,6 +143,7 @@ const ProfessionalBuyerChat: React.FC<ProfessionalBuyerChatProps> = ({
   const [sessionActive, setSessionActive] = useState(false);
   const [chatSession, setChatSession] = useState<ChatSession | null>(null);
   const [sessionInitializing, setSessionInitializing] = useState(false);
+  const sessionInitStarted = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -155,6 +160,10 @@ const ProfessionalBuyerChat: React.FC<ProfessionalBuyerChatProps> = ({
   const [pendingMessageIndex, setPendingMessageIndex] = useState<number | null>(null);
   const [feedbackComment, setFeedbackComment] = useState('');
 
+  // AI model settings
+  const [currentModel, setCurrentModel] = useState(defaultModel);
+  const [currentTemperature, setCurrentTemperature] = useState(0.05);
+
   // System initialization status
   const [statusLoading, setStatusLoading] = useState(false);
   const [initStatus, setInitStatus] = useState<{ hasPrompt: boolean; knowledgeCount: number; erpCount: number }>({
@@ -162,6 +171,11 @@ const ProfessionalBuyerChat: React.FC<ProfessionalBuyerChatProps> = ({
     knowledgeCount: 0,
     erpCount: 0
   });
+
+  // Admin dialog states
+  const [promptDialogOpen, setPromptDialogOpen] = useState(false);
+  const [knowledgeDialogOpen, setKnowledgeDialogOpen] = useState(false);
+  const [erpDialogOpen, setErpDialogOpen] = useState(false);
 
   React.useEffect(() => {
     const checkStatus = async () => {
@@ -171,21 +185,17 @@ const ProfessionalBuyerChat: React.FC<ProfessionalBuyerChatProps> = ({
       }
       setStatusLoading(true);
       try {
-        const [prompt, knowledge, erp] = await Promise.all([
+        const [prompt, knowledge] = await Promise.all([
           sessionService.getLatestSystemPrompt(user.uid),
           storageService.getUserDocuments(user.uid).catch((err) => {
             console.warn('Failed to fetch knowledge docs:', err);
-            return [];
-          }),
-          storageService.getUserERPDocuments(user.uid).catch((err) => {
-            console.warn('Failed to fetch ERP docs:', err);
             return [];
           })
         ]);
         setInitStatus({
           hasPrompt: !!prompt?.systemPrompt,
           knowledgeCount: Array.isArray(knowledge) ? knowledge.length : 0,
-          erpCount: Array.isArray(erp) ? erp.length : 0
+          erpCount: 0
         });
       } finally {
         setStatusLoading(false);
@@ -197,46 +207,72 @@ const ProfessionalBuyerChat: React.FC<ProfessionalBuyerChatProps> = ({
   // Initialize chat session with context
   React.useEffect(() => {
     const initializeSession = async () => {
-      if (!sessionActive && user && user.uid && !sessionInitializing) {
+      // Use ref to prevent duplicate initialization in React StrictMode
+      if (!sessionActive && user && user.uid && !sessionInitializing && !sessionInitStarted.current) {
+        sessionInitStarted.current = true;
         setSessionInitializing(true);
         try {
           // Initialize session with system prompt + knowledge documents
           const session = await sessionService.initializeChatSession(user.uid, user.email || undefined);
           setChatSession(session);
-          
+
+          // Load model settings once at session start
+          try {
+            const promptData = await loadLatestPrompt();
+            if (promptData) {
+              setCurrentModel(promptData.model || defaultModel);
+              setCurrentTemperature(promptData.temperature ?? 0.05);
+              console.log('%c⚙️ Session initialized with model settings:', 'color: #8b5cf6; font-weight: bold', {
+                model: promptData.model,
+                temperature: promptData.temperature
+              });
+            }
+          } catch (settingsError) {
+            console.error('Error loading model settings:', settingsError);
+          }
+
           // Check if this is a new user (no documents loaded)
           const isLikelyNewUser = session.documentsUsed.length === 0;
           
           // Extract user's name from email (everything before @)
           const userName = user.email ? user.email.split('@')[0] : 'there';
           
-          const welcomeMessage: Message = {
-            role: 'model',
-            parts: [{
-              text: isLikelyNewUser 
-                ? `🎉 **Welcome to Professional Buyer AI Assistant!**
+          const welcomeContent = isLikelyNewUser
+            ? `🎉 **Welcome to Professional Buyer AI Assistant!**
 
 I'm here to transform how you handle procurement and purchasing. As your AI-powered procurement expert, I can help you:
 
 **🎯 Get Started (recommended):**
 • **Load Sample Data**: Go to Admin panel → Load sample knowledge documents and ERP data to try me out
-• **Upload Your Files**: Add your own procurement policies and Excel purchase data  
+• **Upload Your Files**: Add your own procurement policies and Excel purchase data
 • **Ask Questions**: "What suppliers do we use?" or "Find me laptop purchases from last quarter"
 
 **💡 My Special Capabilities:**
 ✅ Real-time access to your ERP/purchase data through advanced function calling
-✅ Analysis of your internal procurement documents and policies  
+✅ Analysis of your internal procurement documents and policies
 ✅ Professional buyer expertise for cost optimization and supplier management
 
 **Ready to explore?** Try asking me "Load some sample data so I can see what you can do" or visit the Admin panel to upload your own files!
 
 What would you like to start with?`
-                : `Hello **${userName}**! I'm your Professional Buyer AI Assistant. 
+            : `Hello **${userName}**! I'm your Professional Buyer AI Assistant.
 
-What procurement needs can I help you with today? I can assist with supplier management, cost optimization, purchase requisitions, or analyzing your procurement data.`
-            }]
+What procurement needs can I help you with today? I can assist with supplier management, cost optimization, purchase requisitions, or analyzing your procurement data.`;
+
+          const welcomeMessage: Message = {
+            role: 'assistant',
+            content: welcomeContent
           };
-          setMessages([welcomeMessage]);
+
+          // Only set welcome if messages are empty (prevent overwriting during re-render)
+          setMessages(prev => {
+            if (prev.length === 0) {
+              console.log('📝 Setting initial welcome message');
+              return [welcomeMessage];
+            }
+            console.log('⚠️ Messages already exist, skipping welcome:', prev.length);
+            return prev;
+          });
           setSessionActive(true);
           
           if (isLikelyNewUser) {
@@ -249,18 +285,24 @@ What procurement needs can I help you with today? I can assist with supplier man
         } catch (error) {
           console.error('Failed to initialize session:', error);
           toast.error('Failed to load knowledge base. Using default settings.');
-          
+
           // Fallback to basic welcome message
           const userName = user?.email ? user.email.split('@')[0] : 'there';
           const welcomeMessage: Message = {
-            role: 'model',
-            parts: [{
-              text: `Hello **${userName}**! I'm your Professional Buyer AI Assistant. 
+            role: 'assistant',
+            content: `Hello **${userName}**! I'm your Professional Buyer AI Assistant.
 
 What procurement needs can I help you with today? I can assist with supplier management, cost optimization, purchase requisitions, or analyzing your procurement data.`
-            }]
           };
-          setMessages([welcomeMessage]);
+
+          // Only set welcome if messages are empty
+          setMessages(prev => {
+            if (prev.length === 0) {
+              console.log('📝 Setting fallback welcome message');
+              return [welcomeMessage];
+            }
+            return prev;
+          });
           setSessionActive(true);
         } finally {
           setSessionInitializing(false);
@@ -269,7 +311,8 @@ What procurement needs can I help you with today? I can assist with supplier man
     };
 
     initializeSession();
-  }, [sessionActive, user, sessionInitializing]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.uid]);
 
   const quickActions = [
     "Use prenegotiated discount prices",
@@ -301,9 +344,12 @@ What procurement needs can I help you with today? I can assist with supplier man
     try {
       // Use session context if available, otherwise fallback to loading prompt
       let systemPrompt = '';
+      let modelToUse = currentModel || defaultModel;
+      let temperatureToUse = currentTemperature ?? 0.05;
 
       if (chatSession) {
         systemPrompt = chatSession.fullContext;
+        // Use already-loaded model settings from state (loaded during session init)
 
         const estimatedTokens = Math.ceil(systemPrompt.length / 4);
         console.log('📊 Context Token Estimate:', {
@@ -322,15 +368,16 @@ What procurement needs can I help you with today? I can assist with supplier man
           toast.warning('Large knowledge base detected. Response may be slow or fail.');
         }
       } else {
-        if (user?.uid) {
-          try {
-            const latestPrompt = await loadLatestPrompt(user.uid);
-            if (latestPrompt) {
-              systemPrompt = latestPrompt;
-            }
-          } catch (error) {
-            console.error('Error loading latest prompt:', error);
+        // No chat session - this shouldn't happen normally, but fallback to loading prompt
+        try {
+          const promptData = await loadLatestPrompt();
+          if (promptData) {
+            systemPrompt = promptData.prompt;
+            modelToUse = promptData.model || defaultModel;
+            temperatureToUse = promptData.temperature ?? 0.05;
           }
+        } catch (error) {
+          console.error('Error loading prompt:', error);
         }
 
         if (!systemPrompt) {
@@ -354,13 +401,12 @@ What procurement needs can I help you with today? I can assist with supplier man
       // Add current user message
       openRouterMessages.push({ role: 'user', content: textToSend });
 
-      // Call OpenRouter API with tools
       const result = await callOpenRouterAPI(
         openRouterMessages,
-        defaultModel,
+        modelToUse,
         undefined,
         openRouterTools,
-        0.2
+        temperatureToUse
       );
 
       // Check if the response contains tool calls (function calling)
@@ -445,10 +491,10 @@ What procurement needs can I help you with today? I can assist with supplier man
                   // Generate follow-up response with function results
                   const followUpResult = await callOpenRouterAPI(
                     followUpMessages,
-                    defaultModel,
+                    modelToUse,
                     undefined,
                     openRouterTools,
-                    0.2
+                    temperatureToUse
                   );
 
                   const followUpResponse = followUpResult.choices?.[0]?.message?.content;
@@ -539,10 +585,14 @@ What procurement needs can I help you with today? I can assist with supplier man
       // No function call - handle normal response
       const responseContent = assistantMessage?.content;
       if (responseContent) {
-        setMessages(prev => [...prev, {
-          role: 'assistant',
-          content: responseContent
-        }]);
+        console.log('💬 Adding AI response:', responseContent.substring(0, 100) + '...');
+        setMessages(prev => {
+          console.log('📊 Current messages before adding response:', prev.length);
+          return [...prev, {
+            role: 'assistant',
+            content: responseContent
+          }];
+        });
       } else {
         throw new Error('No response from AI model');
       }
@@ -570,31 +620,45 @@ What procurement needs can I help you with today? I can assist with supplier man
     setSessionActive(false);
     setChatSession(null);
     setInput('');
-    toast.success('Chat reset successfully');
-    
+
     // Reinitialize session with fresh context
     if (user) {
       setSessionInitializing(true);
       try {
         const session = await sessionService.initializeChatSession(user.uid);
         setChatSession(session);
-        toast.success('Session refreshed with latest knowledge base');
+
+        // Reload model settings
+        try {
+          const promptData = await loadLatestPrompt();
+          if (promptData) {
+            setCurrentModel(promptData.model || defaultModel);
+            setCurrentTemperature(promptData.temperature ?? 0.05);
+          }
+        } catch (settingsError) {
+          console.error('Error loading model settings:', settingsError);
+        }
+
+        // Create welcome message
+        const userName = user.email ? user.email.split('@')[0] : 'there';
+        const welcomeMessage: Message = {
+          role: 'assistant',
+          content: `Hello **${userName}**! Chat has been reset.
+
+What procurement needs can I help you with today?`
+        };
+        setMessages([welcomeMessage]);
+        setSessionActive(true);
+        toast.success('Chat reset and refreshed with latest knowledge base');
       } catch (error) {
         console.error('Failed to refresh session:', error);
+        toast.error('Failed to reset chat');
       } finally {
         setSessionInitializing(false);
       }
     }
   };
 
-  const handleAttachDocuments = () => {
-    navigate('/admin');
-  };
-
-  const handleOpenAdmin = () => {
-    navigate('/admin');
-  };
-  
   // Initialize continuous improvement session when user starts chatting
   const initializeContinuousImprovement = async () => {
     if (!user || continuousImprovementSessionId) return;
@@ -676,8 +740,8 @@ What procurement needs can I help you with today? I can assist with supplier man
           const msg = messagesUpToFeedback[i];
           const logEntry = {
             event: msg.role === 'user' ? 'user_message' : 'ai_response',
-            userMessage: msg.role === 'user' ? msg.parts[0]?.text : undefined,
-            aiResponse: msg.role === 'model' ? msg.parts[0]?.text : undefined
+            userMessage: msg.role === 'user' ? msg.content : undefined,
+            aiResponse: msg.role === 'assistant' ? msg.content : undefined
           };
           console.log(`Saving message ${i + 1}/${messagesUpToFeedback.length}:`, logEntry.event);
           await addTechnicalLog(sessionId, logEntry);
@@ -729,56 +793,71 @@ What procurement needs can I help you with today? I can assist with supplier man
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-black text-white p-8 text-center relative">
-        {/* User info top left */}
-        {user && (
-          <div className="absolute top-4 left-4 text-sm text-gray-300">
-            <span className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-              Logged in as: <span className="text-white font-medium">{user.email}</span>
-            </span>
-          </div>
-        )}
-        
-        {/* Action buttons top right */}
-        <div className="absolute top-4 right-4 flex gap-2">
-          <Button
-            variant="ghost"
-            onClick={handleOpenAdmin}
-            className="text-white hover:bg-white/20"
-          >
-            <Settings className="h-4 w-4 mr-2" />
-            Admin
-          </Button>
-          {onLogout && (
-            <Button
-              variant="ghost"
-              onClick={onLogout}
-              className="text-white hover:bg-white/20"
-            >
-              <LogOut className="h-4 w-4 mr-2" />
-              Logout
-            </Button>
-          )}
-        </div>
-        <div className="flex items-center justify-center mb-4">
-          <Bot className="h-8 w-8 mr-3" />
-          <h1 className="text-3xl font-bold">Professional Buyer AI Assistant</h1>
-        </div>
-        <p className="text-gray-300 text-lg max-w-4xl mx-auto">
-          {user?.email && (
-            <span className="font-medium">Welcome {user.email.split('@')[0]}! </span>
-          )}
-          Get expert procurement advice, use prenegotiated prices from best suppliers, and do professional level procurement with ease
-        </p>
-      </div>
-      
+    <div className="flex flex-col h-screen bg-background">
+      {/* Header - Elegant gradient design */}
+      <div className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200">
+        <div className="container mx-auto px-6 py-5">
+          <div className="flex items-center justify-between">
+            {/* Left: Logo + Title */}
+            <div className="flex items-center gap-4">
+              <div className="w-11 h-11 bg-primary rounded-xl flex items-center justify-center shadow-sm">
+                <Bot className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-xl font-semibold text-slate-800">Professional Buyer AI</h1>
+                <p className="text-sm text-slate-500">Procurement Intelligence Assistant</p>
+              </div>
+            </div>
 
-      {/* Main Content under header with optional left panel */}
+            {/* Right: User info + Menu */}
+            <div className="flex items-center gap-4">
+              {user && (
+                <div className="hidden sm:flex items-center gap-2 text-sm text-slate-600">
+                  <div className="w-2 h-2 bg-emerald-500 rounded-full" />
+                  <span>{user.email}</span>
+                </div>
+              )}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="border-slate-200 text-slate-700 hover:bg-slate-100 hover:border-slate-300">
+                    <Settings className="h-4 w-4 mr-2" />
+                    Settings
+                    <ChevronDown className="h-4 w-4 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-52">
+                  <DropdownMenuItem onClick={() => setPromptDialogOpen(true)}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    Prompt Editor
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setKnowledgeDialogOpen(true)}>
+                    <BookOpen className="h-4 w-4 mr-2" />
+                    Knowledge Manager
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setErpDialogOpen(true)}>
+                    <Database className="h-4 w-4 mr-2" />
+                    ERP Testing
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/issues')}>
+                    <Bug className="h-4 w-4 mr-2" />
+                    Issue Reports
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  {onLogout && (
+                    <DropdownMenuItem onClick={onLogout} className="text-red-600 focus:text-red-600">
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Logout
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Controls row under header */}
-      <div className="container mx-auto px-4 mt-4 flex justify-between">
+      <div className="container mx-auto px-6 mt-4 flex justify-between">
         <div>{leftToggleControl}</div>
         <div>{topRightControls}</div>
       </div>
@@ -798,120 +877,115 @@ What procurement needs can I help you with today? I can assist with supplier man
             <ResizableHandle withHandle />
             <ResizablePanel defaultSize={65} minSize={40} className="pl-2">
               <div className={"flex flex-col items-stretch"}>
-            {/* Status Panel */}
-            <div className="bg-white border rounded-md p-4 mb-2">
+            {/* Status Panel - Elegant compact design */}
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-4">
               {statusLoading ? (
-                <div className="text-sm text-gray-600">Checking system status…</div>
+                <div className="flex items-center gap-2 text-sm text-slate-500">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Checking system status…
+                </div>
               ) : (
-                <div className="text-sm">
-                  <div className="flex flex-wrap gap-4">
-                    <div>
-                      <span className={`font-medium ${initStatus.hasPrompt ? 'text-green-700' : 'text-red-700'}`}>System Prompt:</span>
-                      <span className="ml-2 text-gray-700">{initStatus.hasPrompt ? 'Configured' : 'Missing'}</span>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-6 text-sm">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className={`h-4 w-4 ${initStatus.hasPrompt ? 'text-emerald-500' : 'text-red-400'}`} />
+                      <span className="text-slate-600">System {initStatus.hasPrompt ? 'Ready' : 'Not Configured'}</span>
                     </div>
-                    <div>
-                      <span className="font-medium text-gray-800">Knowledge Docs:</span>
-                      <span className="ml-2 text-gray-700">{initStatus.knowledgeCount}</span>
+                    <div className="flex items-center gap-2">
+                      <BookOpen className="h-4 w-4 text-primary" />
+                      <span className="text-slate-600">{initStatus.knowledgeCount} Knowledge Docs</span>
                     </div>
-                    <div>
-                      <span className="font-medium text-gray-800">ERP API integrations:</span>
-                      <span className="ml-2 text-gray-700">1</span>
+                    <div className="flex items-center gap-2">
+                      <Database className="h-4 w-4 text-primary" />
+                      <span className="text-slate-600">ERP Connected</span>
                     </div>
-                    
                   </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <a href="/admin" className="text-xs inline-flex items-center px-3 py-2 border rounded-md hover:bg-gray-50">Open Admin</a>
-                    <a href="/docs/setup_guide.html" target="_blank" rel="noreferrer" className="text-xs inline-flex items-center px-3 py-2 border rounded-md hover:bg-gray-50">Setup Guide (PDF)</a>
-                  </div>
-                  {!initStatus.hasPrompt && (
-                    <div className="mt-2 text-xs text-red-700">
-                      Please open Admin and configure a system prompt before chatting.
-                    </div>
-                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleResetChat}
+                    className="text-slate-500 hover:text-red-600 hover:bg-red-50"
+                  >
+                    <RotateCcw className="h-4 w-4 mr-1" />
+                    Reset
+                  </Button>
+                </div>
+              )}
+              {!initStatus.hasPrompt && (
+                <div className="mt-3 text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  Configure a system prompt in Settings → Prompt Editor to get started.
                 </div>
               )}
             </div>
 
-            {/* Reset button in corner */}
-            <div className="flex justify-end mb-2">
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={handleResetChat}
-                className="text-red-600 hover:bg-red-50"
-              >
-                <RotateCcw className="h-4 w-4" />
-                <span className="ml-2">Reset Chat</span>
-              </Button>
-            </div>
-
-            {/* Quick Action Pills */}
-            <div className="bg-white border rounded-md p-6 mb-2">
-              <div className="flex flex-wrap gap-3 justify-center max-w-4xl mx-auto">
+            {/* Quick Action Pills - Refined design */}
+            <div className="mb-4">
+              <div className="flex flex-wrap gap-2 justify-center">
                 {quickActions.map((action, index) => (
-                  <Button
+                  <button
                     key={index}
-                    variant="outline"
-                    className="rounded-full px-6 py-2 text-sm bg-white border-gray-300 text-gray-700 hover:bg-gray-100"
+                    className="px-5 py-2.5 text-sm font-medium text-slate-600 bg-white border border-slate-200
+                               rounded-full hover:border-primary hover:text-primary transition-all duration-200
+                               shadow-sm hover:shadow-md"
                     onClick={() => handleQuickAction(action)}
                   >
                     {action}
-                  </Button>
+                  </button>
                 ))}
               </div>
             </div>
 
-            {/* Chat Messages */}
-            <div className="p-2 space-y-6">
-              <div className="max-w-4xl ml-0 mr-auto space-y-6">
-                
+            {/* Chat Messages - Elegant design */}
+            <div className="space-y-4">
+              <div className="max-w-4xl space-y-4">
+
           {sessionInitializing && (
             <div className="flex justify-start">
-              <div className="flex items-start space-x-3">
-                <div className="flex-shrink-0 w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
-                  <Bot className="h-5 w-5 text-gray-700" />
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 w-9 h-9 bg-primary/10 rounded-xl flex items-center justify-center">
+                  <Bot className="h-5 w-5 text-primary" />
                 </div>
-                <div className="bg-white shadow-sm border rounded-2xl px-6 py-4 flex items-center space-x-2">
-                  <Loader2 className="h-4 w-4 animate-spin text-gray-700" />
-                  <span className="text-sm text-gray-600">Initializing AI with your knowledge base...</span>
+                <div className="bg-white shadow-sm border border-slate-200 rounded-2xl rounded-bl-md px-5 py-3 flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  <span className="text-sm text-slate-600">Initializing AI with your knowledge base...</span>
                 </div>
               </div>
             </div>
           )}
-          
+
           {messages.map((message, index) => (
             <div
               key={index}
               className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
-              <div className="flex items-start space-x-3 max-w-3xl w-full">
-                {message.role === 'model' && (
-                  <div className="flex-shrink-0 w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
-                    <Bot className="h-5 w-5 text-gray-700" />
+              <div className={`flex items-start gap-3 max-w-3xl ${message.role === 'user' ? 'flex-row-reverse' : ''}`}>
+                {message.role === 'assistant' && (
+                  <div className="flex-shrink-0 w-9 h-9 bg-primary/10 rounded-xl flex items-center justify-center">
+                    <Bot className="h-5 w-5 text-primary" />
                   </div>
                 )}
-                <div className="flex flex-col space-y-2 flex-1">
+                <div className="flex flex-col gap-2">
                   <div
-                    className={`px-6 py-4 rounded-2xl ${
+                    className={`px-5 py-3 ${
                       message.role === 'user'
-                        ? 'bg-black text-white ml-auto max-w-lg'
-                        : 'bg-white shadow-sm border'
+                        ? 'bg-gradient-to-br from-primary to-blue-600 text-white rounded-2xl rounded-br-md shadow-md max-w-lg'
+                        : 'bg-white shadow-sm border border-slate-200 rounded-2xl rounded-bl-md'
                     }`}
                   >
-                    <SafeMarkdown className={`prose ${message.role === 'user' ? 'prose-invert' : ''} prose-sm max-w-none`}>
+                    <SafeMarkdown className={`prose ${message.role === 'user' ? 'prose-invert' : 'prose-slate'} prose-sm max-w-none`}>
                       {message.content}
                     </SafeMarkdown>
                   </div>
-                  
+
                   {/* Feedback buttons for AI responses only */}
                   {message.role === 'assistant' && (
-                    <div className="flex items-center space-x-2 ml-2">
-                      <span className="text-xs text-gray-500">Was this helpful?</span>
+                    <div className="flex items-center gap-2 ml-1">
+                      <span className="text-xs text-slate-400">Was this helpful?</span>
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => handleFeedback('thumbs_up', index)}
-                        className="text-gray-500 hover:text-green-600 hover:bg-green-50 p-1 h-auto"
+                        className="text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 p-1 h-auto"
                         title="Good response"
                       >
                         <ThumbsUp className="h-3 w-3" />
@@ -920,7 +994,7 @@ What procurement needs can I help you with today? I can assist with supplier man
                         variant="ghost"
                         size="sm"
                         onClick={() => handleFeedback('thumbs_down', index)}
-                        className="text-gray-500 hover:text-red-600 hover:bg-red-50 p-1 h-auto"
+                        className="text-slate-400 hover:text-red-600 hover:bg-red-50 p-1 h-auto"
                         title="Poor response"
                       >
                         <ThumbsDown className="h-3 w-3" />
@@ -933,13 +1007,13 @@ What procurement needs can I help you with today? I can assist with supplier man
           ))}
           {isLoading && (
             <div className="flex justify-start">
-              <div className="flex items-start space-x-3">
-                <div className="flex-shrink-0 w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
-                  <Bot className="h-5 w-5 text-gray-700" />
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 w-9 h-9 bg-primary/10 rounded-xl flex items-center justify-center">
+                  <Bot className="h-5 w-5 text-primary" />
                 </div>
-                <div className="bg-white shadow-sm border rounded-2xl px-6 py-4 flex items-center space-x-2">
-                  <Loader2 className="h-4 w-4 animate-spin text-gray-700" />
-                  <span className="text-sm text-gray-600">AI is thinking...</span>
+                <div className="bg-white shadow-sm border border-slate-200 rounded-2xl rounded-bl-md px-5 py-3 flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  <span className="text-sm text-slate-600">AI is thinking...</span>
                 </div>
               </div>
             </div>
@@ -947,26 +1021,24 @@ What procurement needs can I help you with today? I can assist with supplier man
               </div>
             </div>
 
-            {/* Input Area */}
-            <div className="bg-white border rounded-md p-6">
-              <div className="max-w-4xl mx-auto">
-                <div className="flex space-x-4 items-end">
-                  <div className="flex-1">
-                    <Input
-                      ref={inputRef}
-                      type="text"
-                      placeholder="Ask about procurement strategies, cost optimization, supplier management..."
-                      value={input}
-                      onChange={(e) => setInput(e.target.value)}
-                      onKeyPress={handleKeyPress}
-                      disabled={isLoading || !initStatus.hasPrompt}
-                      className="w-full h-12 px-4 text-lg border-gray-300 rounded-xl focus:ring-2 focus:ring-black focus:border-transparent"
-                    />
-                  </div>
+            {/* Input Area - Modern floating design */}
+            <div className="mt-4">
+              <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-2">
+                <div className="flex items-center gap-3">
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    placeholder="Ask about procurement strategies, cost optimization, supplier management..."
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    disabled={isLoading || !initStatus.hasPrompt}
+                    className="flex-1 px-4 py-3 text-base bg-transparent border-0 focus:outline-none focus:ring-0 placeholder:text-slate-400 disabled:opacity-50"
+                  />
                   <Button
                     onClick={() => handleSendMessage()}
                     disabled={!input.trim() || isLoading || !initStatus.hasPrompt}
-                    className="h-12 px-6 bg-black hover:bg-gray-800 text-white rounded-xl"
+                    className="px-6 py-3 h-auto bg-primary hover:bg-primary/90 text-white rounded-xl font-medium transition-colors shadow-sm disabled:opacity-50"
                   >
                     <Send className="h-5 w-5" />
                   </Button>
@@ -979,98 +1051,106 @@ What procurement needs can I help you with today? I can assist with supplier man
         ) : !leftPanelVisible && generationVisible ? (
           // When only chat is visible (no verification), show full-width chat
           <div>
-            <div className={"flex flex-col items-stretch"}>
-              {/* Reset button in corner */}
-              <div className="flex justify-end mb-2">
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={handleResetChat}
-                  className="text-red-600 hover:bg-red-50"
-                >
-                  <RotateCcw className="h-4 w-4" />
-                  <span className="ml-2">Reset Chat</span>
-                </Button>
-              </div>
-              {/* Status Panel */}
-              <div className="bg-white border rounded-md p-4 mb-2">
+            <div className="flex flex-col items-stretch">
+              {/* Status Panel - Elegant compact design */}
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-4">
                 {statusLoading ? (
-                  <div className="text-sm text-gray-600">Checking system status…</div>
+                  <div className="flex items-center gap-2 text-sm text-slate-500">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Checking system status…
+                  </div>
                 ) : (
-                  <div className="text-sm">
-                    <div className="flex flex-wrap gap-4">
-                      <div>
-                        <span className={`font-medium ${initStatus.hasPrompt ? 'text-green-700' : 'text-red-700'}`}>System Prompt:</span>
-                        <span className="ml-2 text-gray-700">{initStatus.hasPrompt ? 'Configured' : 'Missing'}</span>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-6 text-sm">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className={`h-4 w-4 ${initStatus.hasPrompt ? 'text-emerald-500' : 'text-red-400'}`} />
+                        <span className="text-slate-600">System {initStatus.hasPrompt ? 'Ready' : 'Not Configured'}</span>
                       </div>
-                      <div>
-                        <span className="font-medium text-gray-800">Knowledge Docs:</span>
-                        <span className="ml-2 text-gray-700">{initStatus.knowledgeCount}</span>
+                      <div className="flex items-center gap-2">
+                        <BookOpen className="h-4 w-4 text-primary" />
+                        <span className="text-slate-600">{initStatus.knowledgeCount} Knowledge Docs</span>
                       </div>
-                      <div>
-                        <span className="font-medium text-gray-800">ERP API integrations:</span>
-                        <span className="ml-2 text-gray-700">1</span>
+                      <div className="flex items-center gap-2">
+                        <Database className="h-4 w-4 text-primary" />
+                        <span className="text-slate-600">ERP Connected</span>
                       </div>
-                      
                     </div>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <a href="/admin" className="text-xs inline-flex items-center px-3 py-2 border rounded-md hover:bg-gray-50">Open Admin</a>
-                      <a href="/docs/setup_guide.html" target="_blank" rel="noreferrer" className="text-xs inline-flex items-center px-3 py-2 border rounded-md hover:bg-gray-50">Setup Guide (PDF)</a>
-                    </div>
-                    {!initStatus.hasPrompt && (
-                      <div className="mt-2 text-xs text-red-700">
-                        Please open Admin and configure a system prompt before chatting.
-                      </div>
-                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleResetChat}
+                      className="text-slate-500 hover:text-red-600 hover:bg-red-50"
+                    >
+                      <RotateCcw className="h-4 w-4 mr-1" />
+                      Reset
+                    </Button>
+                  </div>
+                )}
+                {!initStatus.hasPrompt && (
+                  <div className="mt-3 text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                    Configure a system prompt in Settings → Prompt Editor to get started.
                   </div>
                 )}
               </div>
 
-              <div className="bg-white border rounded-md p-6 mb-2">
-                <div className="flex flex-wrap gap-3 justify-center max-w-4xl mx-auto">
+              {/* Quick Action Pills - Refined design */}
+              <div className="mb-4">
+                <div className="flex flex-wrap gap-2 justify-center">
                   {quickActions.map((action, index) => (
-                    <Button key={index} variant="outline" className="rounded-full px-6 py-2 text-sm bg-white border-gray-300 text-gray-700 hover:bg-gray-100" onClick={() => handleQuickAction(action)}>
+                    <button
+                      key={index}
+                      className="px-5 py-2.5 text-sm font-medium text-slate-600 bg-white border border-slate-200
+                                 rounded-full hover:border-primary hover:text-primary transition-all duration-200
+                                 shadow-sm hover:shadow-md"
+                      onClick={() => handleQuickAction(action)}
+                    >
                       {action}
-                    </Button>
+                    </button>
                   ))}
                 </div>
               </div>
-              <div className="p-2 space-y-6">
-                <div className="max-w-4xl mx-auto space-y-6">
+
+              {/* Chat Messages - Elegant design */}
+              <div className="space-y-4">
+                <div className="max-w-4xl mx-auto space-y-4">
                   {sessionInitializing && (
                     <div className="flex justify-start">
-                      <div className="flex items-start space-x-3">
-                        <div className="flex-shrink-0 w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
-                          <Bot className="h-5 w-5 text-gray-700" />
+                      <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 w-9 h-9 bg-primary/10 rounded-xl flex items-center justify-center">
+                          <Bot className="h-5 w-5 text-primary" />
                         </div>
-                        <div className="bg-white shadow-sm border rounded-2xl px-6 py-4 flex items-center space-x-2">
-                          <Loader2 className="h-4 w-4 animate-spin text-gray-700" />
-                          <span className="text-sm text-gray-600">Initializing AI with your knowledge base...</span>
+                        <div className="bg-white shadow-sm border border-slate-200 rounded-2xl rounded-bl-md px-5 py-3 flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                          <span className="text-sm text-slate-600">Initializing AI with your knowledge base...</span>
                         </div>
                       </div>
                     </div>
                   )}
                   {messages.map((message, index) => (
                     <div key={index} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                      <div className="flex items-start space-x-3 max-w-3xl w-full">
+                      <div className={`flex items-start gap-3 max-w-3xl ${message.role === 'user' ? 'flex-row-reverse' : ''}`}>
                         {message.role === 'assistant' && (
-                          <div className="flex-shrink-0 w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
-                            <Bot className="h-5 w-5 text-gray-700" />
+                          <div className="flex-shrink-0 w-9 h-9 bg-primary/10 rounded-xl flex items-center justify-center">
+                            <Bot className="h-5 w-5 text-primary" />
                           </div>
                         )}
-                        <div className="flex flex-col space-y-2 flex-1">
-                          <div className={`px-6 py-4 rounded-2xl ${message.role === 'user' ? 'bg-black text-white ml-auto max-w-lg' : 'bg-white shadow-sm border'}`}>
-                            <SafeMarkdown className={`prose ${message.role === 'user' ? 'prose-invert' : ''} prose-sm max-w-none`}>
+                        <div className="flex flex-col gap-2">
+                          <div className={`px-5 py-3 ${
+                            message.role === 'user'
+                              ? 'bg-gradient-to-br from-primary to-blue-600 text-white rounded-2xl rounded-br-md shadow-md max-w-lg'
+                              : 'bg-white shadow-sm border border-slate-200 rounded-2xl rounded-bl-md'
+                          }`}>
+                            <SafeMarkdown className={`prose ${message.role === 'user' ? 'prose-invert' : 'prose-slate'} prose-sm max-w-none`}>
                               {message.content}
                             </SafeMarkdown>
                           </div>
                           {message.role === 'assistant' && (
-                            <div className="flex items-center space-x-2 ml-2">
-                              <span className="text-xs text-gray-500">Was this helpful?</span>
-                              <Button variant="ghost" size="sm" onClick={() => handleFeedback('thumbs_up', index)} className="text-gray-500 hover:text-green-600 hover:bg-green-50 p-1 h-auto" title="Good response">
+                            <div className="flex items-center gap-2 ml-1">
+                              <span className="text-xs text-slate-400">Was this helpful?</span>
+                              <Button variant="ghost" size="sm" onClick={() => handleFeedback('thumbs_up', index)} className="text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 p-1 h-auto" title="Good response">
                                 <ThumbsUp className="h-3 w-3" />
                               </Button>
-                              <Button variant="ghost" size="sm" onClick={() => handleFeedback('thumbs_down', index)} className="text-gray-500 hover:text-red-600 hover:bg-red-50 p-1 h-auto" title="Poor response">
+                              <Button variant="ghost" size="sm" onClick={() => handleFeedback('thumbs_down', index)} className="text-slate-400 hover:text-red-600 hover:bg-red-50 p-1 h-auto" title="Poor response">
                                 <ThumbsDown className="h-3 w-3" />
                               </Button>
                             </div>
@@ -1081,33 +1161,48 @@ What procurement needs can I help you with today? I can assist with supplier man
                   ))}
                   {isLoading && (
                     <div className="flex justify-start">
-                      <div className="flex items-start space-x-3">
-                        <div className="flex-shrink-0 w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
-                          <Bot className="h-5 w-5 text-gray-700" />
+                      <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 w-9 h-9 bg-primary/10 rounded-xl flex items-center justify-center">
+                          <Bot className="h-5 w-5 text-primary" />
                         </div>
-                        <div className="bg-white shadow-sm border rounded-2xl px-6 py-4 flex items-center space-x-2">
-                          <Loader2 className="h-4 w-4 animate-spin text-gray-700" />
-                          <span className="text-sm text-gray-600">AI is thinking...</span>
+                        <div className="bg-white shadow-sm border border-slate-200 rounded-2xl rounded-bl-md px-5 py-3 flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                          <span className="text-sm text-slate-600">AI is thinking...</span>
                         </div>
                       </div>
                     </div>
                   )}
                 </div>
               </div>
-              <div className="bg-white border rounded-md p-6">
+
+              {/* Input Area - Modern floating design */}
+              <div className="mt-4">
                 <div className="max-w-4xl mx-auto">
-                  <div className="flex space-x-4 items-end">
-                    <div className="flex-1">
-                      <Input ref={inputRef} type="text" placeholder="Ask about procurement strategies, cost optimization, supplier management..." value={input} onChange={(e) => setInput(e.target.value)} onKeyPress={handleKeyPress} disabled={isLoading || !initStatus.hasPrompt} className="w-full h-12 px-4 text-lg border-gray-300 rounded-xl focus:ring-2 focus:ring-black focus:border-transparent" />
+                  <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-2">
+                    <div className="flex items-center gap-3">
+                      <input
+                        ref={inputRef}
+                        type="text"
+                        placeholder="Ask about procurement strategies, cost optimization, supplier management..."
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        onKeyPress={handleKeyPress}
+                        disabled={isLoading || !initStatus.hasPrompt}
+                        className="flex-1 px-4 py-3 text-base bg-transparent border-0 focus:outline-none focus:ring-0 placeholder:text-slate-400 disabled:opacity-50"
+                      />
+                      <Button
+                        onClick={() => handleSendMessage()}
+                        disabled={!input.trim() || isLoading || !initStatus.hasPrompt}
+                        className="px-6 py-3 h-auto bg-primary hover:bg-primary/90 text-white rounded-xl font-medium transition-colors shadow-sm disabled:opacity-50"
+                      >
+                        <Send className="h-5 w-5" />
+                      </Button>
                     </div>
-                    <Button onClick={() => handleSendMessage()} disabled={!input.trim() || isLoading || !initStatus.hasPrompt} className="h-12 px-6 bg-black hover:bg-gray-800 text-white rounded-xl">
-                      <Send className="h-5 w-5" />
-                    </Button>
                   </div>
                 </div>
               </div>
             </div>
-        </div>
+          </div>
         ) : (
           // When both are hidden
           <div className="flex items-center justify-center h-full min-h-[60vh] bg-gray-50 rounded-lg">
@@ -1181,6 +1276,43 @@ What procurement needs can I help you with today? I can assist with supplier man
               Save Chat History
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Admin Dialogs */}
+      <Dialog open={promptDialogOpen} onOpenChange={setPromptDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Prompt Editor</DialogTitle>
+            <DialogDescription>
+              Manage your AI system prompts and version history
+            </DialogDescription>
+          </DialogHeader>
+          <PromptVersionManager />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={knowledgeDialogOpen} onOpenChange={setKnowledgeDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Knowledge Manager</DialogTitle>
+            <DialogDescription>
+              Upload and manage your internal knowledge base documents
+            </DialogDescription>
+          </DialogHeader>
+          <KnowledgeManager />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={erpDialogOpen} onOpenChange={setErpDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>ERP Testing</DialogTitle>
+            <DialogDescription>
+              Test your ERP API integrations
+            </DialogDescription>
+          </DialogHeader>
+          <ERPApiTester />
         </DialogContent>
       </Dialog>
     </div>

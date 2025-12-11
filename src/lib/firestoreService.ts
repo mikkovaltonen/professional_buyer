@@ -10,9 +10,11 @@ export interface SystemPromptVersion {
   evaluation: string;
   savedDate: Date;
   aiModel: string;
-  userId: string;
-  technicalKey?: string; // New: username + version number
+  temperature: number;
 }
+
+// Collection name for prompts
+const PROMPTS_COLLECTION = 'professional_buyer_prompts';
 
 export interface ContinuousImprovementSession {
   id?: string;
@@ -42,362 +44,222 @@ export interface TechnicalLog {
 }
 
 // LocalStorage fallback functions
-const getLocalStorageKey = (userId: string) => `promptVersions_${userId}`;
+const LOCAL_STORAGE_KEY = 'professional_buyer_prompts';
 
-const saveToLocalStorage = (userId: string, promptVersion: SystemPromptVersion): void => {
-  const key = getLocalStorageKey(userId);
-  const existing = JSON.parse(localStorage.getItem(key) || '[]');
+const saveToLocalStorage = (promptVersion: SystemPromptVersion): void => {
+  const existing = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || '[]');
   existing.push({
     ...promptVersion,
     id: `local_${Date.now()}`,
     savedDate: new Date().toISOString()
   });
-  localStorage.setItem(key, JSON.stringify(existing));
+  localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(existing));
 };
 
-const getFromLocalStorage = (userId: string): SystemPromptVersion[] => {
-  const key = getLocalStorageKey(userId);
-  const data = localStorage.getItem(key);
+const getFromLocalStorage = (): SystemPromptVersion[] => {
+  const data = localStorage.getItem(LOCAL_STORAGE_KEY);
   if (!data) return [];
-  
+
   return JSON.parse(data).map((item: SystemPromptVersion) => ({
     ...item,
     savedDate: new Date(item.savedDate)
   }));
 };
 
-const getNextLocalVersion = (userId: string): number => {
-  const existing = getFromLocalStorage(userId);
+const getNextLocalVersion = (): number => {
+  const existing = getFromLocalStorage();
   if (existing.length === 0) return 1;
   return Math.max(...existing.map(v => v.version)) + 1;
 };
 
-// Generate technical key from user email and version
-const generateTechnicalKey = (userEmail: string, version: number): string => {
-  const username = userEmail.split('@')[0]; // Extract username part from email
-  return `${username}_v${version}`;
-};
-
-// Save a new version of system prompt
+// Save a new version of system prompt (global, not user-specific)
 export const savePromptVersion = async (
-  userId: string, 
-  promptText: string, 
-  evaluation: string = '',
+  promptText: string,
   aiModel: string = 'google/gemini-2.5-flash',
-  userEmail?: string
+  temperature: number = 0.05,
+  evaluation: string = ''
 ): Promise<number> => {
   try {
     if (!db) {
       console.warn('Firebase not initialized, using localStorage fallback');
-      const nextVersion = getNextLocalVersion(userId);
-      const technicalKey = userEmail ? generateTechnicalKey(userEmail, nextVersion) : `user_${userId.substring(0, 8)}_v${nextVersion}`;
+      const nextVersion = getNextLocalVersion();
       const promptVersion: SystemPromptVersion = {
         version: nextVersion,
         systemPrompt: promptText,
         evaluation: evaluation,
         savedDate: new Date(),
         aiModel: aiModel,
-        userId: userId,
-        technicalKey: technicalKey
+        temperature: temperature
       };
-      saveToLocalStorage(userId, promptVersion);
-      console.log(`[LocalStorage] Saved prompt version ${nextVersion} with key ${technicalKey}`);
+      saveToLocalStorage(promptVersion);
+      console.log(`[LocalStorage] Saved prompt version ${nextVersion}`);
       return nextVersion;
     }
 
     // Try Firebase first
-    const nextVersion = await getNextVersionNumber(userId);
-    const technicalKey = userEmail ? generateTechnicalKey(userEmail, nextVersion) : `user_${userId.substring(0, 8)}_v${nextVersion}`;
-    
+    const nextVersion = await getNextVersionNumber();
+
     const promptVersion: Omit<SystemPromptVersion, 'id'> = {
       version: nextVersion,
       systemPrompt: promptText,
       evaluation: evaluation,
       savedDate: new Date(),
       aiModel: aiModel,
-      userId: userId,
-      technicalKey: technicalKey
+      temperature: temperature
     };
 
-    const docRef = await addDoc(collection(db, 'systemPromptVersions'), {
+    const docRef = await addDoc(collection(db, PROMPTS_COLLECTION), {
       ...promptVersion,
       savedDate: serverTimestamp()
     });
-    
-    console.log(`[FirestoreService] Saved prompt version ${nextVersion} with ID: ${docRef.id} and key: ${technicalKey}`);
+
+    console.log(`[FirestoreService] Saved prompt version ${nextVersion} with ID: ${docRef.id}`);
     return nextVersion;
   } catch (error) {
     console.warn('Firebase save failed, falling back to localStorage:', error);
-    const nextVersion = getNextLocalVersion(userId);
-    const technicalKey = userEmail ? generateTechnicalKey(userEmail, nextVersion) : `user_${userId.substring(0, 8)}_v${nextVersion}`;
+    const nextVersion = getNextLocalVersion();
     const promptVersion: SystemPromptVersion = {
       version: nextVersion,
       systemPrompt: promptText,
       evaluation: evaluation,
       savedDate: new Date(),
       aiModel: aiModel,
-      userId: userId,
-      technicalKey: technicalKey
+      temperature: temperature
     };
-    saveToLocalStorage(userId, promptVersion);
-    console.log(`[LocalStorage] Saved prompt version ${nextVersion} with key ${technicalKey} (fallback)`);
+    saveToLocalStorage(promptVersion);
+    console.log(`[LocalStorage] Saved prompt version ${nextVersion} (fallback)`);
     return nextVersion;
   }
 };
 
-// Get the next version number for a user
-const getNextVersionNumber = async (userId: string): Promise<number> => {
+// Get the next version number (global)
+const getNextVersionNumber = async (): Promise<number> => {
   if (!db) {
     return 1;
   }
 
-  const q = query(
-    collection(db, 'systemPromptVersions'),
-    where('userId', '==', userId)
-  );
-  
+  const q = query(collection(db, PROMPTS_COLLECTION));
   const querySnapshot = await getDocs(q);
-  
+
   if (querySnapshot.empty) {
     return 1;
   }
-  
+
   // Find highest version on client side
   const docs = querySnapshot.docs.map(doc => doc.data().version || 0);
   const latestVersion = Math.max(...docs);
   return latestVersion + 1;
 };
 
-// Load the latest version with full details
-export const loadLatestPromptWithDetails = async (userId: string): Promise<{ prompt: string; model: string } | null> => {
+// Load the latest prompt version (global)
+export const loadLatestPrompt = async (): Promise<{ prompt: string; model: string; temperature: number } | null> => {
   try {
-    console.log('🔍 Loading latest prompt details for user:', userId.substring(0, 8) + '...');
-    
+    console.log('🔍 Loading latest prompt from professional_buyer_prompts...');
+
     if (!db) {
       console.warn('Firebase not initialized, using localStorage fallback');
-      const versions = getFromLocalStorage(userId);
+      const versions = getFromLocalStorage();
       if (versions.length === 0) return null;
       const latest = versions.sort((a, b) => b.version - a.version)[0];
       return {
         prompt: latest.systemPrompt || '',
-        model: latest.aiModel || 'gemini-2.5-flash'
+        model: latest.aiModel || 'google/gemini-2.5-flash',
+        temperature: latest.temperature ?? 0.05
       };
     }
 
-    const q = query(
-      collection(db, 'systemPromptVersions'),
-      where('userId', '==', userId)
-    );
-    
+    const q = query(collection(db, PROMPTS_COLLECTION));
     const querySnapshot = await getDocs(q);
-    
+
     if (querySnapshot.empty) {
-      console.log('📝 No user-specific prompts found for user:', userId.substring(0, 8) + '...');
+      console.log('📝 No prompts found in professional_buyer_prompts');
       return null;
     }
-    
-    // Sort by version on client side to avoid index requirement
+
+    // Sort by version on client side to find latest
     const docs = querySnapshot.docs.map(doc => ({
       ...doc.data(),
       version: doc.data().version || 0
     }));
-    
-    const latestDoc = docs.reduce((latest, current) => 
+
+    const latestDoc = docs.reduce((latest, current) =>
       current.version > latest.version ? current : latest
     );
-    
-    console.log('✅ Latest prompt loaded with details for user:', {
-      userId: userId.substring(0, 8) + '...',
+
+    console.log('✅ Latest prompt loaded:', {
       version: latestDoc.version,
-      model: latestDoc.aiModel || 'gemini-2.5-flash'
+      model: latestDoc.aiModel || 'google/gemini-2.5-flash'
     });
-    
+
     return {
       prompt: latestDoc.systemPrompt || '',
-      model: latestDoc.aiModel || 'gemini-2.5-flash'
+      model: latestDoc.aiModel || 'google/gemini-2.5-flash',
+      temperature: latestDoc.temperature ?? 0.05
     };
   } catch (error) {
     console.warn('Firebase load failed, falling back to localStorage:', error);
-    const versions = getFromLocalStorage(userId);
+    const versions = getFromLocalStorage();
     if (versions.length === 0) return null;
     const latest = versions.sort((a, b) => b.version - a.version)[0];
     return {
       prompt: latest.systemPrompt || '',
-      model: latest.aiModel || 'gemini-2.5-pro'
+      model: latest.aiModel || 'google/gemini-2.5-flash',
+      temperature: latest.temperature ?? 0.05
     };
   }
 };
 
-// Save user's single prompt (overwrites existing)
-export const saveUserPrompt = async (
-  userId: string,
-  prompt: string,
-  model: string = 'gemini-2.5-flash',
-  temperature: number = 0.05
-): Promise<void> => {
-  try {
-    if (!db) {
-      throw new Error('Firebase not initialized');
-    }
-
-    const docRef = doc(db, 'userPrompts', userId);
-    await setDoc(docRef, {
-      userId,
-      prompt,
-      model,
-      temperature,
-      updatedAt: new Date(),
-    });
-
-    console.log('✅ Prompt saved for user:', userId.substring(0, 8) + '...');
-  } catch (error) {
-    console.error('Error saving prompt:', error);
-    throw error;
-  }
+// Alias for backward compatibility - delegates to loadLatestPrompt
+export const loadUserPrompt = async (_userId?: string): Promise<{ prompt: string; model: string; temperature: number } | null> => {
+  return await loadLatestPrompt();
 };
 
-// Load user's single prompt with model
-export const loadUserPrompt = async (userId: string): Promise<{ prompt: string; model: string; temperature: number } | null> => {
+// Get all prompt versions (for history browsing)
+export const getPromptHistory = async (): Promise<SystemPromptVersion[]> => {
   try {
-    if (!db) {
-      throw new Error('Firebase not initialized');
-    }
+    console.log('📚 Loading prompt history from professional_buyer_prompts...');
 
-    const docRef = doc(db, 'userPrompts', userId);
-    const docSnap = await getDoc(docRef);
-
-    if (docSnap.exists()) {
-      const data = docSnap.data();
-      console.log('✅ Prompt loaded for user:', userId.substring(0, 8) + '...');
-      return {
-        prompt: data.prompt || '',
-        model: data.model || 'x-ai/grok-4-fast',
-        temperature: data.temperature ?? 0.05
-      };
-    }
-
-    return null;
-  } catch (error) {
-    console.error('Error loading prompt:', error);
-    return null;
-  }
-};
-
-// Load the latest prompt with model for a user
-export const loadLatestPromptWithModel = async (userId: string): Promise<{ prompt: string; model: string; temperature: number } | null> => {
-  try {
-    console.log('🔍 Loading latest prompt with model for user:', userId.substring(0, 8) + '...');
-    return await loadUserPrompt(userId);
-  } catch (error) {
-    console.error('Error loading latest prompt with model:', error);
-    throw error;
-  }
-};
-
-// Load the latest version of system prompt for a user (keeping for backward compatibility)
-export const loadLatestPrompt = async (userId: string): Promise<string | null> => {
-  try {
-    console.log('🔍 Loading latest prompt for user:', userId.substring(0, 8) + '...');
-    
     if (!db) {
       console.warn('Firebase not initialized, using localStorage fallback');
-      const versions = getFromLocalStorage(userId);
-      if (versions.length === 0) return null;
-      const latest = versions.sort((a, b) => b.version - a.version)[0];
-      return latest.systemPrompt || null;
+      return getFromLocalStorage().sort((a, b) => b.version - a.version);
     }
 
-    const q = query(
-      collection(db, 'systemPromptVersions'),
-      where('userId', '==', userId)
-    );
-    
+    const q = query(collection(db, PROMPTS_COLLECTION));
     const querySnapshot = await getDocs(q);
-    
-    if (querySnapshot.empty) {
-      console.log('📝 No user-specific prompts found for user:', userId.substring(0, 8) + '...');
-      return null;
-    }
-    
-    // Sort by version on client side to avoid index requirement
-    const docs = querySnapshot.docs.map(doc => ({
-      ...doc.data(),
-      version: doc.data().version || 0
-    }));
-    
-    const latestDoc = docs.reduce((latest, current) => 
-      current.version > latest.version ? current : latest
-    );
-    
-    const latestPrompt = latestDoc.systemPrompt || null;
-    
-    console.log('✅ Latest prompt loaded for user:', {
-      userId: userId.substring(0, 8) + '...',
-      version: latestDoc.version,
-      promptLength: latestPrompt?.length || 0
-    });
-    
-    return latestPrompt;
-  } catch (error) {
-    console.warn('Firebase load failed, falling back to localStorage:', error);
-    const versions = getFromLocalStorage(userId);
-    if (versions.length === 0) return null;
-    const latest = versions.sort((a, b) => b.version - a.version)[0];
-    return latest.systemPrompt || null;
-  }
-};
 
-// Get all versions for a user (for history browsing)
-export const getPromptHistory = async (userId: string): Promise<SystemPromptVersion[]> => {
-  try {
-    console.log('📚 Loading prompt history for user:', userId.substring(0, 8) + '...');
-    
-    if (!db) {
-      console.warn('Firebase not initialized, using localStorage fallback');
-      return getFromLocalStorage(userId).sort((a, b) => b.version - a.version);
-    }
-
-    const q = query(
-      collection(db, 'systemPromptVersions'),
-      where('userId', '==', userId)
-    );
-    
-    const querySnapshot = await getDocs(q);
-    
     const history = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
       savedDate: doc.data().savedDate?.toDate() || new Date()
     })) as SystemPromptVersion[];
-    
-    // Sort by version on client side to avoid index requirement
+
+    // Sort by version on client side
     const sortedHistory = history.sort((a, b) => b.version - a.version);
-    
-    console.log('✅ Prompt history loaded for user:', {
-      userId: userId.substring(0, 8) + '...',
+
+    console.log('✅ Prompt history loaded:', {
       versionCount: sortedHistory.length,
       latestVersion: sortedHistory[0]?.version || 'none'
     });
-    
+
     return sortedHistory;
   } catch (error) {
     console.warn('Firebase history load failed, falling back to localStorage:', error);
-    return getFromLocalStorage(userId).sort((a, b) => b.version - a.version);
+    return getFromLocalStorage().sort((a, b) => b.version - a.version);
   }
 };
 
-// Get specific version
+// Get specific version by ID
 export const getPromptVersion = async (versionId: string): Promise<SystemPromptVersion | null> => {
   try {
     if (!db) {
       console.warn('Firebase not initialized, using localStorage fallback');
-      const allVersions = getFromLocalStorage('evaluator'); // Using default user for localStorage
+      const allVersions = getFromLocalStorage();
       return allVersions.find(v => v.id === versionId) || null;
     }
 
-    const docRef = doc(db, 'systemPromptVersions', versionId);
+    const docRef = doc(db, PROMPTS_COLLECTION, versionId);
     const docSnap = await getDoc(docRef);
-    
+
     if (docSnap.exists()) {
       return {
         id: docSnap.id,
@@ -405,11 +267,11 @@ export const getPromptVersion = async (versionId: string): Promise<SystemPromptV
         savedDate: docSnap.data().savedDate?.toDate() || new Date()
       } as SystemPromptVersion;
     }
-    
+
     return null;
   } catch (error) {
     console.warn('Firebase version load failed, falling back to localStorage:', error);
-    const allVersions = getFromLocalStorage('evaluator');
+    const allVersions = getFromLocalStorage();
     return allVersions.find(v => v.id === versionId) || null;
   }
 };
@@ -419,35 +281,24 @@ export const updatePromptEvaluation = async (versionId: string, evaluation: stri
   try {
     if (!db) {
       console.warn('Firebase not initialized, updating localStorage fallback');
-      const key = getLocalStorageKey('evaluator');
-      const versions = JSON.parse(localStorage.getItem(key) || '[]');
-      const updated = versions.map((v: SystemPromptVersion) => 
+      const versions = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || '[]');
+      const updated = versions.map((v: SystemPromptVersion) =>
         v.id === versionId ? { ...v, evaluation } : v
       );
-      localStorage.setItem(key, JSON.stringify(updated));
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
       return;
     }
 
-    const docRef = doc(db, 'systemPromptVersions', versionId);
+    const docRef = doc(db, PROMPTS_COLLECTION, versionId);
     await setDoc(docRef, { evaluation }, { merge: true });
   } catch (error) {
     console.warn('Firebase evaluation update failed, falling back to localStorage:', error);
-    const key = getLocalStorageKey('evaluator');
-    const versions = JSON.parse(localStorage.getItem(key) || '[]');
-    const updated = versions.map((v: SystemPromptVersion) => 
+    const versions = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || '[]');
+    const updated = versions.map((v: SystemPromptVersion) =>
       v.id === versionId ? { ...v, evaluation } : v
     );
-    localStorage.setItem(key, JSON.stringify(updated));
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
   }
-};
-
-// Legacy functions for backward compatibility
-export const savePrompt = async (userId: string, promptText: string): Promise<void> => {
-  await savePromptVersion(userId, promptText);
-};
-
-export const loadPrompt = async (userId: string): Promise<string | null> => {
-  return await loadLatestPrompt(userId);
 };
 
 // Continuous Improvement Functions

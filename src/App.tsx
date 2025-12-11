@@ -1,7 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
 import Workbench from "./pages/Workbench";
-import Admin from "./pages/Admin";
 import IssueReportPage from "./pages/IssueReport";
 import PurchaseRequisitionsPage from "./pages/PurchaseRequisitions";
 import LoginForm from "./components/LoginForm";
@@ -17,14 +16,6 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <Workbench />
-          </ProtectedRoute>
-        }
-      />
-      <Route 
-        path="/admin" 
-        element={
-          <ProtectedRoute>
-            <Admin />
           </ProtectedRoute>
         }
       />

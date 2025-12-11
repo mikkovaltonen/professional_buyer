@@ -22,7 +22,10 @@
       "WebFetch(domain:www.zealsourcing.fi)",
       "Bash(cp:*)",
       "Bash(npm audit:*)",
-      "Bash(timeout 10s npm run dev:*)"
+      "Bash(timeout 10s npm run dev:*)",
+      "Bash(git checkout:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nfeat: Simplify welcome message and improve JSON table rendering\n\nChanges:\n- Remove verbose onboarding welcome message\n- Use simple greeting: \"Hello **userName**! I 'm your Professional Buyer AI Assistant\"\n- Remove fallback welcome message on error (show error toast instead)\n- Update prompt to enforce JSON-only table output (no markdown duplicates)\n- Add interactive JSON table component with sorting and hover effects\n- Migrate to global prompt collection (professional_buyer_prompts)\n- Remove user-specific prompt storage\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
     ],
     "deny": []
   }

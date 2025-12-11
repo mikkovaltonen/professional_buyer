@@ -53,6 +53,24 @@ export const callOpenRouterAPI = async (
     throw new Error('OpenRouter API key not configured');
   }
 
+  // Log API call details
+  const systemPrompt = messages.find(m => m.role === 'system')?.content;
+  const userMessage = messages.filter(m => m.role === 'user').pop()?.content;
+
+  console.group('%c🤖 OpenRouter API Call', 'color: #6366f1; font-weight: bold; font-size: 14px');
+  console.log('%cModel:', 'color: #10b981; font-weight: bold', model);
+  console.log('%cTemperature:', 'color: #f59e0b; font-weight: bold', temperature);
+  console.log('%cTools:', 'color: #8b5cf6; font-weight: bold', tools?.map(t => t.function.name).join(', ') || 'none');
+  console.log('%cSystem Prompt:', 'color: #3b82f6; font-weight: bold', systemPrompt ? `${systemPrompt.substring(0, 200)}...` : 'none');
+  console.log('%cUser Message:', 'color: #ec4899; font-weight: bold', userMessage ? `${userMessage.substring(0, 150)}...` : 'none');
+  console.log('%cTotal Messages:', 'color: #6b7280', messages.length);
+  console.log('%c📋 All Messages:', 'color: #f97316; font-weight: bold', messages.map((m, i) => ({
+    index: i,
+    role: m.role,
+    contentPreview: m.content?.substring(0, 80) + (m.content?.length > 80 ? '...' : '')
+  })));
+  console.groupEnd();
+
   const response = await fetch(OPENROUTER_API_URL, {
     method: 'POST',
     headers: {
@@ -77,10 +95,26 @@ export const callOpenRouterAPI = async (
     } catch {
       errorMessage = await response.text();
     }
+    console.error('%c❌ OpenRouter API Error', 'color: #ef4444; font-weight: bold', response.status, errorMessage);
     throw new Error(`OpenRouter API error ${response.status}: ${errorMessage}`);
   }
 
-  return await response.json();
+  const result: OpenRouterResponse = await response.json();
+
+  // Log response details
+  console.group('%c✅ OpenRouter Response', 'color: #10b981; font-weight: bold; font-size: 14px');
+  console.log('%cFinish Reason:', 'color: #6b7280', result.choices[0]?.finish_reason);
+  if (result.usage) {
+    console.log('%cTokens:', 'color: #f59e0b; font-weight: bold',
+      `Prompt: ${result.usage.prompt_tokens} | Completion: ${result.usage.completion_tokens} | Total: ${result.usage.total_tokens}`);
+  }
+  if (result.choices[0]?.message?.tool_calls) {
+    console.log('%cTool Calls:', 'color: #8b5cf6; font-weight: bold',
+      result.choices[0].message.tool_calls.map(t => t.function.name).join(', '));
+  }
+  console.groupEnd();
+
+  return result;
 };
 
 // Convert Gemini format messages to OpenRouter format

@@ -351,18 +351,18 @@ export class ERPApiService {
    */
   async getAvailableFields(userId: string): Promise<string[]> {
     const requestId = Math.random().toString(36).substring(2, 8);
-    
+
     console.log('📥 ERP API REQUEST [' + requestId + ']:', {
       method: 'getAvailableFields',
       userId: userId.substring(0, 8) + '...',
       timestamp: new Date().toISOString(),
       requestId: requestId
     });
-    
+
     try {
-      const erpDocuments = await storageService.getUserERPDocuments(userId);
-      const fields = (erpDocuments.length === 0 || !erpDocuments[0].headers) ? [] : erpDocuments[0].headers;
-      
+      const { headers } = await erpSampleDataService.getSampleData();
+      const fields = headers || [];
+
       console.log('📤 ERP API RESPONSE [' + requestId + ']:', {
         status: 'SUCCESS',
         outputResults: {
@@ -372,7 +372,7 @@ export class ERPApiService {
         timestamp: new Date().toISOString(),
         requestId: requestId
       });
-      
+
       return fields;
     } catch (error) {
       console.log('📤 ERP API RESPONSE [' + requestId + ']:', {
@@ -383,7 +383,7 @@ export class ERPApiService {
         timestamp: new Date().toISOString(),
         requestId: requestId
       });
-      
+
       console.error('❌ Failed to get available fields:', error);
       return [];
     }
@@ -394,7 +394,7 @@ export class ERPApiService {
    */
   async getSampleData(userId: string, maxRows: number = 5): Promise<ERPRecord[]> {
     const requestId = Math.random().toString(36).substring(2, 8);
-    
+
     console.log('📥 ERP API REQUEST [' + requestId + ']:', {
       method: 'getSampleData',
       userId: userId.substring(0, 8) + '...',
@@ -404,11 +404,11 @@ export class ERPApiService {
       timestamp: new Date().toISOString(),
       requestId: requestId
     });
-    
+
     try {
-      const searchResult = await this.searchRecords(userId, {});
+      const searchResult = await this.searchRecords({});
       const sampleData = searchResult.records.slice(0, maxRows);
-      
+
       console.log('📤 ERP API RESPONSE [' + requestId + ']:', {
         status: 'SUCCESS',
         outputResults: {
@@ -419,7 +419,7 @@ export class ERPApiService {
         timestamp: new Date().toISOString(),
         requestId: requestId
       });
-      
+
       return sampleData;
     } catch (error) {
       console.log('📤 ERP API RESPONSE [' + requestId + ']:', {
@@ -431,7 +431,7 @@ export class ERPApiService {
         timestamp: new Date().toISOString(),
         requestId: requestId
       });
-      
+
       console.error('❌ Failed to get sample data:', error);
       return [];
     }

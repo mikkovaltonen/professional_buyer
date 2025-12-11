@@ -20,7 +20,9 @@
       "Bash(npm cache clean:*)",
       "Bash(npm install:*)",
       "WebFetch(domain:www.zealsourcing.fi)",
-      "Bash(cp:*)"
+      "Bash(cp:*)",
+      "Bash(npm audit:*)",
+      "Bash(timeout 10s npm run dev:*)"
     ],
     "deny": []
   }

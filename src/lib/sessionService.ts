@@ -1,7 +1,5 @@
-import { db } from './firebase';
-import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
 import { storageService, KnowledgeDocument } from './storageService';
-import { loadUserPrompt } from './firestoreService';
+import { loadLatestPrompt } from './firestoreService';
 
 export interface ChatSession {
   systemPrompt: string;
@@ -9,41 +7,32 @@ export interface ChatSession {
   fullContext: string;
   documentsUsed: KnowledgeDocument[];
   aiModel: string;
+  temperature: number;
   createdAt: Date;
 }
 
-export interface SystemPromptVersion {
-  id: string;
-  version: number;
+export interface SystemPromptData {
   systemPrompt: string;
-  evaluation: string;
-  savedDate: Date;
   aiModel: string;
-  userId: string;
+  temperature: number;
 }
 
 export class SessionService {
   /**
-   * Get the latest system prompt for a user
+   * Get the latest system prompt (global, not user-specific)
    */
-  async getLatestSystemPrompt(userId: string): Promise<SystemPromptVersion | null> {
+  async getLatestSystemPrompt(_userId?: string): Promise<SystemPromptData | null> {
     try {
-      // Use the new single prompt system
-      const userPromptData = await loadUserPrompt(userId);
+      const promptData = await loadLatestPrompt();
 
-      if (!userPromptData) {
+      if (!promptData) {
         return null;
       }
 
-      // Return in the format expected by the rest of the system
       return {
-        id: userId,
-        version: 1, // Single version now
-        systemPrompt: userPromptData.prompt,
-        evaluation: '',
-        savedDate: new Date(),
-        aiModel: userPromptData.model,
-        userId: userId
+        systemPrompt: promptData.prompt,
+        aiModel: promptData.model,
+        temperature: promptData.temperature
       };
     } catch (error) {
       console.error('Failed to fetch latest system prompt:', error);
@@ -107,13 +96,14 @@ Please use this internal knowledge to provide accurate, company-specific guidanc
    */
   async initializeChatSession(userId: string, userEmail?: string): Promise<ChatSession> {
     try {
-      // Get latest system prompt
-      const latestPrompt = await this.getLatestSystemPrompt(userId);
+      // Get latest system prompt (global)
+      const latestPrompt = await this.getLatestSystemPrompt();
       if (!latestPrompt?.systemPrompt) {
         throw new Error('No system prompt configured. Please create a prompt in the Admin panel.');
       }
       let systemPrompt = latestPrompt.systemPrompt;
-      const aiModel = latestPrompt.aiModel || 'gemini-2.5-pro-preview-06-05';
+      const aiModel = latestPrompt.aiModel || 'google/gemini-2.5-flash';
+      const temperature = latestPrompt.temperature ?? 0.05;
 
       // Add user context to system prompt
       if (userEmail) {
@@ -131,7 +121,7 @@ Please use this internal knowledge to provide accurate, company-specific guidanc
 
       // Get knowledge documents
       const documents = await this.getUserKnowledgeDocuments(userId);
-      
+
       // Build knowledge context
       const knowledgeContext = await this.buildKnowledgeContext(documents);
 
@@ -144,6 +134,7 @@ Please use this internal knowledge to provide accurate, company-specific guidanc
         fullContext,
         documentsUsed: documents,
         aiModel,
+        temperature,
         createdAt: new Date()
       };
     } catch (error) {

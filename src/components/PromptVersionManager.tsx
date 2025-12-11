@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Save, Loader2, RefreshCw, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
-import { saveUserPrompt, loadUserPrompt } from "@/lib/firestoreService";
+import { savePromptVersion, loadLatestPrompt } from "@/lib/firestoreService";
 
 const PromptVersionManager: React.FC = () => {
   const { user } = useAuth();
@@ -23,26 +23,22 @@ const PromptVersionManager: React.FC = () => {
 
   // Load latest prompt on mount
   useEffect(() => {
-    if (user?.uid) {
-      loadPrompt();
-    }
-    // Load default prompt
+    loadPrompt();
+    // Load default prompt from file
     fetch('/sample_promtp.md')
       .then(res => res.text())
       .then(text => setDefaultPrompt(text.trim()))
       .catch(err => console.error('Error loading default:', err));
-  }, [user?.uid]);
+  }, []);
 
   const loadPrompt = async () => {
-    if (!user?.uid) return;
-
     setIsLoading(true);
     try {
-      const userPromptData = await loadUserPrompt(user.uid);
-      if (userPromptData) {
-        setPromptText(userPromptData.prompt);
-        setSelectedModel(userPromptData.model);
-        setSelectedTemperature(userPromptData.temperature);
+      const promptData = await loadLatestPrompt();
+      if (promptData) {
+        setPromptText(promptData.prompt);
+        setSelectedModel(promptData.model);
+        setSelectedTemperature(promptData.temperature);
       }
     } catch (error) {
       console.error('Error loading prompt:', error);
@@ -62,13 +58,8 @@ const PromptVersionManager: React.FC = () => {
     }
   };
 
-  // Save handler with Firebase (single prompt per user)
+  // Save handler - saves new version to professional_buyer_prompts collection
   const handleSave = async () => {
-    if (!user?.uid) {
-      toast.error('Please log in to save');
-      return;
-    }
-
     if (!promptText.trim()) {
       toast.error('Please enter some text before saving');
       return;
@@ -76,13 +67,12 @@ const PromptVersionManager: React.FC = () => {
 
     setIsSaving(true);
     try {
-      await saveUserPrompt(
-        user.uid,
+      const version = await savePromptVersion(
         promptText,
         selectedModel,
         selectedTemperature
       );
-      toast.success('Prompt saved successfully');
+      toast.success(`Prompt saved as version ${version}`);
     } catch (error) {
       console.error('Error saving prompt:', error);
       toast.error('Failed to save prompt');
@@ -110,6 +100,7 @@ const PromptVersionManager: React.FC = () => {
                 <Label htmlFor="model-select">Language Model</Label>
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                   {selectedModel === 'google/gemini-2.5-flash' ? 'Gemini 2.5 Flash' :
+                   selectedModel === 'google/gemini-3-pro-preview' ? 'Gemini 3 Pro' :
                    selectedModel === 'x-ai/grok-4-fast' ? 'Grok 4 Fast' :
                    selectedModel === 'moonshotai/kimi-k2-thinking' ? 'Kimi K2' :
                    selectedModel}
@@ -125,6 +116,7 @@ const PromptVersionManager: React.FC = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="google/gemini-2.5-flash">Google Gemini 2.5 Flash</SelectItem>
+                  <SelectItem value="google/gemini-3-pro-preview">Google Gemini 3 Pro Preview</SelectItem>
                   <SelectItem value="x-ai/grok-4-fast">X.AI Grok 4 Fast</SelectItem>
                   <SelectItem value="moonshotai/kimi-k2-thinking">Moonshot AI Kimi K2 Thinking</SelectItem>
                 </SelectContent>

@@ -231,37 +231,14 @@ const ProfessionalBuyerChat: React.FC<ProfessionalBuyerChatProps> = ({
             console.error('Error loading model settings:', settingsError);
           }
 
-          // Check if this is a new user (no documents loaded)
-          const isLikelyNewUser = session.documentsUsed.length === 0;
-          
           // Extract user's name from email (everything before @)
           const userName = user.email ? user.email.split('@')[0] : 'there';
-          
-          const welcomeContent = isLikelyNewUser
-            ? `🎉 **Welcome to Professional Buyer AI Assistant!**
-
-I'm here to transform how you handle procurement and purchasing. As your AI-powered procurement expert, I can help you:
-
-**🎯 Get Started (recommended):**
-• **Load Sample Data**: Go to Admin panel → Load sample knowledge documents and ERP data to try me out
-• **Upload Your Files**: Add your own procurement policies and Excel purchase data
-• **Ask Questions**: "What suppliers do we use?" or "Find me laptop purchases from last quarter"
-
-**💡 My Special Capabilities:**
-✅ Real-time access to your ERP/purchase data through advanced function calling
-✅ Analysis of your internal procurement documents and policies
-✅ Professional buyer expertise for cost optimization and supplier management
-
-**Ready to explore?** Try asking me "Load some sample data so I can see what you can do" or visit the Admin panel to upload your own files!
-
-What would you like to start with?`
-            : `Hello **${userName}**! I'm your Professional Buyer AI Assistant.
-
-What procurement needs can I help you with today? I can assist with supplier management, cost optimization, purchase requisitions, or analyzing your procurement data.`;
 
           const welcomeMessage: Message = {
             role: 'assistant',
-            content: welcomeContent
+            content: `Hello **${userName}**! I'm your Professional Buyer AI Assistant.
+
+What procurement needs can I help you with today?`
           };
 
           // Only set welcome if messages are empty (prevent overwriting during re-render)
@@ -274,36 +251,11 @@ What procurement needs can I help you with today? I can assist with supplier man
             return prev;
           });
           setSessionActive(true);
-          
-          if (isLikelyNewUser) {
-            toast.success("🎉 Welcome! Your AI assistant is ready. Visit the Admin panel to load sample data and explore capabilities.", {
-              duration: 6000
-            });
-          } else {
-            toast.success(`Session initialized with ${session.documentsUsed.length} knowledge document(s)`);
-          }
+          toast.success(`Session initialized`);
         } catch (error) {
           console.error('Failed to initialize session:', error);
-          toast.error('Failed to load knowledge base. Using default settings.');
-
-          // Fallback to basic welcome message
-          const userName = user?.email ? user.email.split('@')[0] : 'there';
-          const welcomeMessage: Message = {
-            role: 'assistant',
-            content: `Hello **${userName}**! I'm your Professional Buyer AI Assistant.
-
-What procurement needs can I help you with today? I can assist with supplier management, cost optimization, purchase requisitions, or analyzing your procurement data.`
-          };
-
-          // Only set welcome if messages are empty
-          setMessages(prev => {
-            if (prev.length === 0) {
-              console.log('📝 Setting fallback welcome message');
-              return [welcomeMessage];
-            }
-            return prev;
-          });
-          setSessionActive(true);
+          toast.error('Failed to initialize. Please check Prompt Editor settings.');
+          setSessionActive(false);
         } finally {
           setSessionInitializing(false);
         }
